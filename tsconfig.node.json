@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "erasableSyntaxOnly": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "noUncheckedIndexedAccess": true,
+    "noUncheckedSideEffectImports": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2024",
+    "types": ["node"]
+  },
+  "include": [
+    "eslint.config.js",
+    "playwright.config.ts",
+    "scripts/**/*.ts",
+    "src/audio/analysis/contracts.ts",
+    "src/audio/analysis/onset.ts",
+    "src/audio/analysis/pitch.ts",
+    "src/audio/analysis/pipeline.ts",
+    "src/audio/analysis/resample.ts",
+    "src/audio/analysis/streaming.ts",
+    "src/audio/capture/contracts.ts",
+    "src/audio/capture/wav.ts",
+    "src/evaluation/**/*.ts",
+    "src/shared/**/*.ts",
+    "tests/e2e",
+    "vite.config.ts"
+  ]
+}

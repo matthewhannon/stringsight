@@ -1,0 +1,132 @@
+{
+  "corpusId": "stringsight-procedural-v1",
+  "fixtures": [
+    {
+      "audioFretRegions": [{ "atMs": 400, "endFret": 4, "startFret": 3 }],
+      "audioNotes": [{ "endMs": 950, "startMs": 122, "confidence": 0.72, "midi": 40 }],
+      "chords": [],
+      "fixtureId": "dev-open-e2-soft",
+      "fusedFretRegions": [{ "atMs": 400, "endFret": 2, "startFret": 1 }],
+      "fusedNotes": [{ "endMs": 950, "startMs": 108, "confidence": 0.9, "midi": 40 }],
+      "latencySamples": [
+        { "latencyMs": 34, "path": "live-audio" },
+        { "latencyMs": 180, "path": "finalized-audio" },
+        { "latencyMs": 48, "path": "vision" },
+        { "latencyMs": 22, "path": "fusion" }
+      ],
+      "onsetsMs": [112]
+    },
+    {
+      "audioFretRegions": [{ "atMs": 470, "endFret": 6, "startFret": 3 }],
+      "audioNotes": [
+        { "endMs": 1100, "startMs": 142, "confidence": 0.72, "midi": 48 },
+        { "endMs": 1000, "startMs": 142, "confidence": 0.72, "midi": 55 }
+      ],
+      "chords": [{ "endMs": 1000, "startMs": 138, "confidence": 0.75, "symbol": "C" }],
+      "fixtureId": "dev-c-major-loud",
+      "fusedFretRegions": [{ "atMs": 470, "endFret": 4, "startFret": 1 }],
+      "fusedNotes": [
+        { "endMs": 1100, "startMs": 128, "confidence": 0.9, "midi": 48 },
+        { "endMs": 1050, "startMs": 128, "confidence": 0.9, "midi": 52 },
+        { "endMs": 1000, "startMs": 128, "confidence": 0.9, "midi": 55 }
+      ],
+      "latencySamples": [
+        { "latencyMs": 36, "path": "live-audio" },
+        { "latencyMs": 185, "path": "finalized-audio" },
+        { "latencyMs": 51, "path": "vision" },
+        { "latencyMs": 24, "path": "fusion" }
+      ],
+      "onsetsMs": [132]
+    },
+    {
+      "audioFretRegions": [
+        { "atMs": 400, "endFret": 6, "startFret": 3 },
+        { "atMs": 1200, "endFret": 6, "startFret": 3 },
+        { "atMs": 2000, "endFret": 6, "startFret": 3 }
+      ],
+      "audioNotes": [
+        { "endMs": 830, "startMs": 522, "confidence": 0.72, "midi": 48 },
+        { "endMs": 1230, "startMs": 922, "confidence": 0.72, "midi": 50 },
+        { "endMs": 2200, "startMs": 1722, "confidence": 0.72, "midi": 55 }
+      ],
+      "chords": [],
+      "fixtureId": "dev-a-minor-pentatonic",
+      "fusedFretRegions": [
+        { "atMs": 400, "endFret": 4, "startFret": 1 },
+        { "atMs": 1200, "endFret": 4, "startFret": 1 },
+        { "atMs": 2000, "endFret": 4, "startFret": 1 }
+      ],
+      "fusedNotes": [
+        { "endMs": 430, "startMs": 108, "confidence": 0.9, "midi": 45 },
+        { "endMs": 830, "startMs": 508, "confidence": 0.9, "midi": 48 },
+        { "endMs": 1230, "startMs": 908, "confidence": 0.9, "midi": 50 },
+        { "endMs": 1630, "startMs": 1308, "confidence": 0.9, "midi": 52 },
+        { "endMs": 2200, "startMs": 1708, "confidence": 0.9, "midi": 55 }
+      ],
+      "latencySamples": [
+        { "latencyMs": 38, "path": "live-audio" },
+        { "latencyMs": 190, "path": "finalized-audio" },
+        { "latencyMs": 54, "path": "vision" },
+        { "latencyMs": 26, "path": "fusion" }
+      ],
+      "onsetsMs": [112, 512, 912, 1312, 1712]
+    },
+    {
+      "audioFretRegions": [{ "atMs": 500, "endFret": 5, "startFret": 3 }],
+      "audioNotes": [
+        { "endMs": 1200, "startMs": 182, "confidence": 0.72, "midi": 45 },
+        { "endMs": 1100, "startMs": 182, "confidence": 0.72, "midi": 52 },
+        { "endMs": 1000, "startMs": 182, "confidence": 0.72, "midi": 60 }
+      ],
+      "chords": [{ "endMs": 1000, "startMs": 178, "confidence": 0.75, "symbol": "Am7" }],
+      "fixtureId": "held-am-nylon-room",
+      "fusedFretRegions": [{ "atMs": 500, "endFret": 3, "startFret": 1 }],
+      "fusedNotes": [
+        { "endMs": 1200, "startMs": 168, "confidence": 0.9, "midi": 45 },
+        { "endMs": 1100, "startMs": 168, "confidence": 0.9, "midi": 52 },
+        { "endMs": 1050, "startMs": 168, "confidence": 0.9, "midi": 57 },
+        { "endMs": 1000, "startMs": 168, "confidence": 0.9, "midi": 60 }
+      ],
+      "latencySamples": [
+        { "latencyMs": 40, "path": "live-audio" },
+        { "latencyMs": 195, "path": "finalized-audio" },
+        { "latencyMs": 57, "path": "vision" },
+        { "latencyMs": 28, "path": "fusion" }
+      ],
+      "onsetsMs": [172]
+    },
+    {
+      "audioFretRegions": [
+        { "atMs": 300, "endFret": 10, "startFret": 8 },
+        { "atMs": 900, "endFret": 11, "startFret": 9 },
+        { "atMs": 1400, "endFret": 12, "startFret": 10 }
+      ],
+      "audioNotes": [
+        { "endMs": 520, "startMs": 122, "confidence": 0.72, "midi": 69 },
+        { "endMs": 1650, "startMs": 1122, "confidence": 0.72, "midi": 72 }
+      ],
+      "chords": [],
+      "fixtureId": "held-upper-register-phrase",
+      "fusedFretRegions": [
+        { "atMs": 300, "endFret": 8, "startFret": 6 },
+        { "atMs": 900, "endFret": 9, "startFret": 7 },
+        { "atMs": 1400, "endFret": 10, "startFret": 8 }
+      ],
+      "fusedNotes": [
+        { "endMs": 520, "startMs": 108, "confidence": 0.9, "midi": 69 },
+        { "endMs": 1020, "startMs": 608, "confidence": 0.9, "midi": 71 },
+        { "endMs": 1650, "startMs": 1108, "confidence": 0.9, "midi": 72 }
+      ],
+      "latencySamples": [
+        { "latencyMs": 42, "path": "live-audio" },
+        { "latencyMs": 200, "path": "finalized-audio" },
+        { "latencyMs": 60, "path": "vision" },
+        { "latencyMs": 30, "path": "fusion" }
+      ],
+      "onsetsMs": [112, 612, 1112]
+    }
+  ],
+  "generatedAt": "2026-07-17T00:00:00.000Z",
+  "schemaVersion": 1,
+  "system": { "name": "harness-self-test", "version": "1.0.0" }
+}

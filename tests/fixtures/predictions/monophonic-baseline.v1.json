@@ -1,0 +1,91 @@
+{
+  "corpusId": "stringsight-procedural-v1",
+  "fixtures": [
+    {
+      "audioFretRegions": [],
+      "audioNotes": [
+        { "endMs": 945, "startMs": 100, "confidence": 0.9625813136150921, "midi": 40 }
+      ],
+      "chords": [],
+      "fixtureId": "dev-open-e2-soft",
+      "fusedFretRegions": [],
+      "fusedNotes": [],
+      "latencySamples": [
+        { "latencyMs": 85, "path": "live-audio" },
+        { "latencyMs": 70, "path": "finalized-audio" }
+      ],
+      "onsetsMs": [100]
+    },
+    {
+      "audioFretRegions": [],
+      "audioNotes": [],
+      "chords": [],
+      "fixtureId": "dev-c-major-loud",
+      "fusedFretRegions": [],
+      "fusedNotes": [],
+      "latencySamples": [],
+      "onsetsMs": [119.99999999999784]
+    },
+    {
+      "audioFretRegions": [],
+      "audioNotes": [
+        { "endMs": 430, "startMs": 105, "confidence": 0.9651671847366001, "midi": 45 },
+        { "endMs": 830, "startMs": 500, "confidence": 0.9674939996278885, "midi": 48 },
+        { "endMs": 1230, "startMs": 900, "confidence": 0.9725192643317524, "midi": 50 },
+        { "endMs": 1630, "startMs": 1300, "confidence": 0.9692220475436069, "midi": 52 },
+        { "endMs": 2200, "startMs": 1705, "confidence": 0.9430450483812991, "midi": 55 }
+      ],
+      "chords": [],
+      "fixtureId": "dev-a-minor-pentatonic",
+      "fusedFretRegions": [],
+      "fusedNotes": [],
+      "latencySamples": [
+        { "latencyMs": 85, "path": "live-audio" },
+        { "latencyMs": 70, "path": "finalized-audio" },
+        { "latencyMs": 85, "path": "live-audio" },
+        { "latencyMs": 70, "path": "finalized-audio" },
+        { "latencyMs": 85, "path": "live-audio" },
+        { "latencyMs": 70, "path": "finalized-audio" },
+        { "latencyMs": 85, "path": "live-audio" },
+        { "latencyMs": 70, "path": "finalized-audio" },
+        { "latencyMs": 85, "path": "live-audio" },
+        { "latencyMs": 70, "path": "finalized-audio" }
+      ],
+      "onsetsMs": [105, 500, 900, 1300, 1705]
+    },
+    {
+      "audioFretRegions": [],
+      "audioNotes": [],
+      "chords": [],
+      "fixtureId": "held-am-nylon-room",
+      "fusedFretRegions": [],
+      "fusedNotes": [],
+      "latencySamples": [],
+      "onsetsMs": [164.99999999999784]
+    },
+    {
+      "audioFretRegions": [],
+      "audioNotes": [
+        { "endMs": 520, "startMs": 100, "confidence": 0.9729232095563835, "midi": 69 },
+        { "endMs": 1020, "startMs": 600, "confidence": 0.9699590355744726, "midi": 71 },
+        { "endMs": 1650, "startMs": 1100, "confidence": 0.9528600084587068, "midi": 72 }
+      ],
+      "chords": [],
+      "fixtureId": "held-upper-register-phrase",
+      "fusedFretRegions": [],
+      "fusedNotes": [],
+      "latencySamples": [
+        { "latencyMs": 85, "path": "live-audio" },
+        { "latencyMs": 70, "path": "finalized-audio" },
+        { "latencyMs": 85, "path": "live-audio" },
+        { "latencyMs": 70, "path": "finalized-audio" },
+        { "latencyMs": 85, "path": "live-audio" },
+        { "latencyMs": 70, "path": "finalized-audio" }
+      ],
+      "onsetsMs": [100, 600, 1100]
+    }
+  ],
+  "generatedAt": "2026-07-17T00:00:00.000Z",
+  "schemaVersion": 1,
+  "system": { "name": "yin-energy-monophonic", "version": "0.2.1" }
+}

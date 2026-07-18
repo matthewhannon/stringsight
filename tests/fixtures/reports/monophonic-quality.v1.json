@@ -1,0 +1,54 @@
+{
+  "analyzer": { "name": "yin-energy-monophonic", "version": "0.2.1" },
+  "corpusId": "stringsight-procedural-v1",
+  "generatedAt": "2026-07-17T00:00:00.000Z",
+  "metrics": {
+    "finalizedLatencyP95Ms": 70,
+    "liveLatencyP95Ms": 85,
+    "medianOnsetErrorMs": 0,
+    "noteCount": 9,
+    "onsetF1": 1,
+    "onsetPrecision": 1,
+    "onsetRecall": 1,
+    "p95OnsetErrorMs": 5,
+    "top1Accuracy": 1,
+    "top3Accuracy": 1
+  },
+  "perFixture": [
+    {
+      "detectedEvents": 1,
+      "falseOnsets": 0,
+      "fixtureId": "dev-open-e2-soft",
+      "matchedOnsets": 1,
+      "noteCount": 1,
+      "onsetErrorsMs": [0],
+      "top1Matches": 1,
+      "top3Matches": 1
+    },
+    {
+      "detectedEvents": 5,
+      "falseOnsets": 0,
+      "fixtureId": "dev-a-minor-pentatonic",
+      "matchedOnsets": 5,
+      "noteCount": 5,
+      "onsetErrorsMs": [5, 0, 0, 0, 5],
+      "top1Matches": 5,
+      "top3Matches": 5
+    },
+    {
+      "detectedEvents": 3,
+      "falseOnsets": 0,
+      "fixtureId": "held-upper-register-phrase",
+      "matchedOnsets": 3,
+      "noteCount": 3,
+      "onsetErrorsMs": [0, 0, 0],
+      "top1Matches": 3,
+      "top3Matches": 3
+    }
+  ],
+  "schemaVersion": 1,
+  "scope": {
+    "excludedPolyphonicFixtures": ["dev-c-major-loud", "held-am-nylon-room"],
+    "includedFixtures": ["dev-open-e2-soft", "dev-a-minor-pentatonic", "held-upper-register-phrase"]
+  }
+}

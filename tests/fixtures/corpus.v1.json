@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "corpusId": "stringsight-procedural-v1",
+  "description": "Deterministic project-authored signals and fretboard frames for evaluator and pipeline regression testing.",
+  "generator": {
+    "name": "stringsight-procedural-generator",
+    "version": "1.0.0"
+  },
+  "fixtures": [
+    {
+      "id": "dev-open-e2-soft",
+      "split": "development",
+      "modalities": ["audio", "video"],
+      "durationMs": 1200,
+      "media": {
+        "audio": "audio/dev-open-e2-soft.wav",
+        "videoFrames": [
+          "video/dev-open-e2-soft/frame-000.svg",
+          "video/dev-open-e2-soft/frame-001.svg",
+          "video/dev-open-e2-soft/frame-002.svg"
+        ]
+      },
+      "conditions": {
+        "guitarType": "steel-acoustic",
+        "inputProfile": "near-microphone",
+        "dynamics": "soft",
+        "noise": "quiet",
+        "neckPosition": "open-low",
+        "sampleRate": 16000,
+        "frameRate": 2.5,
+        "imageWidth": 640,
+        "imageHeight": 360,
+        "lighting": "bright",
+        "occlusion": "none",
+        "perspective": "straight"
+      },
+      "source": {
+        "kind": "procedural",
+        "license": "MIT",
+        "generatorVersion": "1.0.0",
+        "seed": 1101
+      },
+      "groundTruth": {
+        "notes": [
+          { "startMs": 100, "endMs": 950, "midi": 40, "velocity": 0.35, "string": 6, "fret": 0 }
+        ],
+        "chords": [],
+        "onsetsMs": [100],
+        "fretRegions": [{ "atMs": 400, "startFret": 0, "endFret": 1 }],
+        "tablature": [{ "string": 6, "fret": 0, "midi": 40 }]
+      },
+      "tags": ["single-note", "open-string", "soft"]
+    },
+    {
+      "id": "dev-c-major-loud",
+      "split": "development",
+      "modalities": ["audio", "video"],
+      "durationMs": 1400,
+      "media": {
+        "audio": "audio/dev-c-major-loud.wav",
+        "videoFrames": [
+          "video/dev-c-major-loud/frame-000.svg",
+          "video/dev-c-major-loud/frame-001.svg",
+          "video/dev-c-major-loud/frame-002.svg"
+        ]
+      },
+      "conditions": {
+        "guitarType": "clean-electric",
+        "inputProfile": "direct",
+        "dynamics": "loud",
+        "noise": "quiet",
+        "neckPosition": "open-low",
+        "sampleRate": 22050,
+        "frameRate": 2.14,
+        "imageWidth": 640,
+        "imageHeight": 360,
+        "lighting": "normal",
+        "occlusion": "partial",
+        "perspective": "moderate"
+      },
+      "source": {
+        "kind": "procedural",
+        "license": "MIT",
+        "generatorVersion": "1.0.0",
+        "seed": 2202
+      },
+      "groundTruth": {
+        "notes": [
+          { "startMs": 120, "endMs": 1100, "midi": 48, "velocity": 0.9, "string": 5, "fret": 3 },
+          { "startMs": 120, "endMs": 1050, "midi": 52, "velocity": 0.82, "string": 4, "fret": 2 },
+          { "startMs": 120, "endMs": 1000, "midi": 55, "velocity": 0.78, "string": 3, "fret": 0 }
+        ],
+        "chords": [{ "startMs": 120, "endMs": 1000, "symbol": "C", "pitchClasses": [0, 4, 7] }],
+        "onsetsMs": [120],
+        "fretRegions": [{ "atMs": 470, "startFret": 0, "endFret": 3 }],
+        "tablature": [
+          { "string": 5, "fret": 3, "midi": 48 },
+          { "string": 4, "fret": 2, "midi": 52 },
+          { "string": 3, "fret": 0, "midi": 55 }
+        ]
+      },
+      "tags": ["chord", "major", "polyphonic", "direct"]
+    },
+    {
+      "id": "dev-a-minor-pentatonic",
+      "split": "development",
+      "modalities": ["audio", "video"],
+      "durationMs": 2400,
+      "media": {
+        "audio": "audio/dev-a-minor-pentatonic.wav",
+        "videoFrames": [
+          "video/dev-a-minor-pentatonic/frame-000.svg",
+          "video/dev-a-minor-pentatonic/frame-001.svg",
+          "video/dev-a-minor-pentatonic/frame-002.svg"
+        ]
+      },
+      "conditions": {
+        "guitarType": "steel-acoustic",
+        "inputProfile": "room-microphone",
+        "dynamics": "medium",
+        "noise": "room",
+        "neckPosition": "middle",
+        "sampleRate": 16000,
+        "frameRate": 1.25,
+        "imageWidth": 640,
+        "imageHeight": 360,
+        "lighting": "normal",
+        "occlusion": "partial",
+        "perspective": "moderate"
+      },
+      "source": {
+        "kind": "procedural",
+        "license": "MIT",
+        "generatorVersion": "1.0.0",
+        "seed": 3303
+      },
+      "groundTruth": {
+        "notes": [
+          { "startMs": 100, "endMs": 430, "midi": 45, "velocity": 0.62, "string": 5, "fret": 0 },
+          { "startMs": 500, "endMs": 830, "midi": 48, "velocity": 0.65, "string": 5, "fret": 3 },
+          { "startMs": 900, "endMs": 1230, "midi": 50, "velocity": 0.68, "string": 4, "fret": 0 },
+          { "startMs": 1300, "endMs": 1630, "midi": 52, "velocity": 0.66, "string": 4, "fret": 2 },
+          { "startMs": 1700, "endMs": 2200, "midi": 55, "velocity": 0.72, "string": 3, "fret": 0 }
+        ],
+        "chords": [],
+        "onsetsMs": [100, 500, 900, 1300, 1700],
+        "fretRegions": [
+          { "atMs": 400, "startFret": 0, "endFret": 3 },
+          { "atMs": 1200, "startFret": 0, "endFret": 3 },
+          { "atMs": 2000, "startFret": 0, "endFret": 3 }
+        ],
+        "tablature": [
+          { "string": 5, "fret": 0, "midi": 45 },
+          { "string": 5, "fret": 3, "midi": 48 },
+          { "string": 4, "fret": 0, "midi": 50 },
+          { "string": 4, "fret": 2, "midi": 52 },
+          { "string": 3, "fret": 0, "midi": 55 }
+        ]
+      },
+      "tags": ["scale", "phrase", "room-noise"]
+    },
+    {
+      "id": "held-am-nylon-room",
+      "split": "held-out",
+      "modalities": ["audio", "video"],
+      "durationMs": 1500,
+      "media": {
+        "audio": "audio/held-am-nylon-room.wav",
+        "videoFrames": [
+          "video/held-am-nylon-room/frame-000.svg",
+          "video/held-am-nylon-room/frame-001.svg",
+          "video/held-am-nylon-room/frame-002.svg"
+        ]
+      },
+      "conditions": {
+        "guitarType": "nylon-acoustic",
+        "inputProfile": "laptop-microphone",
+        "dynamics": "medium",
+        "noise": "fan",
+        "neckPosition": "open-low",
+        "sampleRate": 22050,
+        "frameRate": 2,
+        "imageWidth": 640,
+        "imageHeight": 360,
+        "lighting": "dim",
+        "occlusion": "partial",
+        "perspective": "strong"
+      },
+      "source": {
+        "kind": "procedural",
+        "license": "MIT",
+        "generatorVersion": "1.0.0",
+        "seed": 4404
+      },
+      "groundTruth": {
+        "notes": [
+          { "startMs": 160, "endMs": 1200, "midi": 45, "velocity": 0.68, "string": 5, "fret": 0 },
+          { "startMs": 160, "endMs": 1100, "midi": 52, "velocity": 0.64, "string": 4, "fret": 2 },
+          { "startMs": 160, "endMs": 1050, "midi": 57, "velocity": 0.61, "string": 3, "fret": 2 },
+          { "startMs": 160, "endMs": 1000, "midi": 60, "velocity": 0.58, "string": 2, "fret": 1 }
+        ],
+        "chords": [{ "startMs": 160, "endMs": 1000, "symbol": "Am", "pitchClasses": [9, 0, 4] }],
+        "onsetsMs": [160],
+        "fretRegions": [{ "atMs": 500, "startFret": 0, "endFret": 2 }],
+        "tablature": [
+          { "string": 5, "fret": 0, "midi": 45 },
+          { "string": 4, "fret": 2, "midi": 52 },
+          { "string": 3, "fret": 2, "midi": 57 },
+          { "string": 2, "fret": 1, "midi": 60 }
+        ]
+      },
+      "tags": ["chord", "minor", "polyphonic", "fan-noise", "held-out"]
+    },
+    {
+      "id": "held-upper-register-phrase",
+      "split": "held-out",
+      "modalities": ["audio", "video"],
+      "durationMs": 1800,
+      "media": {
+        "audio": "audio/held-upper-register-phrase.wav",
+        "videoFrames": [
+          "video/held-upper-register-phrase/frame-000.svg",
+          "video/held-upper-register-phrase/frame-001.svg",
+          "video/held-upper-register-phrase/frame-002.svg"
+        ]
+      },
+      "conditions": {
+        "guitarType": "clean-electric",
+        "inputProfile": "near-microphone",
+        "dynamics": "loud",
+        "noise": "room",
+        "neckPosition": "upper",
+        "sampleRate": 16000,
+        "frameRate": 1.67,
+        "imageWidth": 640,
+        "imageHeight": 360,
+        "lighting": "normal",
+        "occlusion": "partial",
+        "perspective": "strong"
+      },
+      "source": {
+        "kind": "procedural",
+        "license": "MIT",
+        "generatorVersion": "1.0.0",
+        "seed": 5505
+      },
+      "groundTruth": {
+        "notes": [
+          { "startMs": 100, "endMs": 520, "midi": 69, "velocity": 0.84, "string": 1, "fret": 5 },
+          { "startMs": 600, "endMs": 1020, "midi": 71, "velocity": 0.88, "string": 1, "fret": 7 },
+          { "startMs": 1100, "endMs": 1650, "midi": 72, "velocity": 0.92, "string": 1, "fret": 8 }
+        ],
+        "chords": [],
+        "onsetsMs": [100, 600, 1100],
+        "fretRegions": [
+          { "atMs": 300, "startFret": 5, "endFret": 7 },
+          { "atMs": 900, "startFret": 6, "endFret": 8 },
+          { "atMs": 1400, "startFret": 7, "endFret": 9 }
+        ],
+        "tablature": [
+          { "string": 1, "fret": 5, "midi": 69 },
+          { "string": 1, "fret": 7, "midi": 71 },
+          { "string": 1, "fret": 8, "midi": 72 }
+        ]
+      },
+      "tags": ["single-notes", "phrase", "upper-register", "held-out"]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+/** Stable styling hooks for product tools rendered inside a RackModule. */
+export const rackEmbeddedClassNames = {
+  section: 'ss-rack-embedded-section',
+  surface: 'ss-rack-embedded-surface',
+  clippedSurface: 'ss-rack-embedded-surface ss-rack-embedded-surface--clip',
+} as const;

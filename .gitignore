@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build and test output
+dist/
+coverage/
+playwright-report/
+test-results/
+tests/fixtures/reports/*.local.json
+
+# Local environment and tooling
+.env
+.env.*
+!.env.example
+.vite/
+*.tsbuildinfo
+
+# Private project coordination and temporary working documents
+HANDOFF*.md
+*.local.md
+*.draft.md
+*.notes.md
+*.spec.md
+*.tmp.md
+/.local/
+/notes/
+/scratch/
+/specs/
+/temp/
+/tmp/
+/docs/_drafts/
+/docs/_local/
+
+# Editors and operating systems
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

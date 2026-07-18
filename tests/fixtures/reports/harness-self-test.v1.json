@@ -1,0 +1,743 @@
+{
+  "corpus": {
+    "corpusId": "stringsight-procedural-v1",
+    "generatorVersion": "1.0.0",
+    "schemaVersion": 1
+  },
+  "diagnostics": { "missingPredictionIds": [], "unknownPredictionIds": [] },
+  "evaluatorVersion": "1.0.0",
+  "generatedAt": "2026-07-17T00:00:00.000Z",
+  "predictionSystem": { "name": "harness-self-test", "version": "1.0.0" },
+  "results": {
+    "all": {
+      "fixtureCount": 5,
+      "latency": {
+        "finalized-audio": { "count": 5, "maxMs": 200, "meanMs": 190, "p50Ms": 190, "p95Ms": 200 },
+        "fusion": { "count": 5, "maxMs": 30, "meanMs": 26, "p50Ms": 26, "p95Ms": 30 },
+        "live-audio": { "count": 5, "maxMs": 42, "meanMs": 38, "p50Ms": 38, "p95Ms": 42 },
+        "vision": { "count": 5, "maxMs": 60, "meanMs": 54, "p50Ms": 54, "p95Ms": 60 }
+      },
+      "metrics": {
+        "audioFret": {
+          "coverage": 1,
+          "matched": 9,
+          "maxMidpointErrorFrets": 3,
+          "meanIntersectionOverUnion": 0.06349206349206349,
+          "meanMidpointErrorFrets": 3,
+          "total": 9
+        },
+        "audioNotes": {
+          "f1": 0.8148148148148148,
+          "falseNegatives": 5,
+          "falsePositives": 0,
+          "matched": 11,
+          "meanAbsoluteErrorMs": 22,
+          "precision": 1,
+          "recall": 0.6875
+        },
+        "chords": { "accuracy": 0.5, "correct": 1, "total": 2 },
+        "fusedFret": {
+          "coverage": 1,
+          "matched": 9,
+          "maxMidpointErrorFrets": 1,
+          "meanIntersectionOverUnion": 0.5259259259259259,
+          "meanMidpointErrorFrets": 1,
+          "total": 9
+        },
+        "fusedNotes": {
+          "f1": 1,
+          "falseNegatives": 0,
+          "falsePositives": 0,
+          "matched": 16,
+          "meanAbsoluteErrorMs": 8,
+          "precision": 1,
+          "recall": 1
+        },
+        "fusionImprovement": {
+          "fretMidpointErrorReduction": 2,
+          "noteF1Delta": 0.18518518518518523
+        },
+        "onsets": {
+          "f1": 1,
+          "falseNegatives": 0,
+          "falsePositives": 0,
+          "matched": 11,
+          "meanAbsoluteErrorMs": 12,
+          "precision": 1,
+          "recall": 1
+        }
+      },
+      "perFixture": [
+        {
+          "fixtureId": "dev-open-e2-soft",
+          "metrics": {
+            "audioFret": {
+              "coverage": 1,
+              "matched": 1,
+              "maxMidpointErrorFrets": 3,
+              "meanIntersectionOverUnion": 0,
+              "meanMidpointErrorFrets": 3,
+              "total": 1
+            },
+            "audioNotes": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 1,
+              "meanAbsoluteErrorMs": 22,
+              "precision": 1,
+              "recall": 1
+            },
+            "chords": { "accuracy": 0, "correct": 0, "total": 0 },
+            "fusedFret": {
+              "coverage": 1,
+              "matched": 1,
+              "maxMidpointErrorFrets": 1,
+              "meanIntersectionOverUnion": 0.3333333333333333,
+              "meanMidpointErrorFrets": 1,
+              "total": 1
+            },
+            "fusedNotes": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 1,
+              "meanAbsoluteErrorMs": 8,
+              "precision": 1,
+              "recall": 1
+            },
+            "fusionImprovement": { "fretMidpointErrorReduction": 2, "noteF1Delta": 0 },
+            "onsets": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 1,
+              "meanAbsoluteErrorMs": 12,
+              "precision": 1,
+              "recall": 1
+            }
+          },
+          "predictionPresent": true
+        },
+        {
+          "fixtureId": "dev-c-major-loud",
+          "metrics": {
+            "audioFret": {
+              "coverage": 1,
+              "matched": 1,
+              "maxMidpointErrorFrets": 3,
+              "meanIntersectionOverUnion": 0.14285714285714285,
+              "meanMidpointErrorFrets": 3,
+              "total": 1
+            },
+            "audioNotes": {
+              "f1": 0.8,
+              "falseNegatives": 1,
+              "falsePositives": 0,
+              "matched": 2,
+              "meanAbsoluteErrorMs": 22,
+              "precision": 1,
+              "recall": 0.6666666666666666
+            },
+            "chords": { "accuracy": 1, "correct": 1, "total": 1 },
+            "fusedFret": {
+              "coverage": 1,
+              "matched": 1,
+              "maxMidpointErrorFrets": 1,
+              "meanIntersectionOverUnion": 0.6,
+              "meanMidpointErrorFrets": 1,
+              "total": 1
+            },
+            "fusedNotes": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 3,
+              "meanAbsoluteErrorMs": 8,
+              "precision": 1,
+              "recall": 1
+            },
+            "fusionImprovement": {
+              "fretMidpointErrorReduction": 2,
+              "noteF1Delta": 0.19999999999999996
+            },
+            "onsets": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 1,
+              "meanAbsoluteErrorMs": 12,
+              "precision": 1,
+              "recall": 1
+            }
+          },
+          "predictionPresent": true
+        },
+        {
+          "fixtureId": "dev-a-minor-pentatonic",
+          "metrics": {
+            "audioFret": {
+              "coverage": 1,
+              "matched": 3,
+              "maxMidpointErrorFrets": 3,
+              "meanIntersectionOverUnion": 0.14285714285714285,
+              "meanMidpointErrorFrets": 3,
+              "total": 3
+            },
+            "audioNotes": {
+              "f1": 0.7499999999999999,
+              "falseNegatives": 2,
+              "falsePositives": 0,
+              "matched": 3,
+              "meanAbsoluteErrorMs": 22,
+              "precision": 1,
+              "recall": 0.6
+            },
+            "chords": { "accuracy": 0, "correct": 0, "total": 0 },
+            "fusedFret": {
+              "coverage": 1,
+              "matched": 3,
+              "maxMidpointErrorFrets": 1,
+              "meanIntersectionOverUnion": 0.6,
+              "meanMidpointErrorFrets": 1,
+              "total": 3
+            },
+            "fusedNotes": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 5,
+              "meanAbsoluteErrorMs": 8,
+              "precision": 1,
+              "recall": 1
+            },
+            "fusionImprovement": {
+              "fretMidpointErrorReduction": 2,
+              "noteF1Delta": 0.2500000000000001
+            },
+            "onsets": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 5,
+              "meanAbsoluteErrorMs": 12,
+              "precision": 1,
+              "recall": 1
+            }
+          },
+          "predictionPresent": true
+        },
+        {
+          "fixtureId": "held-am-nylon-room",
+          "metrics": {
+            "audioFret": {
+              "coverage": 1,
+              "matched": 1,
+              "maxMidpointErrorFrets": 3,
+              "meanIntersectionOverUnion": 0,
+              "meanMidpointErrorFrets": 3,
+              "total": 1
+            },
+            "audioNotes": {
+              "f1": 0.8571428571428571,
+              "falseNegatives": 1,
+              "falsePositives": 0,
+              "matched": 3,
+              "meanAbsoluteErrorMs": 22,
+              "precision": 1,
+              "recall": 0.75
+            },
+            "chords": { "accuracy": 0, "correct": 0, "total": 1 },
+            "fusedFret": {
+              "coverage": 1,
+              "matched": 1,
+              "maxMidpointErrorFrets": 1,
+              "meanIntersectionOverUnion": 0.5,
+              "meanMidpointErrorFrets": 1,
+              "total": 1
+            },
+            "fusedNotes": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 4,
+              "meanAbsoluteErrorMs": 8,
+              "precision": 1,
+              "recall": 1
+            },
+            "fusionImprovement": {
+              "fretMidpointErrorReduction": 2,
+              "noteF1Delta": 0.1428571428571429
+            },
+            "onsets": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 1,
+              "meanAbsoluteErrorMs": 12,
+              "precision": 1,
+              "recall": 1
+            }
+          },
+          "predictionPresent": true
+        },
+        {
+          "fixtureId": "held-upper-register-phrase",
+          "metrics": {
+            "audioFret": {
+              "coverage": 1,
+              "matched": 3,
+              "maxMidpointErrorFrets": 3,
+              "meanIntersectionOverUnion": 0,
+              "meanMidpointErrorFrets": 3,
+              "total": 3
+            },
+            "audioNotes": {
+              "f1": 0.8,
+              "falseNegatives": 1,
+              "falsePositives": 0,
+              "matched": 2,
+              "meanAbsoluteErrorMs": 22,
+              "precision": 1,
+              "recall": 0.6666666666666666
+            },
+            "chords": { "accuracy": 0, "correct": 0, "total": 0 },
+            "fusedFret": {
+              "coverage": 1,
+              "matched": 3,
+              "maxMidpointErrorFrets": 1,
+              "meanIntersectionOverUnion": 0.5,
+              "meanMidpointErrorFrets": 1,
+              "total": 3
+            },
+            "fusedNotes": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 3,
+              "meanAbsoluteErrorMs": 8,
+              "precision": 1,
+              "recall": 1
+            },
+            "fusionImprovement": {
+              "fretMidpointErrorReduction": 2,
+              "noteF1Delta": 0.19999999999999996
+            },
+            "onsets": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 3,
+              "meanAbsoluteErrorMs": 12,
+              "precision": 1,
+              "recall": 1
+            }
+          },
+          "predictionPresent": true
+        }
+      ]
+    },
+    "development": {
+      "fixtureCount": 3,
+      "latency": {
+        "finalized-audio": { "count": 3, "maxMs": 190, "meanMs": 185, "p50Ms": 185, "p95Ms": 190 },
+        "fusion": { "count": 3, "maxMs": 26, "meanMs": 24, "p50Ms": 24, "p95Ms": 26 },
+        "live-audio": { "count": 3, "maxMs": 38, "meanMs": 36, "p50Ms": 36, "p95Ms": 38 },
+        "vision": { "count": 3, "maxMs": 54, "meanMs": 51, "p50Ms": 51, "p95Ms": 54 }
+      },
+      "metrics": {
+        "audioFret": {
+          "coverage": 1,
+          "matched": 5,
+          "maxMidpointErrorFrets": 3,
+          "meanIntersectionOverUnion": 0.11428571428571428,
+          "meanMidpointErrorFrets": 3,
+          "total": 5
+        },
+        "audioNotes": {
+          "f1": 0.8,
+          "falseNegatives": 3,
+          "falsePositives": 0,
+          "matched": 6,
+          "meanAbsoluteErrorMs": 22,
+          "precision": 1,
+          "recall": 0.6666666666666666
+        },
+        "chords": { "accuracy": 1, "correct": 1, "total": 1 },
+        "fusedFret": {
+          "coverage": 1,
+          "matched": 5,
+          "maxMidpointErrorFrets": 1,
+          "meanIntersectionOverUnion": 0.5466666666666666,
+          "meanMidpointErrorFrets": 1,
+          "total": 5
+        },
+        "fusedNotes": {
+          "f1": 1,
+          "falseNegatives": 0,
+          "falsePositives": 0,
+          "matched": 9,
+          "meanAbsoluteErrorMs": 8,
+          "precision": 1,
+          "recall": 1
+        },
+        "fusionImprovement": {
+          "fretMidpointErrorReduction": 2,
+          "noteF1Delta": 0.19999999999999996
+        },
+        "onsets": {
+          "f1": 1,
+          "falseNegatives": 0,
+          "falsePositives": 0,
+          "matched": 7,
+          "meanAbsoluteErrorMs": 12,
+          "precision": 1,
+          "recall": 1
+        }
+      },
+      "perFixture": [
+        {
+          "fixtureId": "dev-open-e2-soft",
+          "metrics": {
+            "audioFret": {
+              "coverage": 1,
+              "matched": 1,
+              "maxMidpointErrorFrets": 3,
+              "meanIntersectionOverUnion": 0,
+              "meanMidpointErrorFrets": 3,
+              "total": 1
+            },
+            "audioNotes": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 1,
+              "meanAbsoluteErrorMs": 22,
+              "precision": 1,
+              "recall": 1
+            },
+            "chords": { "accuracy": 0, "correct": 0, "total": 0 },
+            "fusedFret": {
+              "coverage": 1,
+              "matched": 1,
+              "maxMidpointErrorFrets": 1,
+              "meanIntersectionOverUnion": 0.3333333333333333,
+              "meanMidpointErrorFrets": 1,
+              "total": 1
+            },
+            "fusedNotes": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 1,
+              "meanAbsoluteErrorMs": 8,
+              "precision": 1,
+              "recall": 1
+            },
+            "fusionImprovement": { "fretMidpointErrorReduction": 2, "noteF1Delta": 0 },
+            "onsets": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 1,
+              "meanAbsoluteErrorMs": 12,
+              "precision": 1,
+              "recall": 1
+            }
+          },
+          "predictionPresent": true
+        },
+        {
+          "fixtureId": "dev-c-major-loud",
+          "metrics": {
+            "audioFret": {
+              "coverage": 1,
+              "matched": 1,
+              "maxMidpointErrorFrets": 3,
+              "meanIntersectionOverUnion": 0.14285714285714285,
+              "meanMidpointErrorFrets": 3,
+              "total": 1
+            },
+            "audioNotes": {
+              "f1": 0.8,
+              "falseNegatives": 1,
+              "falsePositives": 0,
+              "matched": 2,
+              "meanAbsoluteErrorMs": 22,
+              "precision": 1,
+              "recall": 0.6666666666666666
+            },
+            "chords": { "accuracy": 1, "correct": 1, "total": 1 },
+            "fusedFret": {
+              "coverage": 1,
+              "matched": 1,
+              "maxMidpointErrorFrets": 1,
+              "meanIntersectionOverUnion": 0.6,
+              "meanMidpointErrorFrets": 1,
+              "total": 1
+            },
+            "fusedNotes": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 3,
+              "meanAbsoluteErrorMs": 8,
+              "precision": 1,
+              "recall": 1
+            },
+            "fusionImprovement": {
+              "fretMidpointErrorReduction": 2,
+              "noteF1Delta": 0.19999999999999996
+            },
+            "onsets": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 1,
+              "meanAbsoluteErrorMs": 12,
+              "precision": 1,
+              "recall": 1
+            }
+          },
+          "predictionPresent": true
+        },
+        {
+          "fixtureId": "dev-a-minor-pentatonic",
+          "metrics": {
+            "audioFret": {
+              "coverage": 1,
+              "matched": 3,
+              "maxMidpointErrorFrets": 3,
+              "meanIntersectionOverUnion": 0.14285714285714285,
+              "meanMidpointErrorFrets": 3,
+              "total": 3
+            },
+            "audioNotes": {
+              "f1": 0.7499999999999999,
+              "falseNegatives": 2,
+              "falsePositives": 0,
+              "matched": 3,
+              "meanAbsoluteErrorMs": 22,
+              "precision": 1,
+              "recall": 0.6
+            },
+            "chords": { "accuracy": 0, "correct": 0, "total": 0 },
+            "fusedFret": {
+              "coverage": 1,
+              "matched": 3,
+              "maxMidpointErrorFrets": 1,
+              "meanIntersectionOverUnion": 0.6,
+              "meanMidpointErrorFrets": 1,
+              "total": 3
+            },
+            "fusedNotes": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 5,
+              "meanAbsoluteErrorMs": 8,
+              "precision": 1,
+              "recall": 1
+            },
+            "fusionImprovement": {
+              "fretMidpointErrorReduction": 2,
+              "noteF1Delta": 0.2500000000000001
+            },
+            "onsets": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 5,
+              "meanAbsoluteErrorMs": 12,
+              "precision": 1,
+              "recall": 1
+            }
+          },
+          "predictionPresent": true
+        }
+      ]
+    },
+    "heldOut": {
+      "fixtureCount": 2,
+      "latency": {
+        "finalized-audio": {
+          "count": 2,
+          "maxMs": 200,
+          "meanMs": 197.5,
+          "p50Ms": 195,
+          "p95Ms": 200
+        },
+        "fusion": { "count": 2, "maxMs": 30, "meanMs": 29, "p50Ms": 28, "p95Ms": 30 },
+        "live-audio": { "count": 2, "maxMs": 42, "meanMs": 41, "p50Ms": 40, "p95Ms": 42 },
+        "vision": { "count": 2, "maxMs": 60, "meanMs": 58.5, "p50Ms": 57, "p95Ms": 60 }
+      },
+      "metrics": {
+        "audioFret": {
+          "coverage": 1,
+          "matched": 4,
+          "maxMidpointErrorFrets": 3,
+          "meanIntersectionOverUnion": 0,
+          "meanMidpointErrorFrets": 3,
+          "total": 4
+        },
+        "audioNotes": {
+          "f1": 0.8333333333333333,
+          "falseNegatives": 2,
+          "falsePositives": 0,
+          "matched": 5,
+          "meanAbsoluteErrorMs": 22,
+          "precision": 1,
+          "recall": 0.7142857142857143
+        },
+        "chords": { "accuracy": 0, "correct": 0, "total": 1 },
+        "fusedFret": {
+          "coverage": 1,
+          "matched": 4,
+          "maxMidpointErrorFrets": 1,
+          "meanIntersectionOverUnion": 0.5,
+          "meanMidpointErrorFrets": 1,
+          "total": 4
+        },
+        "fusedNotes": {
+          "f1": 1,
+          "falseNegatives": 0,
+          "falsePositives": 0,
+          "matched": 7,
+          "meanAbsoluteErrorMs": 8,
+          "precision": 1,
+          "recall": 1
+        },
+        "fusionImprovement": {
+          "fretMidpointErrorReduction": 2,
+          "noteF1Delta": 0.16666666666666674
+        },
+        "onsets": {
+          "f1": 1,
+          "falseNegatives": 0,
+          "falsePositives": 0,
+          "matched": 4,
+          "meanAbsoluteErrorMs": 12,
+          "precision": 1,
+          "recall": 1
+        }
+      },
+      "perFixture": [
+        {
+          "fixtureId": "held-am-nylon-room",
+          "metrics": {
+            "audioFret": {
+              "coverage": 1,
+              "matched": 1,
+              "maxMidpointErrorFrets": 3,
+              "meanIntersectionOverUnion": 0,
+              "meanMidpointErrorFrets": 3,
+              "total": 1
+            },
+            "audioNotes": {
+              "f1": 0.8571428571428571,
+              "falseNegatives": 1,
+              "falsePositives": 0,
+              "matched": 3,
+              "meanAbsoluteErrorMs": 22,
+              "precision": 1,
+              "recall": 0.75
+            },
+            "chords": { "accuracy": 0, "correct": 0, "total": 1 },
+            "fusedFret": {
+              "coverage": 1,
+              "matched": 1,
+              "maxMidpointErrorFrets": 1,
+              "meanIntersectionOverUnion": 0.5,
+              "meanMidpointErrorFrets": 1,
+              "total": 1
+            },
+            "fusedNotes": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 4,
+              "meanAbsoluteErrorMs": 8,
+              "precision": 1,
+              "recall": 1
+            },
+            "fusionImprovement": {
+              "fretMidpointErrorReduction": 2,
+              "noteF1Delta": 0.1428571428571429
+            },
+            "onsets": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 1,
+              "meanAbsoluteErrorMs": 12,
+              "precision": 1,
+              "recall": 1
+            }
+          },
+          "predictionPresent": true
+        },
+        {
+          "fixtureId": "held-upper-register-phrase",
+          "metrics": {
+            "audioFret": {
+              "coverage": 1,
+              "matched": 3,
+              "maxMidpointErrorFrets": 3,
+              "meanIntersectionOverUnion": 0,
+              "meanMidpointErrorFrets": 3,
+              "total": 3
+            },
+            "audioNotes": {
+              "f1": 0.8,
+              "falseNegatives": 1,
+              "falsePositives": 0,
+              "matched": 2,
+              "meanAbsoluteErrorMs": 22,
+              "precision": 1,
+              "recall": 0.6666666666666666
+            },
+            "chords": { "accuracy": 0, "correct": 0, "total": 0 },
+            "fusedFret": {
+              "coverage": 1,
+              "matched": 3,
+              "maxMidpointErrorFrets": 1,
+              "meanIntersectionOverUnion": 0.5,
+              "meanMidpointErrorFrets": 1,
+              "total": 3
+            },
+            "fusedNotes": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 3,
+              "meanAbsoluteErrorMs": 8,
+              "precision": 1,
+              "recall": 1
+            },
+            "fusionImprovement": {
+              "fretMidpointErrorReduction": 2,
+              "noteF1Delta": 0.19999999999999996
+            },
+            "onsets": {
+              "f1": 1,
+              "falseNegatives": 0,
+              "falsePositives": 0,
+              "matched": 3,
+              "meanAbsoluteErrorMs": 12,
+              "precision": 1,
+              "recall": 1
+            }
+          },
+          "predictionPresent": true
+        }
+      ]
+    }
+  },
+  "schemaVersion": 1,
+  "tolerances": {
+    "chordMinimumOverlapMs": 50,
+    "fretSampleToleranceMs": 100,
+    "noteOnsetMs": 50,
+    "onsetMs": 50
+  }
+}
