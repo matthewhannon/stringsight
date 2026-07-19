@@ -19,6 +19,9 @@
     "dependencies:check": "node scripts/check-third-party-notices.mjs",
     "evaluate": "tsx scripts/evaluation.ts evaluate",
     "evaluate:monophonic": "tsx scripts/evaluation.ts monophonic-baseline",
+    "evaluate:polyphonic-browser": "playwright test tests/e2e/polyphonic-evaluation.spec.ts --reporter=list",
+    "evaluate:private-chords": "tsx scripts/evaluation.ts private-polyphonic",
+    "evaluate:private-guitar": "tsx scripts/evaluation.ts private-monophonic",
     "evaluate:self-test": "tsx scripts/evaluation.ts self-test",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false",
@@ -32,6 +35,10 @@
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run dependencies:check && npm run corpus:validate && npm run evaluate:self-test && npm run evaluate:monophonic && npm run test:coverage && npm run build"
   },
   "dependencies": {
+    "@tensorflow/tfjs-backend-cpu": "4.22.0",
+    "@tensorflow/tfjs-backend-wasm": "4.22.0",
+    "@tensorflow/tfjs-converter": "4.22.0",
+    "@tensorflow/tfjs-core": "4.22.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "zod": "^4.4.3"

@@ -1,9 +1,9 @@
 # StringSight
 
 StringSight is a local-first guitar-analysis web application. The current working product captures
-guitar audio, detects monophonic notes, preserves ranked pitch candidates, and supports reviewed
-local evaluation recordings. Planned modules will add polyphonic note and chord recognition,
-fretboard vision, scales, likely playing positions, and multimodal fusion.
+guitar audio, detects monophonic notes, produces live ranked chord candidates from independent
+chroma evidence, and finalizes polyphonic note sets locally with Spotify Basic Pitch. Planned
+modules will add fretboard vision, scales, likely playing positions, and multimodal fusion.
 
 The project is being built for OpenAI Build Week. See the
 [current project status](docs/project-status.md), [build checklist](BUILD_CHECKLIST.md), and
@@ -16,13 +16,17 @@ Working now:
 
 - Device-neutral microphone and audio-interface selection
 - Local PCM capture, calibrated input metering, recording, and replay
+- Local WAV import through the same replay and analysis interfaces
 - Monophonic onset and pitch detection with confidence and ranked alternatives
-- Event timelines and reviewed private evaluation-fixture export
+- Dedicated-worker chroma analysis with ranked provisional chord candidates
+- Worker-isolated Basic Pitch transcription with WASM-first execution and CPU fallback
+- Finalized ranked note sets plus reconciled chord timelines
+- Event timelines and reviewed private note/chord evaluation-fixture export
 - A reusable realistic rack interface for product modules
 
 Planned next:
 
-- Polyphonic note and chord candidates
+- Private real-guitar chord evaluation and performance measurement
 - Optional fretboard and hand-position vision
 - Guitar-aware audio and vision fusion
 - Scale, chord-voicing, and likely string/fret interpretation
@@ -76,7 +80,7 @@ npx playwright install chromium
 
 - `src/app/`: application composition and user interface
 - `src/ui/rack/`: reusable realistic rack frame, modules, controls, and design tokens
-- `src/audio/`: implemented capture, transport, monophonic pitch, and onset analysis
+- `src/audio/`: implemented capture, transport, monophonic analysis, and provisional polyphonic chord analysis
 - `src/vision/`: camera, fretboard, fret indexing, and hand-position evidence
 - `src/fusion/`: multimodal time alignment and guitar-state inference
 - `src/evaluation/`: versioned corpus schemas, deterministic metrics, and report generation
@@ -101,6 +105,16 @@ npm run evaluate:self-test
 ```
 
 The corpus contains separate development and held-out fixtures with licensed guitar-like WAV signals, paired fretboard frame sequences, ground truth, and a machine-readable harness report. Procedural results validate the engineering harness; they are not presented as real-world recognition accuracy. See the [evaluation plan](docs/plans/04-evaluation-corpus.md) for the metric and dataset policy.
+
+Reviewed real-guitar recordings can remain in the ignored `.local/guitar-corpus/` directory and be
+evaluated without entering the public repository:
+
+```sh
+npm run evaluate:private-guitar -- --manifest .local/guitar-corpus/corpus.local.json
+```
+
+See the [private recording corpus plan](docs/plans/06b-private-recording-corpus.md) for the manifest,
+directory layout, validation rules, and privacy boundary.
 
 ## Privacy baseline
 

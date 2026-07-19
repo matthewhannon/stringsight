@@ -10,6 +10,7 @@ import {
 } from '../../shared';
 import {
   DEFAULT_CHUNK_FRAMES,
+  CapturedRecordingSchema,
   InitialCaptureSnapshot,
   PCM_CHUNK_SCHEMA_VERSION,
   SILENCE_RMS_THRESHOLD,
@@ -239,6 +240,28 @@ export class MicrophoneCapture {
     });
     this.workletNode.port.postMessage({ type: 'flush' });
     return this.stopPromise;
+  }
+
+  loadRecording(recording: CapturedRecording): void {
+    if (
+      this.snapshot.state === 'recording' ||
+      this.snapshot.state === 'replaying' ||
+      this.snapshot.state === 'requesting-permission' ||
+      this.snapshot.state === 'starting' ||
+      this.snapshot.state === 'stopping'
+    ) {
+      throw new Error('Stop the current audio operation before loading a recording.');
+    }
+    const parsed = CapturedRecordingSchema.parse(recording);
+    this.resetSessionState();
+    this.recording = parsed;
+    this.update({
+      bufferedDurationMs: parsed.durationMs,
+      elapsedMs: 0,
+      error: null,
+      state: 'ready-to-replay',
+      warning: null,
+    });
   }
 
   async replay(): Promise<void> {

@@ -1,0 +1,249 @@
+import { useCallback, useSyncExternalStore } from 'react';
+
+import {
+  PolyphonicAnalysisController,
+  type PolyphonicAnalysisSnapshot,
+  type PolyphonicAnalysisState,
+} from '../audio/polyphonic';
+import { rackEmbeddedClassNames } from '../ui/rack';
+import { defaultPolyphonicAnalysis } from './audioCaptureController';
+
+type PolyphonicAnalysisPanelProps = {
+  analysis?: Pick<PolyphonicAnalysisController, 'currentSnapshot' | 'subscribe'> & {
+    currentSnapshot: PolyphonicAnalysisSnapshot;
+    setChordAnalysisProfile?: PolyphonicAnalysisController['setChordAnalysisProfile'];
+  };
+  embedded?: boolean;
+};
+
+const stateLabels: Record<PolyphonicAnalysisState, string> = {
+  silence: 'Waiting for a chord',
+  tracking: 'Tracking chord',
+  uncertain: 'Chord uncertain',
+  warming: 'Collecting audio',
+};
+
+const pitchClasses = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
+const formatTime = (milliseconds: number): string => `${(milliseconds / 1_000).toFixed(2)}s`;
+const TIMELINE_EVENT_LIMIT = 16;
+
+export function PolyphonicAnalysisPanel({
+  analysis,
+  embedded = false,
+}: PolyphonicAnalysisPanelProps) {
+  const controller = analysis ?? defaultPolyphonicAnalysis;
+  const subscribe = useCallback(
+    (listener: () => void) => controller.subscribe(listener),
+    [controller],
+  );
+  const getSnapshot = useCallback(() => controller.currentSnapshot, [controller]);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const currentCandidate = snapshot.currentChord?.candidates[0] ?? null;
+  const stateLabel =
+    snapshot.currentChord?.lifecycle === 'finalized'
+      ? 'Finalized chord'
+      : stateLabels[snapshot.state];
+  const alternatives = snapshot.currentChord?.candidates.slice(1, 4) ?? [];
+  const timelineEvents = snapshot.chordEvents.slice(-TIMELINE_EVENT_LIMIT);
+
+  return (
+    <section
+      aria-label={embedded ? 'Chord analysis results' : undefined}
+      aria-labelledby={embedded ? undefined : 'polyphonic-analysis-title'}
+      className={`analysis-section polyphonic-section ${embedded ? rackEmbeddedClassNames.section : ''}`.trim()}
+    >
+      {!embedded && (
+        <div className="section-heading analysis-heading">
+          <p className="eyebrow">Polyphonic recognition - Item 7</p>
+          <h2 id="polyphonic-analysis-title">Resolve notes played together.</h2>
+          <p>
+            Independent chroma evidence produces fast provisional chord candidates. When recording
+            ends, local model note sets can finalize or revise them through the same worker
+            boundary.
+          </p>
+        </div>
+      )}
+
+      <div className="chord-profile-control" aria-label="Chord analysis mode">
+        <div>
+          <strong>Chord analysis</strong>
+          <span>
+            {snapshot.chordAnalysisProfile === 'accurate'
+              ? 'More look-ahead and stronger change confirmation.'
+              : 'Shorter look-ahead for quicker provisional changes.'}
+          </span>
+        </div>
+        <div role="group" aria-label="Chord analysis mode options">
+          {(['accurate', 'responsive'] as const).map((profile) => (
+            <button
+              aria-pressed={snapshot.chordAnalysisProfile === profile}
+              key={profile}
+              onClick={() => controller.setChordAnalysisProfile?.(profile)}
+              type="button"
+            >
+              {profile === 'accurate' ? 'Accurate' : 'Responsive'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
+        className={`analysis-console ${embedded ? rackEmbeddedClassNames.clippedSurface : ''}`.trim()}
+      >
+        <div className="current-note current-chord" aria-live="polite">
+          <span className={`analysis-state analysis-state--${snapshot.state}`}>{stateLabel}</span>
+          {currentCandidate === null ? (
+            <div className="note-empty">
+              <strong>-</strong>
+              <span>Play two or more notes together to begin chord analysis.</span>
+            </div>
+          ) : (
+            <>
+              <div className="note-readout chord-readout">
+                <strong>{currentCandidate.symbol}</strong>
+                <div>
+                  <span>{Math.round(currentCandidate.confidence * 100)}% confidence</span>
+                  <span>{currentCandidate.quality}</span>
+                  <span>
+                    {currentCandidate.bass === undefined
+                      ? 'Bass unresolved'
+                      : `Bass ${currentCandidate.bass}`}
+                  </span>
+                </div>
+              </div>
+              <div className="candidate-confidence" aria-label="Chord confidence">
+                <span style={{ width: `${(currentCandidate.confidence * 100).toFixed(1)}%` }} />
+              </div>
+              <div className="alternatives">
+                <span>Ranked alternatives</span>
+                <ol>
+                  {alternatives.map((candidate) => (
+                    <li key={`${String(candidate.rank)}-${candidate.symbol}`}>
+                      <strong>{candidate.symbol}</strong>
+                      <span>{Math.round(candidate.confidence * 100)}%</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </>
+          )}
+
+          <div className="chroma-strip" aria-label="Pitch-class energy">
+            {pitchClasses.map((pitchClass, index) => {
+              const value = snapshot.chroma[index] ?? 0;
+              return (
+                <span key={pitchClass}>
+                  <i aria-hidden="true" style={{ height: `${(value * 100).toFixed(1)}%` }} />
+                  <b>{pitchClass}</b>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        <aside className="analysis-diagnostics" aria-label="Chord analysis diagnostics">
+          <dl>
+            <div>
+              <dt>Chord mode</dt>
+              <dd>{snapshot.chordAnalysisProfile}</dd>
+            </div>
+            <div>
+              <dt>Chord events</dt>
+              <dd>{snapshot.chordEvents.length}</dd>
+            </div>
+            <div>
+              <dt>Finalized note sets</dt>
+              <dd>{snapshot.noteSetEvents.length}</dd>
+            </div>
+            <div>
+              <dt>Finalized model</dt>
+              <dd>{snapshot.modelState}</dd>
+            </div>
+            <div>
+              <dt>Model backend</dt>
+              <dd>{snapshot.modelBackend?.toUpperCase() ?? '-'}</dd>
+            </div>
+            <div>
+              <dt>Model load and warmup</dt>
+              <dd>
+                {snapshot.modelLoadMs === null ? '-' : `${snapshot.modelLoadMs.toFixed(1)} ms`}
+              </dd>
+            </div>
+            <div>
+              <dt>Model inference</dt>
+              <dd>
+                {snapshot.modelInferenceMs === null
+                  ? '-'
+                  : `${snapshot.modelInferenceMs.toFixed(1)} ms / ${String(snapshot.modelWindowCount)} ${snapshot.modelWindowCount === 1 ? 'window' : 'windows'}`}
+              </dd>
+            </div>
+            <div>
+              <dt>Worker processing</dt>
+              <dd>{snapshot.processingLatencyMs.toFixed(1)} ms</dd>
+            </div>
+            <div>
+              <dt>Maximum processing</dt>
+              <dd>{snapshot.maxProcessingLatencyMs.toFixed(1)} ms</dd>
+            </div>
+            <div>
+              <dt>Analysis sample rate</dt>
+              <dd>
+                {snapshot.analysisSampleRate === null
+                  ? '-'
+                  : `${snapshot.analysisSampleRate.toLocaleString()} Hz`}
+              </dd>
+            </div>
+            <div>
+              <dt>Signal energy</dt>
+              <dd>{snapshot.energy.toFixed(4)}</dd>
+            </div>
+            <div>
+              <dt>Dropped chunks</dt>
+              <dd>{snapshot.droppedChunks}</dd>
+            </div>
+            <div>
+              <dt>Analysis run</dt>
+              <dd>{snapshot.runId ?? '-'}</dd>
+            </div>
+          </dl>
+          {snapshot.error !== null && <p role="alert">{snapshot.error}</p>}
+        </aside>
+      </div>
+
+      <div
+        className={`note-timeline chord-timeline ${embedded ? rackEmbeddedClassNames.surface : ''}`.trim()}
+        aria-labelledby="chord-timeline-title"
+      >
+        <div>
+          <h3 id="chord-timeline-title">Chord timeline</h3>
+          <span>
+            {snapshot.chordEvents.length > TIMELINE_EVENT_LIMIT
+              ? `Latest ${String(TIMELINE_EVENT_LIMIT)} of ${String(snapshot.chordEvents.length)}`
+              : `${String(snapshot.chordEvents.length)} events`}
+          </span>
+        </div>
+        {timelineEvents.length === 0 ? (
+          <p>Provisional chord candidates will appear here with timing and lifecycle.</p>
+        ) : (
+          <ol aria-label="Latest chord events">
+            {timelineEvents.map((event) => {
+              const candidate = event.candidates[0];
+              if (candidate === undefined) return null;
+              return (
+                <li key={event.id}>
+                  <time>{formatTime(event.time.startMs)}</time>
+                  <strong>{candidate.symbol}</strong>
+                  <span>{candidate.pitchClasses.join(' ')}</span>
+                  <span>{Math.round(candidate.confidence * 100)}%</span>
+                  <span className={`lifecycle lifecycle--${event.lifecycle}`}>
+                    {event.lifecycle}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </div>
+    </section>
+  );
+}

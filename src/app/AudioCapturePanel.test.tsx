@@ -3,7 +3,13 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { InitialCaptureSnapshot, MicrophoneCapture, type CaptureSnapshot } from '../audio/capture';
+import {
+  CapturedRecordingSchema,
+  InitialCaptureSnapshot,
+  MicrophoneCapture,
+  encodeMonoPcm16Wav,
+  type CaptureSnapshot,
+} from '../audio/capture';
 import { createAppError, sessionTimestampMs } from '../shared';
 import { AudioCapturePanel } from './AudioCapturePanel';
 import { defaultMicrophoneCapture } from './audioCaptureController';
@@ -146,5 +152,51 @@ describe('AudioCapturePanel', () => {
     await waitFor(() => expect(screen.getByText(/multiple audio inputs detected/i)).toBeVisible());
     expect(screen.getByText(/interface channel, or channel pair/i)).toBeVisible();
     expect(screen.getByLabelText('Input device')).toHaveValue('');
+  });
+
+  it('loads a WAV and analyzes it through recording replay without opening a microphone', async () => {
+    const user = userEvent.setup();
+    const capture = captureWithSnapshot({ ...InitialCaptureSnapshot, state: 'idle' });
+    vi.spyOn(capture, 'listInputDevices').mockResolvedValue([]);
+    const loadRecording = vi.spyOn(capture, 'loadRecording');
+    const replay = vi.spyOn(capture, 'replay').mockResolvedValue();
+    const start = vi.spyOn(capture, 'start').mockResolvedValue();
+    const bytes = encodeMonoPcm16Wav(
+      CapturedRecordingSchema.parse({
+        channelCount: 1,
+        data: new Float32Array([0, 0.5, 0]),
+        discontinuityCount: 0,
+        durationMs: 3,
+        frameCount: 3,
+        recordedAt: '2026-07-18T00:00:00.000Z',
+        sampleRate: 1_000,
+        schemaVersion: 1,
+        startedAtMs: 0,
+      }),
+    );
+    const file = new File([bytes], 'open-strings.wav', {
+      lastModified: Date.parse('2026-07-18T00:00:00.000Z'),
+      type: 'audio/wav',
+    });
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: () => Promise.resolve(bytes.buffer.slice(0)),
+    });
+
+    const view = render(<AudioCapturePanel capture={capture} />);
+    expect(screen.getByRole('button', { name: 'Load & analyze WAV' })).toBeVisible();
+    const fileInput = view.container.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(fileInput).not.toBeNull();
+    if (fileInput === null) throw new Error('Recording file input was not rendered.');
+    await user.upload(fileInput, file);
+
+    await waitFor(() => expect(loadRecording).toHaveBeenCalledOnce());
+    expect(loadRecording.mock.calls[0]?.[0]).toMatchObject({
+      frameCount: 3,
+      recordedAt: '2026-07-18T00:00:00.000Z',
+      sampleRate: 1_000,
+    });
+    expect(replay).toHaveBeenCalledOnce();
+    expect(start).not.toHaveBeenCalled();
+    expect(await screen.findByText(/Loaded and analyzed open-strings.wav/)).toBeVisible();
   });
 });

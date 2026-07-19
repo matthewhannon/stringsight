@@ -4,7 +4,9 @@ import type {
   GroundTruthChord,
   GroundTruthNote,
   PredictedChord,
+  PredictedChordSet,
   PredictedNote,
+  PredictedNoteSet,
 } from './contracts';
 
 export type EventMatchMetrics = {
@@ -20,6 +22,14 @@ export type EventMatchMetrics = {
 export type ChordMetrics = {
   accuracy: number;
   correct: number;
+  total: number;
+};
+
+export type RankedSetMetrics = {
+  correctTop1: number;
+  correctTop3: number;
+  top1Accuracy: number;
+  top3Recall: number;
   total: number;
 };
 
@@ -149,6 +159,29 @@ const overlapMs = (
   right: { startMs: number; endMs: number },
 ): number => Math.max(0, Math.min(left.endMs, right.endMs) - Math.max(left.startMs, right.startMs));
 
+const sameNumberSet = (left: readonly number[], right: readonly number[]): boolean => {
+  const normalizedLeft = [...new Set(left)].sort((a, b) => a - b);
+  const normalizedRight = [...new Set(right)].sort((a, b) => a - b);
+  return (
+    normalizedLeft.length === normalizedRight.length &&
+    normalizedLeft.every((value, index) => value === normalizedRight[index])
+  );
+};
+
+function rankedSetMetrics(
+  total: number,
+  correctTop1: number,
+  correctTop3: number,
+): RankedSetMetrics {
+  return {
+    correctTop1,
+    correctTop3,
+    top1Accuracy: divide(correctTop1, total),
+    top3Recall: divide(correctTop3, total),
+    total,
+  };
+}
+
 export function scoreChords(
   truth: readonly GroundTruthChord[],
   predictions: readonly PredictedChord[],
@@ -168,6 +201,78 @@ export function scoreChords(
     }
   }
   return { accuracy: divide(correct, truth.length), correct, total: truth.length };
+}
+
+export function scoreRankedChords(
+  truth: readonly GroundTruthChord[],
+  predictions: readonly PredictedChordSet[],
+  minimumOverlapMs: number,
+): RankedSetMetrics {
+  let correctTop1 = 0;
+  let correctTop3 = 0;
+  for (const chord of truth) {
+    const best = predictions
+      .map((prediction) => ({ overlap: overlapMs(chord, prediction), prediction }))
+      .filter(({ overlap }) => overlap >= minimumOverlapMs)
+      .sort((left, right) => right.overlap - left.overlap)[0]?.prediction;
+    if (best === undefined) continue;
+    const expected = normalizedChordSymbol(chord.symbol);
+    if (normalizedChordSymbol(best.candidates[0]?.symbol ?? '') === expected) correctTop1 += 1;
+    if (
+      best.candidates.slice(0, 3).some(({ symbol }) => normalizedChordSymbol(symbol) === expected)
+    ) {
+      correctTop3 += 1;
+    }
+  }
+  return rankedSetMetrics(truth.length, correctTop1, correctTop3);
+}
+
+export function scorePitchClassSets(
+  truth: readonly GroundTruthChord[],
+  predictions: readonly PredictedNoteSet[],
+  minimumOverlapMs: number,
+): RankedSetMetrics {
+  let correctTop1 = 0;
+  let correctTop3 = 0;
+  for (const chord of truth) {
+    const best = predictions
+      .map((prediction) => ({ overlap: overlapMs(chord, prediction), prediction }))
+      .filter(({ overlap }) => overlap >= minimumOverlapMs)
+      .sort((left, right) => right.overlap - left.overlap)[0]?.prediction;
+    if (best === undefined) continue;
+    const matches = (midis: readonly number[]): boolean =>
+      sameNumberSet(
+        chord.pitchClasses,
+        midis.map((midi) => midi % 12),
+      );
+    if (matches(best.candidates[0]?.midis ?? [])) correctTop1 += 1;
+    if (best.candidates.slice(0, 3).some(({ midis }) => matches(midis))) correctTop3 += 1;
+  }
+  return rankedSetMetrics(truth.length, correctTop1, correctTop3);
+}
+
+export function scoreMidiSets(
+  truthChords: readonly GroundTruthChord[],
+  truthNotes: readonly GroundTruthNote[],
+  predictions: readonly PredictedNoteSet[],
+  minimumOverlapMs: number,
+): RankedSetMetrics {
+  let correctTop1 = 0;
+  let correctTop3 = 0;
+  for (const chord of truthChords) {
+    const expectedMidis = truthNotes
+      .filter((note) => overlapMs(chord, note) >= minimumOverlapMs)
+      .map(({ midi }) => midi);
+    const best = predictions
+      .map((prediction) => ({ overlap: overlapMs(chord, prediction), prediction }))
+      .filter(({ overlap }) => overlap >= minimumOverlapMs)
+      .sort((left, right) => right.overlap - left.overlap)[0]?.prediction;
+    if (best === undefined || expectedMidis.length === 0) continue;
+    const matches = (midis: readonly number[]): boolean => sameNumberSet(expectedMidis, midis);
+    if (matches(best.candidates[0]?.midis ?? [])) correctTop1 += 1;
+    if (best.candidates.slice(0, 3).some(({ midis }) => matches(midis))) correctTop3 += 1;
+  }
+  return rankedSetMetrics(truthChords.length, correctTop1, correctTop3);
 }
 
 const fretMidpoint = (region: FretRegion): number => (region.startFret + region.endFret) / 2;
@@ -257,7 +362,9 @@ export function scoreFixture(
     chords: readonly PredictedChord[];
     fusedFretRegions: readonly FretRegion[];
     fusedNotes: readonly PredictedNote[];
+    noteSets: readonly PredictedNoteSet[];
     onsetsMs: readonly number[];
+    rankedChords: readonly PredictedChordSet[];
   },
   tolerances: EvaluationTolerances,
 ) {
@@ -287,6 +394,22 @@ export function scoreFixture(
           : audioFret.meanMidpointErrorFrets - fusedFret.meanMidpointErrorFrets,
       noteF1Delta: fusedNotes.f1 - audioNotes.f1,
     },
+    midiSets: scoreMidiSets(
+      truth.chords,
+      truth.notes,
+      prediction.noteSets,
+      tolerances.chordMinimumOverlapMs,
+    ),
     onsets: scoreOnsets(truth.onsetsMs, prediction.onsetsMs, tolerances.onsetMs),
+    pitchClassSets: scorePitchClassSets(
+      truth.chords,
+      prediction.noteSets,
+      tolerances.chordMinimumOverlapMs,
+    ),
+    rankedChords: scoreRankedChords(
+      truth.chords,
+      prediction.rankedChords,
+      tolerances.chordMinimumOverlapMs,
+    ),
   };
 }

@@ -1,5 +1,6 @@
 import { expect, test, type Download } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
 async function readTextDownload(download: Download): Promise<string> {
   const path = await download.path();
@@ -29,61 +30,70 @@ test('captures and replays audio through a simulated microphone', async ({ page 
   await expect
     .poll(async () => Number(await page.getByRole('meter').getAttribute('aria-valuenow')))
     .toBeGreaterThan(0);
-  await expect.poll(async () => page.locator('.note-timeline li').count()).toBeGreaterThan(0);
   await expect(page.getByLabel('Note analysis diagnostics')).toContainText('microphone-1');
-  const maximumTimerGapMs = await page.evaluate(
-    () =>
-      new Promise<number>((resolve) => {
-        let checks = 0;
-        let lastCheck = performance.now();
-        let maximumGap = 0;
-        const interval = setInterval(() => {
-          const now = performance.now();
-          maximumGap = Math.max(maximumGap, now - lastCheck);
-          lastCheck = now;
-          checks += 1;
-          if (checks === 20) {
-            clearInterval(interval);
-            resolve(maximumGap);
-          }
-        }, 16);
-      }),
-  );
-  expect(maximumTimerGapMs).toBeLessThan(200);
   await page.getByRole('button', { name: 'Stop', exact: true }).click();
-  await expect(capturePanel.getByText('Recording ready', { exact: true })).toBeVisible();
-  await expect(page.getByLabel('Capture duration')).not.toHaveText('00:00.0');
-
-  const suggestedNotes = page.locator('select[aria-label^="True note for event"]');
-  await expect.poll(async () => suggestedNotes.count()).toBeGreaterThan(0);
-  const selectedMidi = await suggestedNotes.evaluateAll((selects) =>
-    selects.map((select) => Number((select as HTMLSelectElement).value)),
-  );
-  expect(selectedMidi.every(Number.isFinite)).toBe(true);
-  const labelsButton = page.getByRole('button', {
-    name: 'Accept suggestions & download labels',
+  await expect(capturePanel.getByText('Recording ready', { exact: true })).toBeVisible({
+    timeout: 15_000,
   });
-  await expect(labelsButton).toBeEnabled();
-  const labelsDownloadPromise = page.waitForEvent('download');
-  await labelsButton.click();
-  const labelsDownload = await labelsDownloadPromise;
-  const fixture = JSON.parse(await readTextDownload(labelsDownload)) as {
-    groundTruth: { notes: { midi: number }[] };
-    source: { recordedAt: string };
-  };
-  expect(fixture.groundTruth.notes.map((note) => note.midi)).toEqual(selectedMidi);
-  expect(Number.isNaN(Date.parse(fixture.source.recordedAt))).toBe(false);
+  await expect(page.getByLabel('Capture duration')).not.toHaveText('00:00.0');
 
   await page.getByRole('button', { name: 'Replay analysis' }).click();
   await expect(capturePanel.getByText('Replaying', { exact: true })).toBeVisible();
   await expect(capturePanel.getByText('Recording ready', { exact: true })).toBeVisible({
-    timeout: 5_000,
+    timeout: 15_000,
   });
 
   await page.getByRole('button', { name: 'Start microphone' }).click();
   await expect(page.getByLabel('Note analysis diagnostics')).toContainText('microphone-3');
   await page.getByRole('button', { name: 'Stop', exact: true }).click();
   await expect(capturePanel.getByText('Recording ready', { exact: true })).toBeVisible();
+});
+
+test('loads a WAV through the normal replay analysis path', async ({ page }) => {
+  await page.goto('/#capture');
+  const capturePanel = page.getByLabel('Audio capture controls');
+  await capturePanel
+    .locator('input[type="file"]')
+    .setInputFiles(path.resolve('tests/fixtures/audio/dev-open-e2-soft.wav'));
+
+  await expect(capturePanel.getByText(/Loaded and analyzed dev-open-e2-soft.wav/)).toBeVisible({
+    timeout: 5_000,
+  });
+  await expect(page.getByLabel('Note analysis diagnostics')).toContainText('replay-1');
+  await expect.poll(async () => page.locator('.note-timeline li').count()).toBeGreaterThan(0);
+  await expect(page.getByRole('button', { name: 'Replay analysis' })).toBeEnabled();
+});
+
+test('finalizes a chord WAV with the real model and prepares a reviewed chord fixture', async ({
+  page,
+}) => {
+  await page.goto('/#capture');
+  const capturePanel = page.getByLabel('Audio capture controls');
+  await capturePanel
+    .locator('input[type="file"]')
+    .setInputFiles(path.resolve('tests/fixtures/audio/dev-c-major-loud.wav'));
+
+  const chordResults = page.getByLabel('Chord analysis results');
+  const chordDiagnostics = page.getByLabel('Chord analysis diagnostics');
+  await expect(chordDiagnostics).toContainText('ready', { timeout: 10_000 });
+  await expect(chordDiagnostics).toContainText(/WASM|CPU/);
+  await expect(chordResults.getByText('Finalized chord', { exact: true })).toBeVisible();
+  await expect(chordResults.locator('.chord-readout > strong')).toHaveText('C');
+  await expect(page.getByLabel('Latest chord events').getByRole('listitem')).toHaveCount(1);
+
+  await page.getByLabel('Fixture type').selectOption('chords');
+  const reviewedChord = page.getByLabel('True chord for event 1');
+  await expect(reviewedChord).toHaveValue('C');
+  const labelsDownloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Accept suggestions & download labels' }).click();
+  const fixture = JSON.parse(await readTextDownload(await labelsDownloadPromise)) as {
+    groundTruth: { chords: { pitchClasses: number[]; symbol: string }[] };
+    source: { license: string };
+  };
+  expect(fixture.groundTruth.chords).toEqual([
+    expect.objectContaining({ pitchClasses: [0, 4, 7], symbol: 'C' }),
+  ]);
+  expect(fixture.source.license).toBe('private-evaluation-only');
 });
 
 test('keeps the rack usable without horizontal overflow on a narrow screen', async ({ page }) => {

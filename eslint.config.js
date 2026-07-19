@@ -28,7 +28,14 @@ const restrictLayers = (...layers) => ({
 });
 
 export default defineConfig(
-  globalIgnores(['coverage', 'dist', 'node_modules', 'playwright-report', 'test-results']),
+  globalIgnores([
+    '.local',
+    'coverage',
+    'dist',
+    'node_modules',
+    'playwright-report',
+    'test-results',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

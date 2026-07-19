@@ -8,9 +8,12 @@ import {
   analyzePcm,
   createCalibrationTone,
   createCalibrationReferenceRecording,
+  decodePcmWav,
+  decodePcmWavRecording,
   dbfsToAmplitude,
   dbfsToMeterPercent,
   downsampleWaveform,
+  encodeMonoPcm16Wav,
   averageChannelSample,
   measureCalibrationTone,
   replayRecording,
@@ -349,6 +352,67 @@ describe('recording replay', () => {
     expect(Array.from(chunks[2]?.data ?? [])).toEqual([0.5]);
   });
 
+  it('decodes exported PCM WAV recordings back into the capture contract', () => {
+    const decoded = decodePcmWavRecording(encodeMonoPcm16Wav(recording), {
+      recordedAt: '2026-07-18T01:00:00.000Z',
+      startedAtMs: 0,
+    });
+    expect(decoded).toMatchObject({
+      channelCount: 1,
+      durationMs: 5,
+      frameCount: 5,
+      recordedAt: '2026-07-18T01:00:00.000Z',
+      sampleRate: 1_000,
+      startedAtMs: 0,
+    });
+    expect(Array.from(decoded.data)).toEqual([
+      0,
+      expect.closeTo(0.25, 4),
+      expect.closeTo(-0.5, 4),
+      expect.closeTo(1, 4),
+      expect.closeTo(0.5, 4),
+    ]);
+  });
+
+  it('averages every channel of an imported stereo PCM WAV deterministically', () => {
+    const buffer = new ArrayBuffer(52);
+    const bytes = new Uint8Array(buffer);
+    const view = new DataView(buffer);
+    const write = (offset: number, value: string) => {
+      for (let index = 0; index < value.length; index += 1) {
+        view.setUint8(offset + index, value.charCodeAt(index));
+      }
+    };
+    write(0, 'RIFF');
+    view.setUint32(4, 44, true);
+    write(8, 'WAVE');
+    write(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 2, true);
+    view.setUint32(24, 48_000, true);
+    view.setUint32(28, 192_000, true);
+    view.setUint16(32, 4, true);
+    view.setUint16(34, 16, true);
+    write(36, 'data');
+    view.setUint32(40, 8, true);
+    view.setInt16(44, 32_767, true);
+    view.setInt16(46, -32_768, true);
+    view.setInt16(48, 16_384, true);
+    view.setInt16(50, 16_384, true);
+
+    const decoded = decodePcmWav(bytes);
+    expect(decoded.inputChannelCount).toBe(2);
+    expect(Array.from(decoded.data)).toEqual([expect.closeTo(0, 4), expect.closeTo(0.5, 4)]);
+  });
+
+  it('rejects malformed and unsupported WAV input', () => {
+    expect(() => decodePcmWav(new Uint8Array([1, 2, 3]))).toThrow(/RIFF\/WAVE/);
+    const encoded = encodeMonoPcm16Wav(recording);
+    encoded[20] = 6;
+    expect(() => decodePcmWav(encoded)).toThrow(/Unsupported WAV audio format/);
+  });
+
   it('rejects invalid chunk sizes and respects cancellation', async () => {
     await expect(
       replayRecording(recording, { chunkFrames: 0, onChunk: () => undefined }),
@@ -382,6 +446,36 @@ describe('recording replay', () => {
 });
 
 describe('microphone capture orchestration', () => {
+  it('loads a validated recording for replay without microphone permission', async () => {
+    const capture = new MicrophoneCapture();
+    const recording = decodePcmWavRecording(
+      encodeMonoPcm16Wav(
+        CapturedRecordingSchema.parse({
+          channelCount: 1,
+          data: new Float32Array([0, 0.25, 0]),
+          discontinuityCount: 0,
+          durationMs: 3,
+          frameCount: 3,
+          recordedAt: '2026-07-18T00:00:00.000Z',
+          sampleRate: 1_000,
+          schemaVersion: 1,
+          startedAtMs: 0,
+        }),
+      ),
+    );
+    const chunks: PcmChunk[] = [];
+    capture.subscribeToChunks((chunk) => chunks.push(chunk));
+    capture.loadRecording(recording);
+    expect(capture.currentSnapshot).toMatchObject({
+      bufferedDurationMs: 3,
+      state: 'ready-to-replay',
+    });
+    await capture.replay();
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]).toMatchObject({ sampleRate: 1_000, source: 'replay' });
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+
   it('captures, reports actual settings, finalizes, and replays through the same contract', async () => {
     const capture = new MicrophoneCapture();
     const snapshots: CaptureSnapshot[] = [];

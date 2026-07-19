@@ -18,6 +18,7 @@ tests/fixtures/reports/*.local.json
 # Private project coordination and temporary working documents
 HANDOFF*.md
 *.local.md
+*.local.json
 *.draft.md
 *.notes.md
 *.spec.md
@@ -30,6 +31,18 @@ HANDOFF*.md
 /tmp/
 /docs/_drafts/
 /docs/_local/
+
+# External guitar corpora and internal chord-benchmark media
+# Canonical location: .local/guitar-corpus/ (already ignored above).
+# These root-level rules prevent accidental staging after a manual download.
+/IDMT-SMT-CHORDS.zip
+/GuitarSet*.zip
+/Guitar-TECHS*.zip
+/annotation.zip
+/audio_mono-mic.zip
+/audio_mono-pickup_mix.zip
+/audio_hex-pickup_debleeded.zip
+/audio_hex-pickup_original.zip
 
 # Editors and operating systems
 .idea/

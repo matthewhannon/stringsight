@@ -171,6 +171,45 @@ export const PredictedChordSchema = TimedIntervalSchema.extend({
   symbol: z.string().min(1).max(32),
 });
 
+const RankedNoteSetCandidateSchema = z.object({
+  confidence: z.number().min(0).max(1),
+  midis: z
+    .array(z.number().int().min(0).max(127))
+    .min(2)
+    .max(6)
+    .refine(
+      (midis) => midis.every((midi, index) => index === 0 || midi > (midis[index - 1] ?? 127)),
+      'Note-set MIDI pitches must be unique and ordered.',
+    ),
+  rank: z.number().int().positive(),
+});
+
+export const PredictedNoteSetSchema = TimedIntervalSchema.extend({
+  candidates: z
+    .array(RankedNoteSetCandidateSchema)
+    .min(1)
+    .refine(
+      (candidates) => candidates.every(({ rank }, index) => rank === index + 1),
+      'Note-set ranks must be sequential from 1.',
+    ),
+});
+
+const RankedChordPredictionCandidateSchema = z.object({
+  confidence: z.number().min(0).max(1),
+  rank: z.number().int().positive(),
+  symbol: z.string().min(1).max(32),
+});
+
+export const PredictedChordSetSchema = TimedIntervalSchema.extend({
+  candidates: z
+    .array(RankedChordPredictionCandidateSchema)
+    .min(1)
+    .refine(
+      (candidates) => candidates.every(({ rank }, index) => rank === index + 1),
+      'Chord ranks must be sequential from 1.',
+    ),
+});
+
 export const LatencySampleSchema = z.object({
   latencyMs: z.number().nonnegative(),
   path: z.enum(['live-audio', 'finalized-audio', 'vision', 'fusion']),
@@ -184,7 +223,9 @@ export const FixturePredictionSchema = z.object({
   fusedFretRegions: z.array(FretRegionSchema),
   fusedNotes: z.array(PredictedNoteSchema),
   latencySamples: z.array(LatencySampleSchema),
+  noteSets: z.array(PredictedNoteSetSchema).default([]),
   onsetsMs: z.array(TimestampMsSchema),
+  rankedChords: z.array(PredictedChordSetSchema).default([]),
 });
 
 export const EvaluationPredictionsSchema = z.object({
@@ -202,6 +243,8 @@ export type EvaluationPredictions = z.infer<typeof EvaluationPredictionsSchema>;
 export type FixturePrediction = z.infer<typeof FixturePredictionSchema>;
 export type PredictedNote = z.infer<typeof PredictedNoteSchema>;
 export type PredictedChord = z.infer<typeof PredictedChordSchema>;
+export type PredictedNoteSet = z.infer<typeof PredictedNoteSetSchema>;
+export type PredictedChordSet = z.infer<typeof PredictedChordSetSchema>;
 
 export const EvaluationTolerancesSchema = z.object({
   chordMinimumOverlapMs: z.number().nonnegative(),
