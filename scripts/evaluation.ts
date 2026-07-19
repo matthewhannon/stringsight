@@ -58,8 +58,11 @@ async function formatJson(value: unknown): Promise<string> {
   return format(firstPass, options);
 }
 
+const CHORD_ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
+
 const PrivateChordIntervalSchema = z
   .object({
+    bass: z.enum(CHORD_ROOTS).optional(),
     endMs: z.number().positive(),
     index: z.number().int().positive(),
     startMs: z.number().nonnegative(),
@@ -93,9 +96,9 @@ const PrivateChordBoundaryFileSchema = z
     });
   });
 
-const CHORD_ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
 const CHORD_INTERVALS: Readonly<Record<string, readonly number[]>> = {
   '': [0, 4, 7],
+  '5': [0, 7],
   '7': [0, 4, 7, 10],
   m: [0, 3, 7],
   m7: [0, 3, 7, 10],
@@ -944,10 +947,16 @@ async function evaluatePrivatePolyphonicRecording(
       )?.rank;
       return {
         bestOverlapMs: best?.overlapMs ?? 0,
+        bassMatch:
+          interval.bass === undefined
+            ? null
+            : (best?.event.candidates[0]?.bass ?? null) === interval.bass,
         eventCount: overlapping.length,
+        expectedBass: interval.bass ?? null,
         expected: interval.symbol,
         expectedRank: expectedRank ?? null,
         index: interval.index,
+        predictedBass: best?.event.candidates[0]?.bass ?? null,
         predicted: best?.event.candidates[0]?.symbol ?? null,
         topCandidates:
           best?.event.candidates.slice(0, 3).map((candidate) => ({
@@ -961,6 +970,7 @@ async function evaluatePrivatePolyphonicRecording(
       rankedPredictions,
       PRIVATE_CHORD_MINIMUM_OVERLAP_MS,
     );
+    const inversionIntervals = perInterval.filter((interval) => interval.expectedBass !== null);
     return {
       metrics: {
         activeEventCount: activeEvents.length,
@@ -969,6 +979,12 @@ async function evaluatePrivatePolyphonicRecording(
         fragmentationRatio: activeEvents.length / truth.length,
         intervalsWithMultipleEvents: perInterval.filter((interval) => interval.eventCount > 1)
           .length,
+        inversionBassAccuracy:
+          inversionIntervals.length === 0
+            ? null
+            : inversionIntervals.filter((interval) => interval.bassMatch).length /
+              inversionIntervals.length,
+        inversionIntervalCount: inversionIntervals.length,
         onsetBoundaries: scoreOnsets(
           truth.map((interval) => interval.startMs),
           analysis.events.map((event) => event.time.startMs),

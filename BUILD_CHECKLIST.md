@@ -147,7 +147,7 @@ An item is complete only when:
 - [x] Build a chord-template matcher that supports inversions, omitted notes, doubled notes, and partial confidence.
 - [x] Separate live provisional results from higher-accuracy finalized results.
 - [x] Reconcile duplicate and contradictory candidates across overlapping windows.
-- [ ] Evaluate note, chord, onset, memory, and throughput performance.
+- [x] Evaluate note, chord, onset, memory, and throughput performance.
 
 **Done when:** Recorded and live guitar chords produce ranked, time-aligned note sets and chord candidates, and finalized results improve on the provisional live path.
 
@@ -388,6 +388,7 @@ An item is complete only when:
 - [x] Complete item 4 before tuning recognition algorithms.
 - [x] Complete item 5 hardware verification and automated implementation.
 - [x] Complete item 6 real-guitar verification; automated implementation and corpus baseline pass.
+- [x] Complete item 7 polyphonic evaluation with reviewed power-chord and inversion coverage.
 - [ ] Build items 5 through 9 as the first complete vertical slice.
 
 ## Major completion gates
