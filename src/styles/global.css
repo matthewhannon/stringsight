@@ -185,6 +185,10 @@ h1 {
   align-items: center;
 }
 
+.recording-file-input {
+  display: none;
+}
+
 .capture-status-row {
   justify-content: space-between;
   margin-bottom: 24px;
@@ -500,6 +504,65 @@ select:disabled {
   background: rgb(4 7 14 / 72%);
 }
 
+.chord-profile-control {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgb(255 255 255 / 11%);
+  border-radius: 16px;
+  background: rgb(4 7 14 / 58%);
+}
+
+.chord-profile-control > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.chord-profile-control strong {
+  color: #e8e7e3;
+  font-size: 0.82rem;
+}
+
+.chord-profile-control span {
+  color: #858b96;
+  font-size: 0.76rem;
+}
+
+.chord-profile-control [role='group'] {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 3%);
+}
+
+.chord-profile-control button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #9298a2;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chord-profile-control button[aria-pressed='true'] {
+  background: #a8d8c3;
+  color: #0a1612;
+}
+
+.chord-profile-control button:focus-visible {
+  outline: 2px solid #d6b47a;
+  outline-offset: 2px;
+}
+
 .current-note {
   min-height: 320px;
   padding: 30px;
@@ -557,6 +620,50 @@ select:disabled {
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+.current-chord {
+  display: grid;
+  align-content: start;
+}
+
+.chord-readout > strong {
+  font-size: clamp(3.4rem, 8vw, 6.3rem);
+}
+
+.chroma-strip {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(16px, 1fr));
+  gap: 5px;
+  height: 86px;
+  margin-top: 28px;
+}
+
+.chroma-strip > span {
+  position: relative;
+  display: grid;
+  align-items: end;
+  overflow: hidden;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 5%);
+}
+
+.chroma-strip i {
+  min-height: 1px;
+  border-radius: 3px 3px 0 0;
+  background: rgb(168 216 195 / 72%);
+}
+
+.chroma-strip b {
+  position: absolute;
+  right: 0;
+  bottom: 4px;
+  left: 0;
+  color: #d9ddd9;
+  font-family: var(--rack-font-control, monospace);
+  font-size: 0.56rem;
+  font-weight: 600;
+  text-align: center;
 }
 
 .candidate-confidence {
@@ -687,6 +794,10 @@ select:disabled {
 
 .note-timeline li strong {
   color: #eef0f3;
+}
+
+.chord-timeline li {
+  grid-template-columns: 70px minmax(54px, 0.5fr) minmax(110px, 1.2fr) 0.5fr 1fr;
 }
 
 .lifecycle {
@@ -991,6 +1102,15 @@ footer {
 
   .analysis-console {
     grid-template-columns: 1fr;
+  }
+
+  .chord-profile-control {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .chord-profile-control [role='group'] {
+    align-self: start;
   }
 
   .analysis-diagnostics {

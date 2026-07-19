@@ -140,13 +140,13 @@ An item is complete only when:
 
 **Planning:** Create `docs/plans/07-polyphonic-audio.md`.
 
-- [ ] Integrate Spotify Basic Pitch in a worker with model caching and warmup.
-- [ ] Define streaming or overlapping-window inference behavior.
-- [ ] Extract polyphonic note events and align them to the shared timebase.
-- [ ] Compute chroma or pitch-class evidence independently of Basic Pitch.
-- [ ] Build a chord-template matcher that supports inversions, omitted notes, doubled notes, and partial confidence.
-- [ ] Separate live provisional results from higher-accuracy finalized results.
-- [ ] Reconcile duplicate and contradictory candidates across overlapping windows.
+- [x] Integrate Spotify Basic Pitch in a worker with model caching and warmup.
+- [x] Define streaming or overlapping-window inference behavior.
+- [x] Extract polyphonic note events and align them to the shared timebase.
+- [x] Compute chroma or pitch-class evidence independently of Basic Pitch.
+- [x] Build a chord-template matcher that supports inversions, omitted notes, doubled notes, and partial confidence.
+- [x] Separate live provisional results from higher-accuracy finalized results.
+- [x] Reconcile duplicate and contradictory candidates across overlapping windows.
 - [ ] Evaluate note, chord, onset, memory, and throughput performance.
 
 **Done when:** Recorded and live guitar chords produce ranked, time-aligned note sets and chord candidates, and finalized results improve on the provisional live path.

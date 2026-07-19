@@ -8,8 +8,11 @@ import {
   scoreChords,
   scoreFretRegions,
   scoreLatency,
+  scoreMidiSets,
   scoreNotes,
   scoreOnsets,
+  scorePitchClassSets,
+  scoreRankedChords,
   type EvaluationCorpus,
   type EvaluationPredictions,
   type FretRegion,
@@ -206,6 +209,63 @@ describe('event metrics', () => {
         50,
       ).accuracy,
     ).toBe(0);
+  });
+
+  it('scores top-1 and top-3 ranked chord, MIDI-set, and pitch-class-set candidates', () => {
+    const truth = [{ endMs: 500, pitchClasses: [0, 4, 7], startMs: 100, symbol: 'C' }];
+    expect(
+      scoreRankedChords(
+        truth,
+        [
+          {
+            candidates: [
+              { confidence: 0.6, rank: 1, symbol: 'Am' },
+              { confidence: 0.55, rank: 2, symbol: 'C' },
+            ],
+            endMs: 450,
+            startMs: 120,
+          },
+        ],
+        50,
+      ),
+    ).toEqual({ correctTop1: 0, correctTop3: 1, top1Accuracy: 0, top3Recall: 1, total: 1 });
+    expect(
+      scorePitchClassSets(
+        truth,
+        [
+          {
+            candidates: [
+              { confidence: 0.7, midis: [45, 52, 60], rank: 1 },
+              { confidence: 0.65, midis: [48, 52, 55, 60], rank: 2 },
+            ],
+            endMs: 450,
+            startMs: 120,
+          },
+        ],
+        50,
+      ),
+    ).toMatchObject({ correctTop1: 0, correctTop3: 1, top3Recall: 1 });
+    expect(
+      scoreMidiSets(
+        truth,
+        [
+          { endMs: 500, midi: 48, startMs: 100, velocity: 0.8 },
+          { endMs: 500, midi: 52, startMs: 100, velocity: 0.8 },
+          { endMs: 500, midi: 55, startMs: 100, velocity: 0.8 },
+        ],
+        [
+          {
+            candidates: [
+              { confidence: 0.7, midis: [48, 52, 55, 60], rank: 1 },
+              { confidence: 0.65, midis: [48, 52, 55], rank: 2 },
+            ],
+            endMs: 450,
+            startMs: 120,
+          },
+        ],
+        50,
+      ),
+    ).toMatchObject({ correctTop1: 0, correctTop3: 1, top3Recall: 1 });
   });
 });
 

@@ -13,6 +13,7 @@ import {
 import { AudioAnalysisPanel } from './AudioAnalysisPanel';
 import { AudioCapturePanel } from './AudioCapturePanel';
 import { BenchmarkPanel } from './BenchmarkPanel';
+import { PolyphonicAnalysisPanel } from './PolyphonicAnalysisPanel';
 import { defaultMicrophoneCapture } from './audioCaptureController';
 
 type EmbeddedToolProps = {
@@ -46,13 +47,25 @@ const workspaceModules: readonly WorkspaceModuleDefinition[] = [
     unit: 'ANALYSIS · 02',
   },
   {
-    Component: BenchmarkPanel,
-    description: 'Review captured events and export private evaluation fixtures.',
-    id: 'benchmark',
+    Component: PolyphonicAnalysisPanel,
+    description: 'Provisional chroma evidence, ranked chord candidates, and finalized note sets.',
+    id: 'polyphonic-analysis',
     size: 'expanded',
-    title: 'Evaluation bench',
-    unit: 'TOOLS · 03',
+    title: 'Chord analysis',
+    unit: 'ANALYSIS · 03',
   },
+  ...(import.meta.env.DEV
+    ? [
+        {
+          Component: BenchmarkPanel,
+          description: 'Review captured events and export private evaluation fixtures.',
+          id: 'benchmark',
+          size: 'expanded' as const,
+          title: 'Evaluation bench',
+          unit: 'TOOLS · 04',
+        },
+      ]
+    : []),
 ];
 
 const sessionStateLabels: Record<CaptureSnapshot['state'], string> = {

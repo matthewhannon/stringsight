@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import {
   MicrophoneCapture,
@@ -8,6 +8,7 @@ import {
   createCalibrationReferenceRecording,
   dbfsToMeterPercent,
   downsampleWaveform,
+  decodePcmWavRecording,
   encodeMonoPcm16Wav,
   measureCalibrationTone,
   type CalibrationToneMeasurement,
@@ -88,7 +89,11 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
   const [calibrationMeasurement, setCalibrationMeasurement] =
     useState<CalibrationToneMeasurement | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importedFilename, setImportedFilename] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
+  const recordingFileInput = useRef<HTMLInputElement>(null);
   const subscribe = useCallback(
     (listener: () => void) => controller.subscribe(listener),
     [controller],
@@ -113,13 +118,10 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
     return () => window.clearTimeout(timeout);
   }, [refreshDevices]);
 
-  const isBusy = [
-    'recording',
-    'replaying',
-    'requesting-permission',
-    'starting',
-    'stopping',
-  ].includes(snapshot.state);
+  const isBusy =
+    ['recording', 'replaying', 'requesting-permission', 'starting', 'stopping'].includes(
+      snapshot.state,
+    ) || isImporting;
   const canStart = !isBusy && snapshot.state !== 'unsupported';
   const displaySignal = calibrationSignal ?? snapshot;
   const peakDbfs = amplitudeToDbfs(displaySignal.peak);
@@ -154,6 +156,27 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
         expectedPeakDbfs: CALIBRATION_PEAK_DBFS,
       }),
     );
+  };
+
+  const loadRecording = async (file: File): Promise<void> => {
+    setCalibrationSignal(null);
+    setCalibrationMeasurement(null);
+    setImportError(null);
+    setIsImporting(true);
+    try {
+      const recordedAt =
+        Number.isFinite(file.lastModified) && file.lastModified > 0
+          ? new Date(file.lastModified).toISOString()
+          : new Date().toISOString();
+      const recording = decodePcmWavRecording(await file.arrayBuffer(), { recordedAt });
+      controller.loadRecording(recording);
+      setImportedFilename(file.name);
+      await controller.replay();
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'The WAV recording could not load.');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   return (
@@ -253,6 +276,17 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
               <span>Recommended action: {snapshot.error.userAction.replaceAll('-', ' ')}</span>
             </div>
           )}
+          {importError !== null && (
+            <div className="capture-error" role="alert">
+              <strong>{importError}</strong>
+              <span>Select a PCM WAV recording exported by StringSight or another audio tool.</span>
+            </div>
+          )}
+          {importedFilename !== null && importError === null && (
+            <p className="capture-calibration" role="status">
+              Loaded and analyzed {importedFilename}. Replay it again after an analyzer change.
+            </p>
+          )}
 
           <div className="capture-controls">
             <button
@@ -288,6 +322,28 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
                 Stop replay
               </button>
             )}
+            <button
+              className="button"
+              disabled={isBusy}
+              onClick={() => recordingFileInput.current?.click()}
+              type="button"
+            >
+              {isImporting ? 'Loading WAV...' : 'Load & analyze WAV'}
+            </button>
+            <input
+              accept=".wav,audio/wav,audio/x-wav"
+              aria-hidden="true"
+              className="recording-file-input"
+              disabled={isBusy}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = '';
+                if (file !== undefined) void loadRecording(file);
+              }}
+              ref={recordingFileInput}
+              tabIndex={-1}
+              type="file"
+            />
             <button
               className="text-button meter-check-button"
               disabled={isBusy}

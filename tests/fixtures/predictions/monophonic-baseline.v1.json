@@ -14,7 +14,9 @@
         { "latencyMs": 85, "path": "live-audio" },
         { "latencyMs": 70, "path": "finalized-audio" }
       ],
-      "onsetsMs": [100]
+      "noteSets": [],
+      "onsetsMs": [100],
+      "rankedChords": []
     },
     {
       "audioFretRegions": [],
@@ -24,7 +26,9 @@
       "fusedFretRegions": [],
       "fusedNotes": [],
       "latencySamples": [],
-      "onsetsMs": [119.99999999999784]
+      "noteSets": [],
+      "onsetsMs": [119.99999999999784],
+      "rankedChords": []
     },
     {
       "audioFretRegions": [],
@@ -51,7 +55,9 @@
         { "latencyMs": 85, "path": "live-audio" },
         { "latencyMs": 70, "path": "finalized-audio" }
       ],
-      "onsetsMs": [105, 500, 900, 1300, 1705]
+      "noteSets": [],
+      "onsetsMs": [105, 500, 900, 1300, 1705],
+      "rankedChords": []
     },
     {
       "audioFretRegions": [],
@@ -61,7 +67,9 @@
       "fusedFretRegions": [],
       "fusedNotes": [],
       "latencySamples": [],
-      "onsetsMs": [164.99999999999784]
+      "noteSets": [],
+      "onsetsMs": [164.99999999999784],
+      "rankedChords": []
     },
     {
       "audioFretRegions": [],
@@ -82,7 +90,9 @@
         { "latencyMs": 85, "path": "live-audio" },
         { "latencyMs": 70, "path": "finalized-audio" }
       ],
-      "onsetsMs": [100, 600, 1100]
+      "noteSets": [],
+      "onsetsMs": [100, 600, 1100],
+      "rankedChords": []
     }
   ],
   "generatedAt": "2026-07-17T00:00:00.000Z",

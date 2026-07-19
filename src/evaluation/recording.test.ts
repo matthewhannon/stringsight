@@ -2,8 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { CapturedRecording } from '../audio/capture/contracts';
 import { encodeMonoPcm16Wav } from '../audio/capture/wav';
-import { CONTRACT_SCHEMA_VERSION, NoteEventSchema, sessionTimestampMs } from '../shared';
-import { createRecordedFixture } from './recording';
+import {
+  ChordEventSchema,
+  CONTRACT_SCHEMA_VERSION,
+  NoteEventSchema,
+  sessionTimestampMs,
+} from '../shared';
+import { createRecordedChordFixture, createRecordedFixture } from './recording';
 
 const recording = (data = new Float32Array(16_000)): CapturedRecording => ({
   channelCount: 1,
@@ -40,6 +45,33 @@ const noteEvent = NoteEventSchema.parse({
     runId: 'recording',
     subsystem: 'audio-analysis',
     version: '0.2.1',
+  },
+  schemaVersion: CONTRACT_SCHEMA_VERSION,
+  time: { endMs: 450, startMs: 150 },
+});
+
+const chordEvent = ChordEventSchema.parse({
+  candidates: [
+    {
+      bass: 'C',
+      confidence: 0.9,
+      pitchClasses: ['C', 'E', 'G'],
+      quality: 'major',
+      rank: 1,
+      root: 'C',
+      score: 0.95,
+      symbol: 'C',
+    },
+  ],
+  id: 'recording-chord-1',
+  kind: 'chord',
+  lifecycle: 'finalized',
+  provenance: {
+    algorithm: 'spotify-basic-pitch-plus-chord-templates',
+    generatedAtMs: 500,
+    runId: 'recording',
+    subsystem: 'polyphonic-analysis',
+    version: '1.0.1-stringsight.1',
   },
   schemaVersion: CONTRACT_SCHEMA_VERSION,
   time: { endMs: 450, startMs: 150 },
@@ -86,5 +118,60 @@ describe('real-guitar benchmark export', () => {
     ]);
     expect(fixture.groundTruth.onsetsMs).toEqual([100]);
     expect(fixture.media.audio).toBe('audio/recorded/real-open-strings-1.wav');
+  });
+
+  it('exports reviewed chord labels with pitch classes and private provenance', () => {
+    const fixture = createRecordedChordFixture(
+      recording(),
+      [chordEvent],
+      [{ eventId: chordEvent.id, symbol: 'C#maj7' }],
+      {
+        dynamics: 'medium',
+        fixtureId: 'real-chords-1',
+        guitarType: 'clean-electric',
+        inputProfile: 'direct',
+        license: 'private-evaluation-only',
+        neckPosition: 'open-low',
+        noise: 'quiet',
+        recordedAt: '2026-07-18T05:00:00.000Z',
+        split: 'development',
+      },
+    );
+
+    expect(fixture.groundTruth.chords).toEqual([
+      { endMs: 400, pitchClasses: [1, 5, 8, 0], startMs: 100, symbol: 'C#maj7' },
+    ]);
+    expect(fixture.groundTruth.onsetsMs).toEqual([100]);
+    expect(fixture.tags).toEqual(expect.arrayContaining(['polyphonic', 'chord']));
+  });
+
+  it('rejects chord symbols outside the reviewed export vocabulary', () => {
+    const options = {
+      dynamics: 'medium' as const,
+      fixtureId: 'invalid-chord',
+      guitarType: 'clean-electric' as const,
+      inputProfile: 'direct' as const,
+      license: 'private-evaluation-only' as const,
+      neckPosition: 'open-low' as const,
+      noise: 'quiet' as const,
+      recordedAt: '2026-07-18T05:00:00.000Z',
+      split: 'development' as const,
+    };
+    expect(() =>
+      createRecordedChordFixture(
+        recording(),
+        [chordEvent],
+        [{ eventId: chordEvent.id, symbol: 'H' }],
+        options,
+      ),
+    ).toThrow(/unsupported reviewed chord/i);
+    expect(() =>
+      createRecordedChordFixture(
+        recording(),
+        [chordEvent],
+        [{ eventId: chordEvent.id, symbol: 'Cadd9' }],
+        options,
+      ),
+    ).toThrow(/unsupported reviewed chord/i);
   });
 });

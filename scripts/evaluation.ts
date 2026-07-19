@@ -2,18 +2,28 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { format, resolveConfig } from 'prettier';
+import { z } from 'zod';
 
 import { MONOPHONIC_ANALYZER_VERSION } from '../src/audio/analysis/contracts';
 import { StreamingMonophonicPipeline } from '../src/audio/analysis/pipeline';
-import type { NoteEvent } from '../src/shared/contracts/audio';
+import { decodePcmWav } from '../src/audio/capture/wav';
+import {
+  POLYPHONIC_ANALYZER_VERSION,
+  StreamingProvisionalChordAnalyzer,
+} from '../src/audio/polyphonic/streaming';
+import type { ChordAnalysisProfile } from '../src/audio/polyphonic/contracts';
+import type { ChordEvent, NoteEvent } from '../src/shared/contracts/audio';
 import {
   EvaluationCorpusSchema,
+  EvaluationFixtureSchema,
   EvaluationPredictionsSchema,
+  PrivateRecordingCorpusManifestSchema,
   evaluateCorpus,
   type EvaluationCorpus,
   type EvaluationFixture,
   type EvaluationPredictions,
 } from '../src/evaluation/index';
+import { scoreChords, scoreOnsets, scoreRankedChords } from '../src/evaluation/metrics';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..');
 const fixtureRoot = path.join(repositoryRoot, 'tests', 'fixtures');
@@ -46,6 +56,62 @@ async function formatJson(value: unknown): Promise<string> {
   const options = { ...config, parser: 'json' as const };
   const firstPass = await format(JSON.stringify(value), options);
   return format(firstPass, options);
+}
+
+const PrivateChordIntervalSchema = z
+  .object({
+    endMs: z.number().positive(),
+    index: z.number().int().positive(),
+    startMs: z.number().nonnegative(),
+    symbol: z.string().min(1).max(32),
+  })
+  .refine(({ endMs, startMs }) => endMs > startMs, 'Chord intervals must have positive duration.');
+
+const PrivateChordBoundaryFileSchema = z
+  .object({
+    intervals: z.array(PrivateChordIntervalSchema).min(1),
+    labelStatus: z.string().min(1),
+    recordingId: z.string().min(1).max(160),
+    schemaVersion: z.literal(1),
+  })
+  .superRefine(({ intervals }, context) => {
+    intervals.forEach((interval, index) => {
+      if (interval.index !== index + 1) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Chord interval indexes must be sequential from 1.',
+          path: ['intervals', index, 'index'],
+        });
+      }
+      if (index > 0 && interval.startMs < (intervals[index - 1]?.endMs ?? 0)) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Chord intervals may not overlap.',
+          path: ['intervals', index, 'startMs'],
+        });
+      }
+    });
+  });
+
+const CHORD_ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
+const CHORD_INTERVALS: Readonly<Record<string, readonly number[]>> = {
+  '': [0, 4, 7],
+  '7': [0, 4, 7, 10],
+  m: [0, 3, 7],
+  m7: [0, 3, 7, 10],
+  maj7: [0, 4, 7, 11],
+};
+
+function pitchClassesForPrivateChord(symbol: string): number[] {
+  const root = [...CHORD_ROOTS]
+    .sort((left, right) => right.length - left.length)
+    .find((candidate) => symbol.startsWith(candidate));
+  if (root === undefined) throw new Error(`Unsupported private chord symbol: ${symbol}.`);
+  const suffix = symbol.slice(root.length);
+  const intervals = CHORD_INTERVALS[suffix];
+  if (intervals === undefined) throw new Error(`Unsupported private chord symbol: ${symbol}.`);
+  const rootIndex = CHORD_ROOTS.indexOf(root);
+  return intervals.map((interval) => (rootIndex + interval) % CHORD_ROOTS.length);
 }
 
 function seededRandom(seed: number): () => number {
@@ -83,33 +149,6 @@ function encodeWav(samples: Float32Array, sampleRate: number): Uint8Array {
     view.setInt16(44 + index * 2, Math.round(clamped * 32_767), true);
   });
   return bytes;
-}
-
-function decodeWav(bytes: Uint8Array): { sampleRate: number; samples: Float32Array } {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const readText = (offset: number, length: number): string =>
-    String.fromCharCode(...bytes.subarray(offset, offset + length));
-  if (
-    bytes.length < 44 ||
-    readText(0, 4) !== 'RIFF' ||
-    readText(8, 4) !== 'WAVE' ||
-    view.getUint16(20, true) !== 1 ||
-    view.getUint16(22, true) !== 1 ||
-    view.getUint16(34, true) !== 16 ||
-    readText(36, 4) !== 'data'
-  ) {
-    throw new Error('Only canonical mono 16-bit PCM WAV fixtures are supported.');
-  }
-  const sampleRate = view.getUint32(24, true);
-  const dataLength = view.getUint32(40, true);
-  if (44 + dataLength > bytes.length || dataLength % 2 !== 0) {
-    throw new Error('WAV data chunk is truncated or malformed.');
-  }
-  const samples = new Float32Array(dataLength / 2);
-  for (let index = 0; index < samples.length; index += 1) {
-    samples[index] = view.getInt16(44 + index * 2, true) / 32_768;
-  }
-  return { sampleRate, samples };
 }
 
 function synthesizeAudio(fixture: EvaluationFixture): Uint8Array {
@@ -332,6 +371,38 @@ function scoreMonophonicFixture(
   };
 }
 
+function runMonophonicRecording(
+  data: Float32Array,
+  sampleRate: number,
+  runId: string,
+): { events: NoteEvent[]; onsetsMs: number[] } {
+  const analyzer = new StreamingMonophonicPipeline(sampleRate, runId);
+  const eventsById = new Map<string, NoteEvent>();
+  const onsetsById = new Map<
+    string,
+    ReturnType<StreamingMonophonicPipeline['push']>['onsets'][number]
+  >();
+  const chunkFrames = 2_048;
+  for (let startFrame = 0; startFrame < data.length; startFrame += chunkFrames) {
+    const result = analyzer.push(
+      data.slice(startFrame, startFrame + chunkFrames),
+      (startFrame / sampleRate) * 1_000,
+    );
+    for (const event of result.events) eventsById.set(event.id, event);
+    for (const onset of result.onsets) onsetsById.set(onset.id, onset);
+  }
+  const durationMs = (data.length / sampleRate) * 1_000;
+  for (const event of analyzer.finish(durationMs).events) eventsById.set(event.id, event);
+  return {
+    events: [...eventsById.values()]
+      .filter((event) => event.lifecycle === 'finalized')
+      .sort((left, right) => left.time.startMs - right.time.startMs),
+    onsetsMs: [...onsetsById.values()]
+      .map((onset) => onset.atMs)
+      .sort((left, right) => left - right),
+  };
+}
+
 async function createMonophonicBaselinePredictions(corpus: EvaluationCorpus): Promise<{
   predictions: EvaluationPredictions;
   qualityReport: unknown;
@@ -342,7 +413,7 @@ async function createMonophonicBaselinePredictions(corpus: EvaluationCorpus): Pr
   const allFinalizedLatencies: number[] = [];
   for (const fixture of corpus.fixtures) {
     if (fixture.media.audio === undefined) continue;
-    const decoded = decodeWav(await readFile(path.join(fixtureRoot, fixture.media.audio)));
+    const decoded = decodePcmWav(await readFile(path.join(fixtureRoot, fixture.media.audio)));
     const analyzer = new StreamingMonophonicPipeline(decoded.sampleRate, fixture.id);
     const eventsById = new Map<string, NoteEvent>();
     const onsetsById = new Map<
@@ -352,8 +423,8 @@ async function createMonophonicBaselinePredictions(corpus: EvaluationCorpus): Pr
     const latencySamples: { latencyMs: number; path: 'finalized-audio' | 'live-audio' }[] = [];
     const provisionalIds = new Set<string>();
     const chunkFrames = 2_048;
-    for (let startFrame = 0; startFrame < decoded.samples.length; startFrame += chunkFrames) {
-      const data = decoded.samples.slice(startFrame, startFrame + chunkFrames);
+    for (let startFrame = 0; startFrame < decoded.data.length; startFrame += chunkFrames) {
+      const data = decoded.data.slice(startFrame, startFrame + chunkFrames);
       const result = analyzer.push(data, (startFrame / decoded.sampleRate) * 1_000);
       for (const event of result.events) {
         eventsById.set(event.id, event);
@@ -515,9 +586,9 @@ async function benchmarkMonophonic(iterations: number): Promise<void> {
   for (const fixture of fixtures) {
     const audioPath = fixture.media.audio;
     if (audioPath === undefined) continue;
-    const decoded = decodeWav(await readFile(path.join(fixtureRoot, audioPath)));
+    const decoded = decodePcmWav(await readFile(path.join(fixtureRoot, audioPath)));
     const benchmarkSamples = resampleBenchmarkInput(
-      decoded.samples,
+      decoded.data,
       decoded.sampleRate,
       benchmarkInputSampleRate,
     );
@@ -678,6 +749,287 @@ async function evaluate(
   return report;
 }
 
+const resolvePrivateCorpusPath = (corpusRoot: string, relativePath: string): string => {
+  const resolved = path.resolve(corpusRoot, relativePath);
+  const relative = path.relative(corpusRoot, resolved);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error(`Private corpus path escapes its manifest directory: ${relativePath}`);
+  }
+  return resolved;
+};
+
+async function evaluatePrivateMonophonicCorpus(privateManifestPath: string): Promise<void> {
+  const manifest = PrivateRecordingCorpusManifestSchema.parse(await readJson(privateManifestPath));
+  const corpusRoot = path.dirname(privateManifestPath);
+  const perRecording = [];
+  for (const entry of manifest.recordings) {
+    const fixture = EvaluationFixtureSchema.parse(
+      await readJson(resolvePrivateCorpusPath(corpusRoot, entry.fixturePath)),
+    );
+    if (fixture.id !== entry.id) {
+      throw new Error(`Manifest id '${entry.id}' does not match fixture id '${fixture.id}'.`);
+    }
+    if (
+      fixture.source.kind !== 'recorded' ||
+      fixture.source.license !== 'private-evaluation-only'
+    ) {
+      throw new Error(`Private corpus fixture '${entry.id}' must be private-evaluation-only.`);
+    }
+    if (!isMonophonicFixture(fixture)) {
+      throw new Error(`Private monophonic fixture '${entry.id}' contains overlapping notes.`);
+    }
+    const decoded = decodePcmWav(
+      await readFile(resolvePrivateCorpusPath(corpusRoot, entry.audioPath)),
+    );
+    const audioDurationMs = (decoded.data.length / decoded.sampleRate) * 1_000;
+    if (Math.abs(audioDurationMs - fixture.durationMs) > Math.max(20, 1_000 / decoded.sampleRate)) {
+      throw new Error(`Fixture '${entry.id}' duration differs from its WAV by more than 20 ms.`);
+    }
+    const startedAt = performance.now();
+    const analysis = runMonophonicRecording(
+      decoded.data,
+      decoded.sampleRate,
+      `private-${entry.id}`,
+    );
+    perRecording.push({
+      ...scoreMonophonicFixture(fixture, analysis.events, analysis.onsetsMs),
+      audioDurationMs,
+      processingTimeMs: performance.now() - startedAt,
+      sampleRate: decoded.sampleRate,
+    });
+  }
+
+  const noteCount = perRecording.reduce((total, recording) => total + recording.noteCount, 0);
+  const top1Matches = perRecording.reduce((total, recording) => total + recording.top1Matches, 0);
+  const top3Matches = perRecording.reduce((total, recording) => total + recording.top3Matches, 0);
+  const truthOnsets = perRecording.reduce((total, recording) => total + recording.noteCount, 0);
+  const matchedOnsets = perRecording.reduce(
+    (total, recording) => total + recording.matchedOnsets,
+    0,
+  );
+  const falseOnsets = perRecording.reduce((total, recording) => total + recording.falseOnsets, 0);
+  const onsetPrecision = matchedOnsets / Math.max(1, matchedOnsets + falseOnsets);
+  const onsetRecall = matchedOnsets / Math.max(1, truthOnsets);
+  const onsetErrorsMs = perRecording.flatMap((recording) => recording.onsetErrorsMs);
+  const report = {
+    analyzer: { name: 'yin-energy-monophonic', version: MONOPHONIC_ANALYZER_VERSION },
+    corpusId: manifest.corpusId,
+    generatedAt: new Date().toISOString(),
+    metrics: {
+      medianOnsetErrorMs: percentile(onsetErrorsMs, 0.5),
+      noteCount,
+      onsetF1:
+        onsetPrecision + onsetRecall === 0
+          ? 0
+          : (2 * onsetPrecision * onsetRecall) / (onsetPrecision + onsetRecall),
+      onsetPrecision,
+      onsetRecall,
+      p95OnsetErrorMs: percentile(onsetErrorsMs, 0.95),
+      top1Accuracy: top1Matches / Math.max(1, noteCount),
+      top3Accuracy: top3Matches / Math.max(1, noteCount),
+    },
+    perRecording,
+    schemaVersion: 1,
+  };
+  const reportPath = path.join(corpusRoot, 'reports', 'monophonic-baseline.local.json');
+  await mkdir(path.dirname(reportPath), { recursive: true });
+  await writeFile(reportPath, await formatJson(report), 'utf8');
+  process.stdout.write(
+    `Evaluated ${String(perRecording.length)} private recordings and wrote ${path.relative(repositoryRoot, reportPath)}.\n`,
+  );
+}
+
+const PRIVATE_CHORD_MINIMUM_OVERLAP_MS = 200;
+const PRIVATE_CHORD_ONSET_TOLERANCE_MS = 600;
+
+const chordIntervalOverlapMs = (
+  left: { endMs: number; startMs: number },
+  right: { endMs: number; startMs: number },
+): number => Math.max(0, Math.min(left.endMs, right.endMs) - Math.max(left.startMs, right.startMs));
+
+function runPrivatePolyphonicRecording(
+  samples: Float32Array,
+  sampleRate: number,
+  recordingId: string,
+  profile: ChordAnalysisProfile,
+): { events: ChordEvent[]; processingTimeMs: number } {
+  const analyzer = new StreamingProvisionalChordAnalyzer(
+    sampleRate,
+    `private-${recordingId}-${profile}`,
+    { profile },
+  );
+  const events: ChordEvent[] = [];
+  const chunkFrames = 2_048;
+  const startedAt = performance.now();
+  for (let startFrame = 0; startFrame < samples.length; startFrame += chunkFrames) {
+    const result = analyzer.push(
+      samples.subarray(startFrame, Math.min(samples.length, startFrame + chunkFrames)),
+      (startFrame / sampleRate) * 1_000,
+    );
+    events.push(...result.events.filter((event) => event.lifecycle === 'finalized'));
+  }
+  events.push(
+    ...analyzer
+      .finish((samples.length / sampleRate) * 1_000)
+      .events.filter((event) => event.lifecycle === 'finalized'),
+  );
+  return {
+    events: events.sort((left, right) => left.time.startMs - right.time.startMs),
+    processingTimeMs: performance.now() - startedAt,
+  };
+}
+
+async function evaluatePrivatePolyphonicRecording(
+  audioPath: string,
+  labelsPath: string,
+  outputPath?: string,
+): Promise<void> {
+  const labels = PrivateChordBoundaryFileSchema.parse(await readJson(labelsPath));
+  const decoded = decodePcmWav(await readFile(audioPath));
+  const durationMs = (decoded.data.length / decoded.sampleRate) * 1_000;
+  const truth = labels.intervals.map((interval) => {
+    if (interval.endMs > durationMs) {
+      throw new Error(
+        `Chord ${String(interval.index)} ends after the recording duration (${String(interval.endMs)} > ${String(durationMs)}).`,
+      );
+    }
+    return { ...interval, pitchClasses: pitchClassesForPrivateChord(interval.symbol) };
+  });
+
+  const profiles = (['accurate', 'responsive'] as const).map((profile) => {
+    const analysis = runPrivatePolyphonicRecording(
+      decoded.data,
+      decoded.sampleRate,
+      labels.recordingId,
+      profile,
+    );
+    const predictions = analysis.events.map((event) => ({
+      confidence: event.candidates[0]?.confidence ?? 0,
+      endMs: event.time.endMs ?? durationMs,
+      startMs: event.time.startMs,
+      symbol: event.candidates[0]?.symbol ?? 'unknown',
+    }));
+    const rankedPredictions = analysis.events.map((event) => ({
+      candidates: event.candidates.map((candidate) => ({
+        confidence: candidate.confidence,
+        rank: candidate.rank,
+        symbol: candidate.symbol,
+      })),
+      endMs: event.time.endMs ?? durationMs,
+      startMs: event.time.startMs,
+    }));
+    const activeEvents = analysis.events.filter((event) =>
+      truth.some(
+        (interval) =>
+          chordIntervalOverlapMs(interval, {
+            endMs: event.time.endMs ?? durationMs,
+            startMs: event.time.startMs,
+          }) >= PRIVATE_CHORD_MINIMUM_OVERLAP_MS,
+      ),
+    );
+    const perInterval = truth.map((interval) => {
+      const overlapping = analysis.events
+        .map((event) => ({
+          event,
+          overlapMs: chordIntervalOverlapMs(interval, {
+            endMs: event.time.endMs ?? durationMs,
+            startMs: event.time.startMs,
+          }),
+        }))
+        .filter(({ overlapMs }) => overlapMs >= PRIVATE_CHORD_MINIMUM_OVERLAP_MS)
+        .sort((left, right) => right.overlapMs - left.overlapMs);
+      const best = overlapping[0];
+      const expectedRank = best?.event.candidates.find(
+        (candidate) => candidate.symbol === interval.symbol,
+      )?.rank;
+      return {
+        bestOverlapMs: best?.overlapMs ?? 0,
+        eventCount: overlapping.length,
+        expected: interval.symbol,
+        expectedRank: expectedRank ?? null,
+        index: interval.index,
+        predicted: best?.event.candidates[0]?.symbol ?? null,
+        topCandidates:
+          best?.event.candidates.slice(0, 3).map((candidate) => ({
+            confidence: rounded(candidate.confidence),
+            symbol: candidate.symbol,
+          })) ?? [],
+      };
+    });
+    const rankedMetrics = scoreRankedChords(
+      truth,
+      rankedPredictions,
+      PRIVATE_CHORD_MINIMUM_OVERLAP_MS,
+    );
+    return {
+      metrics: {
+        activeEventCount: activeEvents.length,
+        chordAccuracy: scoreChords(truth, predictions, PRIVATE_CHORD_MINIMUM_OVERLAP_MS).accuracy,
+        eventCount: analysis.events.length,
+        fragmentationRatio: activeEvents.length / truth.length,
+        intervalsWithMultipleEvents: perInterval.filter((interval) => interval.eventCount > 1)
+          .length,
+        onsetBoundaries: scoreOnsets(
+          truth.map((interval) => interval.startMs),
+          analysis.events.map((event) => event.time.startMs),
+          PRIVATE_CHORD_ONSET_TOLERANCE_MS,
+        ),
+        processingTimeMs: rounded(analysis.processingTimeMs),
+        realTimeFactor: rounded(analysis.processingTimeMs / durationMs),
+        silenceOnlyEventCount: analysis.events.length - activeEvents.length,
+        top1Accuracy: rankedMetrics.top1Accuracy,
+        top3Recall: rankedMetrics.top3Recall,
+      },
+      perInterval,
+      profile,
+    };
+  });
+
+  const report = {
+    analyzer: {
+      name: 'hpss-nnls-chroma-chord-templates',
+      version: POLYPHONIC_ANALYZER_VERSION,
+    },
+    audio: {
+      durationMs,
+      path: path.basename(audioPath),
+      sampleRate: decoded.sampleRate,
+    },
+    generatedAt: new Date().toISOString(),
+    groundTruth: {
+      boundaryStatus: 'automatically-proposed',
+      chordCount: truth.length,
+      labelStatus: labels.labelStatus,
+      path: path.basename(labelsPath),
+    },
+    profiles,
+    recordingId: labels.recordingId,
+    schemaVersion: 1,
+    scoring: {
+      minimumOverlapMs: PRIVATE_CHORD_MINIMUM_OVERLAP_MS,
+      onsetToleranceMs: PRIVATE_CHORD_ONSET_TOLERANCE_MS,
+    },
+  };
+  const resolvedOutputPath =
+    outputPath ??
+    path.resolve(
+      path.dirname(labelsPath),
+      '..',
+      'reports',
+      `${labels.recordingId}-polyphonic-baseline.local.json`,
+    );
+  await mkdir(path.dirname(resolvedOutputPath), { recursive: true });
+  await writeFile(resolvedOutputPath, await formatJson(report), 'utf8');
+  process.stdout.write(
+    `Evaluated private chord recording and wrote ${path.relative(repositoryRoot, resolvedOutputPath)}.\n`,
+  );
+  for (const profile of profiles) {
+    process.stdout.write(
+      `${profile.profile}: top-1 ${(profile.metrics.top1Accuracy * 100).toFixed(1)}%, top-3 ${(profile.metrics.top3Recall * 100).toFixed(1)}%, fragmentation ${profile.metrics.fragmentationRatio.toFixed(2)}x.\n`,
+    );
+  }
+}
+
 function argumentValue(name: string): string | undefined {
   const index = process.argv.indexOf(name);
   return index < 0 ? undefined : process.argv[index + 1];
@@ -731,6 +1083,30 @@ async function main(): Promise<void> {
     await benchmarkMonophonic(iterationArgument === undefined ? 20 : Number(iterationArgument));
     return;
   }
+  if (command === 'private-monophonic') {
+    const privateManifestArgument = argumentValue('--manifest');
+    if (privateManifestArgument === undefined) {
+      throw new Error('Usage: private-monophonic --manifest <corpus.local.json>');
+    }
+    await evaluatePrivateMonophonicCorpus(path.resolve(repositoryRoot, privateManifestArgument));
+    return;
+  }
+  if (command === 'private-polyphonic') {
+    const audioArgument = argumentValue('--audio');
+    const labelsArgument = argumentValue('--labels');
+    if (audioArgument === undefined || labelsArgument === undefined) {
+      throw new Error(
+        'Usage: private-polyphonic --audio <recording.wav> --labels <boundaries.local.json> [--output <report.local.json>]',
+      );
+    }
+    const outputArgument = argumentValue('--output');
+    await evaluatePrivatePolyphonicRecording(
+      path.resolve(repositoryRoot, audioArgument),
+      path.resolve(repositoryRoot, labelsArgument),
+      outputArgument === undefined ? undefined : path.resolve(repositoryRoot, outputArgument),
+    );
+    return;
+  }
   if (command === 'evaluate') {
     const predictionArgument = argumentValue('--predictions');
     if (predictionArgument === undefined) {
@@ -744,7 +1120,7 @@ async function main(): Promise<void> {
     return;
   }
   throw new Error(
-    'Usage: evaluation.ts <generate|validate|self-test|monophonic-baseline|benchmark-monophonic|evaluate>',
+    'Usage: evaluation.ts <generate|validate|self-test|monophonic-baseline|benchmark-monophonic|private-monophonic|private-polyphonic|evaluate>',
   );
 }
 

@@ -7,6 +7,7 @@ import {
   CONTRACT_SCHEMA_VERSION,
   FusedEventSchema,
   NoteEventSchema,
+  NoteSetEventSchema,
   SessionSchema,
   TimeRangeSchema,
   VisualPositionEstimateSchema,
@@ -119,6 +120,47 @@ describe('prediction contracts', () => {
     });
 
     expect(event.candidates).toMatchObject([{ symbol: 'Am' }]);
+  });
+
+  it('parses ranked polyphonic note sets and requires ordered unique MIDI notes', () => {
+    const note = (midi: number, noteName: string, pitchClass: 'A' | 'C' | 'E') => ({
+      confidence: 0.85,
+      frameConfidence: 0.82,
+      midi,
+      noteName,
+      onsetConfidence: 0.9,
+      pitchClass,
+    });
+    const event = NoteSetEventSchema.parse({
+      candidates: [
+        {
+          confidence: 0.86,
+          evidence: ['basic-pitch', 'independent-chroma'],
+          notes: [note(45, 'A2', 'A'), note(52, 'E3', 'E'), note(60, 'C4', 'C')],
+          rank: 1,
+          score: 1.8,
+        },
+      ],
+      id: 'note-set-1',
+      kind: 'note-set',
+      lifecycle: 'provisional',
+      provenance: { ...provenance, subsystem: 'polyphonic-analysis' },
+      schemaVersion: CONTRACT_SCHEMA_VERSION,
+      time: { endMs: 500, startMs: 100 },
+    });
+
+    expect(event.candidates[0]?.notes.map(({ midi }) => midi)).toEqual([45, 52, 60]);
+    expect(
+      NoteSetEventSchema.safeParse({
+        ...event,
+        candidates: [
+          {
+            ...event.candidates[0],
+            notes: [note(52, 'E3', 'E'), note(45, 'A2', 'A')],
+          },
+        ],
+      }).success,
+    ).toBe(false);
   });
 
   it('validates visual uncertainty and fret geometry without requiring calibration', () => {

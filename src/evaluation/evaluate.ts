@@ -10,7 +10,9 @@ import {
   type GroundTruthChord,
   type GroundTruthNote,
   type PredictedChord,
+  type PredictedChordSet,
   type PredictedNote,
+  type PredictedNoteSet,
 } from './contracts';
 import { scoreFixture, scoreLatency } from './metrics';
 
@@ -35,7 +37,9 @@ function emptyPrediction(fixtureId: string): FixturePrediction {
     fusedFretRegions: [],
     fusedNotes: [],
     latencySamples: [],
+    noteSets: [],
     onsetsMs: [],
+    rankedChords: [],
   };
 }
 
@@ -63,7 +67,9 @@ function evaluateSplit(
     chords: [] as PredictedChord[],
     fusedFretRegions: [] as FretRegion[],
     fusedNotes: [] as PredictedNote[],
+    noteSets: [] as PredictedNoteSet[],
     onsetsMs: [] as number[],
+    rankedChords: [] as PredictedChordSet[],
   };
   const latencyByPath = new Map<string, number[]>();
   const perFixture: {
@@ -89,6 +95,12 @@ function evaluateSplit(
     );
     prediction.chords.push(
       ...fixturePrediction.chords.map((chord) => shiftInterval(chord, offsetMs)),
+    );
+    prediction.noteSets.push(
+      ...fixturePrediction.noteSets.map((noteSet) => shiftInterval(noteSet, offsetMs)),
+    );
+    prediction.rankedChords.push(
+      ...fixturePrediction.rankedChords.map((chord) => shiftInterval(chord, offsetMs)),
     );
     prediction.onsetsMs.push(...fixturePrediction.onsetsMs.map((onset) => onset + offsetMs));
     prediction.audioFretRegions.push(

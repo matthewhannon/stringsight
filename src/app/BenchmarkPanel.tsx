@@ -2,19 +2,29 @@ import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
 
 import { midiToNoteName, type AudioAnalysisController } from '../audio/analysis';
 import { encodeMonoPcm16Wav, type MicrophoneCapture } from '../audio/capture';
+import type { PolyphonicAnalysisController } from '../audio/polyphonic';
 import {
+  RECORDING_CHORD_OPTIONS,
+  createRecordedChordFixture,
   createRecordedFixture,
   type BenchmarkConditions,
   type RecordingFixtureOptions,
 } from '../evaluation';
 import { rackEmbeddedClassNames } from '../ui/rack';
-import { defaultAudioAnalysis, defaultMicrophoneCapture } from './audioCaptureController';
+import {
+  defaultAudioAnalysis,
+  defaultMicrophoneCapture,
+  defaultPolyphonicAnalysis,
+} from './audioCaptureController';
 
 type BenchmarkPanelProps = {
   analysis?: AudioAnalysisController;
   capture?: MicrophoneCapture;
   embedded?: boolean;
+  polyphonicAnalysis?: PolyphonicAnalysisController;
 };
+
+type BenchmarkMode = 'chords' | 'notes';
 
 const noteOptions = Array.from({ length: 49 }, (_, index) => {
   const midi = 40 + index;
@@ -42,9 +52,15 @@ function download(bytes: BlobPart, type: string, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-export function BenchmarkPanel({ analysis, capture, embedded = false }: BenchmarkPanelProps) {
+export function BenchmarkPanel({
+  analysis,
+  capture,
+  embedded = false,
+  polyphonicAnalysis,
+}: BenchmarkPanelProps) {
   const analysisController = analysis ?? defaultAudioAnalysis;
   const captureController = capture ?? defaultMicrophoneCapture;
+  const polyphonicController = polyphonicAnalysis ?? defaultPolyphonicAnalysis;
   const subscribeAnalysis = useCallback(
     (listener: () => void) => analysisController.subscribe(listener),
     [analysisController],
@@ -52,6 +68,10 @@ export function BenchmarkPanel({ analysis, capture, embedded = false }: Benchmar
   const subscribeCapture = useCallback(
     (listener: () => void) => captureController.subscribe(listener),
     [captureController],
+  );
+  const subscribePolyphonic = useCallback(
+    (listener: () => void) => polyphonicController.subscribe(listener),
+    [polyphonicController],
   );
   const analysisSnapshot = useSyncExternalStore(
     subscribeAnalysis,
@@ -63,7 +83,14 @@ export function BenchmarkPanel({ analysis, capture, embedded = false }: Benchmar
     () => captureController.currentSnapshot,
     () => captureController.currentSnapshot,
   );
+  const polyphonicSnapshot = useSyncExternalStore(
+    subscribePolyphonic,
+    () => polyphonicController.currentSnapshot,
+    () => polyphonicController.currentSnapshot,
+  );
+  const [benchmarkMode, setBenchmarkMode] = useState<BenchmarkMode>('notes');
   const [conditions, setConditions] = useState(defaultConditions);
+  const [reviewedChords, setReviewedChords] = useState<Record<string, string>>({});
   const [reviewedNotes, setReviewedNotes] = useState<Record<string, string>>({});
   const finalizedEvents = useMemo(
     () => analysisSnapshot.events.filter((event) => event.lifecycle === 'finalized'),
@@ -80,19 +107,39 @@ export function BenchmarkPanel({ analysis, capture, embedded = false }: Benchmar
       ),
     [finalizedEvents, reviewedNotes],
   );
+  const finalizedChordEvents = useMemo(
+    () => polyphonicSnapshot.chordEvents.filter((event) => event.lifecycle === 'finalized'),
+    [polyphonicSnapshot.chordEvents],
+  );
+  const chordReviewSelections = useMemo(
+    () =>
+      Object.fromEntries(
+        finalizedChordEvents.map((event) => [
+          event.id,
+          reviewedChords[event.id] ?? event.candidates[0]?.symbol ?? '',
+        ]),
+      ),
+    [finalizedChordEvents, reviewedChords],
+  );
 
   const recording = captureController.currentRecording;
   const ready = captureSnapshot.state === 'ready-to-replay' && recording !== null;
   const allReviewed =
-    finalizedEvents.length > 0 &&
-    finalizedEvents.every(
-      (event) => reviewSelections[event.id] !== undefined && reviewSelections[event.id] !== '',
-    );
+    benchmarkMode === 'notes'
+      ? finalizedEvents.length > 0 &&
+        finalizedEvents.every(
+          (event) => reviewSelections[event.id] !== undefined && reviewSelections[event.id] !== '',
+        )
+      : finalizedChordEvents.length > 0 &&
+        finalizedChordEvents.every(
+          (event) =>
+            chordReviewSelections[event.id] !== undefined && chordReviewSelections[event.id] !== '',
+        );
   const recordingTimestamp = recording === null ? null : new Date(recording.recordedAt);
   const baseName =
     recordingTimestamp === null
       ? 'stringsight-recording'
-      : `stringsight-real-${safeTimestamp(recordingTimestamp)}`;
+      : `stringsight-real-${benchmarkMode}-${safeTimestamp(recordingTimestamp)}`;
 
   const updateCondition = <Key extends keyof BenchmarkConditions>(
     key: Key,
@@ -107,15 +154,32 @@ export function BenchmarkPanel({ analysis, capture, embedded = false }: Benchmar
       license: 'private-evaluation-only',
       recordedAt: recording.recordedAt,
     };
-    const fixture = createRecordedFixture(
-      recording,
-      finalizedEvents,
-      finalizedEvents.map((event) => ({
-        eventId: event.id,
-        midi: reviewSelections[event.id] === 'exclude' ? null : Number(reviewSelections[event.id]),
-      })),
-      options,
-    );
+    const fixture =
+      benchmarkMode === 'notes'
+        ? createRecordedFixture(
+            recording,
+            finalizedEvents,
+            finalizedEvents.map((event) => ({
+              eventId: event.id,
+              midi:
+                reviewSelections[event.id] === 'exclude'
+                  ? null
+                  : Number(reviewSelections[event.id]),
+            })),
+            options,
+          )
+        : createRecordedChordFixture(
+            recording,
+            finalizedChordEvents,
+            finalizedChordEvents.map((event) => ({
+              eventId: event.id,
+              symbol:
+                chordReviewSelections[event.id] === 'exclude'
+                  ? null
+                  : (chordReviewSelections[event.id] ?? null),
+            })),
+            options,
+          );
     download(JSON.stringify(fixture, null, 2), 'application/json', `${baseName}.fixture.json`);
   };
 
@@ -132,7 +196,7 @@ export function BenchmarkPanel({ analysis, capture, embedded = false }: Benchmar
           <h2 id="benchmark-title">Turn a recording into trustworthy test data.</h2>
           <p>
             Record above, then use StringSight's best guesses as your labels. If a suggestion is
-            wrong, correct just that note before exporting.
+            wrong, correct just that note or chord before exporting.
           </p>
         </div>
       )}
@@ -141,16 +205,32 @@ export function BenchmarkPanel({ analysis, capture, embedded = false }: Benchmar
         <article
           className={`benchmark-protocol ${embedded ? rackEmbeddedClassNames.surface : ''}`.trim()}
         >
-          <span className="stage-status">First take · Open strings</span>
-          <h3>Play six clean notes with space between them.</h3>
-          <ol>
-            <li>Start the microphone and wait two seconds in silence.</li>
-            <li>Play E2, A2, D3, G3, B3, then E4.</li>
-            <li>
-              Let each note ring for about one second, with one second of silence between notes.
-            </li>
-            <li>Wait two seconds, stop, and scan the suggested labels below.</li>
-          </ol>
+          <span className="stage-status">
+            {benchmarkMode === 'notes' ? 'First take · Open strings' : 'Chord take · Open position'}
+          </span>
+          {benchmarkMode === 'notes' ? (
+            <>
+              <h3>Play six clean notes with space between them.</h3>
+              <ol>
+                <li>Start the microphone and wait two seconds in silence.</li>
+                <li>Play E2, A2, D3, G3, B3, then E4.</li>
+                <li>
+                  Let each note ring for about one second, with one second of silence between notes.
+                </li>
+                <li>Wait two seconds, stop, and scan the suggested labels below.</li>
+              </ol>
+            </>
+          ) : (
+            <>
+              <h3>Play four clean chords with space between them.</h3>
+              <ol>
+                <li>Start the microphone and wait two seconds in silence.</li>
+                <li>Strum C, A minor, G, then E minor in open position.</li>
+                <li>Let each chord ring for two seconds, with two seconds of silence between.</li>
+                <li>Wait two seconds, stop, then correct any chord labels below.</li>
+              </ol>
+            </>
+          )}
           <p>Use normal playing volume. Do not adjust your gain between benchmark takes.</p>
         </article>
 
@@ -158,6 +238,16 @@ export function BenchmarkPanel({ analysis, capture, embedded = false }: Benchmar
           className={`benchmark-conditions ${embedded ? rackEmbeddedClassNames.surface : ''}`.trim()}
           aria-label="Recording conditions"
         >
+          <label>
+            Fixture type
+            <select
+              onChange={(event) => setBenchmarkMode(event.target.value as BenchmarkMode)}
+              value={benchmarkMode}
+            >
+              <option value="notes">Single notes</option>
+              <option value="chords">Chord sequence</option>
+            </select>
+          </label>
           <label>
             Guitar
             <select
@@ -223,53 +313,98 @@ export function BenchmarkPanel({ analysis, capture, embedded = false }: Benchmar
       <div className={`benchmark-review ${embedded ? rackEmbeddedClassNames.surface : ''}`.trim()}>
         <div>
           <h3>Suggested labels</h3>
-          <span>{finalizedEvents.length} finalized events</span>
+          <span>
+            {benchmarkMode === 'notes' ? finalizedEvents.length : finalizedChordEvents.length}{' '}
+            finalized events
+          </span>
         </div>
         {!ready ? (
           <p>Complete and stop a microphone recording to review and export it.</p>
-        ) : finalizedEvents.length === 0 ? (
+        ) : benchmarkMode === 'notes' && finalizedEvents.length === 0 ? (
           <p>
             No finalized notes were detected. Replay once, or make another recording with a stronger
             signal.
           </p>
+        ) : benchmarkMode === 'chords' && finalizedChordEvents.length === 0 ? (
+          <p>
+            No finalized chords were detected. Replay once, or make another recording with clearer
+            chord changes.
+          </p>
         ) : (
           <>
             <p className="benchmark-review-guidance">
-              Best guesses are ready to export. Change only the notes StringSight got wrong.
+              Best guesses are ready to export. Change only the{' '}
+              {benchmarkMode === 'notes' ? 'notes' : 'chords'} StringSight got wrong.
             </p>
-            <ol>
-              {finalizedEvents.map((event, index) => {
-                const guess = event.candidates[0];
-                return (
-                  <li key={event.id}>
-                    <span>#{String(index + 1)}</span>
-                    <span>{(event.time.startMs / 1_000).toFixed(2)}s</span>
-                    <span>StringSight: {guess?.noteName ?? 'uncertain'}</span>
-                    <label>
-                      What you played
-                      <select
-                        aria-label={`True note for event ${String(index + 1)}`}
-                        onChange={(input) =>
-                          setReviewedNotes((current) => ({
-                            ...current,
-                            [event.id]: input.target.value,
-                          }))
-                        }
-                        value={reviewSelections[event.id] ?? ''}
-                      >
-                        <option value="">Choose true note</option>
-                        {noteOptions.map((note) => (
-                          <option key={note.midi} value={note.midi}>
-                            {note.noteName}
-                          </option>
-                        ))}
-                        <option value="exclude">Exclude false event</option>
-                      </select>
-                    </label>
-                  </li>
-                );
-              })}
-            </ol>
+            {benchmarkMode === 'notes' ? (
+              <ol>
+                {finalizedEvents.map((event, index) => {
+                  const guess = event.candidates[0];
+                  return (
+                    <li key={event.id}>
+                      <span>#{String(index + 1)}</span>
+                      <span>{(event.time.startMs / 1_000).toFixed(2)}s</span>
+                      <span>StringSight: {guess?.noteName ?? 'uncertain'}</span>
+                      <label>
+                        What you played
+                        <select
+                          aria-label={`True note for event ${String(index + 1)}`}
+                          onChange={(input) =>
+                            setReviewedNotes((current) => ({
+                              ...current,
+                              [event.id]: input.target.value,
+                            }))
+                          }
+                          value={reviewSelections[event.id] ?? ''}
+                        >
+                          <option value="">Choose true note</option>
+                          {noteOptions.map((note) => (
+                            <option key={note.midi} value={note.midi}>
+                              {note.noteName}
+                            </option>
+                          ))}
+                          <option value="exclude">Exclude false event</option>
+                        </select>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : (
+              <ol>
+                {finalizedChordEvents.map((event, index) => {
+                  const guess = event.candidates[0];
+                  return (
+                    <li key={event.id}>
+                      <span>#{String(index + 1)}</span>
+                      <span>{(event.time.startMs / 1_000).toFixed(2)}s</span>
+                      <span>StringSight: {guess?.symbol ?? 'uncertain'}</span>
+                      <label>
+                        What you played
+                        <select
+                          aria-label={`True chord for event ${String(index + 1)}`}
+                          onChange={(input) =>
+                            setReviewedChords((current) => ({
+                              ...current,
+                              [event.id]: input.target.value,
+                            }))
+                          }
+                          value={chordReviewSelections[event.id] ?? ''}
+                        >
+                          <option value="">Choose true chord</option>
+                          {RECORDING_CHORD_OPTIONS.map((symbol) => (
+                            <option key={symbol} value={symbol}>
+                              {symbol}
+                            </option>
+                          ))}
+                          <option value="exclude">Exclude false event</option>
+                        </select>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
           </>
         )}
         <div className="benchmark-actions">

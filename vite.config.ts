@@ -10,7 +10,12 @@ export default defineConfig({
   },
   test: {
     coverage: {
-      exclude: ['src/main.tsx', 'src/test/**'],
+      exclude: [
+        'src/main.tsx',
+        'src/test/**',
+        // Browser/WASM integration is exercised by Playwright against the real pinned model.
+        'src/audio/polyphonic/basic-pitch-model.ts',
+      ],
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],
       thresholds: {

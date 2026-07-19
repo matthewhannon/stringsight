@@ -52,6 +52,13 @@
           "recall": 0
         },
         "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": -0.72 },
+        "midiSets": {
+          "correctTop1": 0,
+          "correctTop3": 0,
+          "top1Accuracy": 0,
+          "top3Recall": 0,
+          "total": 2
+        },
         "onsets": {
           "f1": 1,
           "falseNegatives": 0,
@@ -60,6 +67,20 @@
           "meanAbsoluteErrorMs": 1.3636363636363635,
           "precision": 1,
           "recall": 1
+        },
+        "pitchClassSets": {
+          "correctTop1": 0,
+          "correctTop3": 0,
+          "top1Accuracy": 0,
+          "top3Recall": 0,
+          "total": 2
+        },
+        "rankedChords": {
+          "correctTop1": 0,
+          "correctTop3": 0,
+          "top1Accuracy": 0,
+          "top3Recall": 0,
+          "total": 2
         }
       },
       "perFixture": [
@@ -102,6 +123,13 @@
               "recall": 0
             },
             "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": -1 },
+            "midiSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
+            },
             "onsets": {
               "f1": 1,
               "falseNegatives": 0,
@@ -110,6 +138,20 @@
               "meanAbsoluteErrorMs": 0,
               "precision": 1,
               "recall": 1
+            },
+            "pitchClassSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
+            },
+            "rankedChords": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
             }
           },
           "predictionPresent": true
@@ -153,6 +195,13 @@
               "recall": 0
             },
             "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": 0 },
+            "midiSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 1
+            },
             "onsets": {
               "f1": 1,
               "falseNegatives": 0,
@@ -161,6 +210,20 @@
               "meanAbsoluteErrorMs": 2.1600499167107046e-12,
               "precision": 1,
               "recall": 1
+            },
+            "pitchClassSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 1
+            },
+            "rankedChords": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 1
             }
           },
           "predictionPresent": true
@@ -204,6 +267,13 @@
               "recall": 0
             },
             "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": -1 },
+            "midiSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
+            },
             "onsets": {
               "f1": 1,
               "falseNegatives": 0,
@@ -212,6 +282,20 @@
               "meanAbsoluteErrorMs": 2,
               "precision": 1,
               "recall": 1
+            },
+            "pitchClassSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
+            },
+            "rankedChords": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
             }
           },
           "predictionPresent": true
@@ -255,6 +339,13 @@
               "recall": 0
             },
             "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": 0 },
+            "midiSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 1
+            },
             "onsets": {
               "f1": 1,
               "falseNegatives": 0,
@@ -263,6 +354,20 @@
               "meanAbsoluteErrorMs": 4.99999999999784,
               "precision": 1,
               "recall": 1
+            },
+            "pitchClassSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 1
+            },
+            "rankedChords": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 1
             }
           },
           "predictionPresent": true
@@ -306,6 +411,13 @@
               "recall": 0
             },
             "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": -1 },
+            "midiSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
+            },
             "onsets": {
               "f1": 1,
               "falseNegatives": 0,
@@ -314,6 +426,20 @@
               "meanAbsoluteErrorMs": 0,
               "precision": 1,
               "recall": 1
+            },
+            "pitchClassSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
+            },
+            "rankedChords": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
             }
           },
           "predictionPresent": true
@@ -363,6 +489,13 @@
           "recall": 0
         },
         "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": -0.8 },
+        "midiSets": {
+          "correctTop1": 0,
+          "correctTop3": 0,
+          "top1Accuracy": 0,
+          "top3Recall": 0,
+          "total": 1
+        },
         "onsets": {
           "f1": 1,
           "falseNegatives": 0,
@@ -371,6 +504,20 @@
           "meanAbsoluteErrorMs": 1.4285714285714286,
           "precision": 1,
           "recall": 1
+        },
+        "pitchClassSets": {
+          "correctTop1": 0,
+          "correctTop3": 0,
+          "top1Accuracy": 0,
+          "top3Recall": 0,
+          "total": 1
+        },
+        "rankedChords": {
+          "correctTop1": 0,
+          "correctTop3": 0,
+          "top1Accuracy": 0,
+          "top3Recall": 0,
+          "total": 1
         }
       },
       "perFixture": [
@@ -413,6 +560,13 @@
               "recall": 0
             },
             "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": -1 },
+            "midiSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
+            },
             "onsets": {
               "f1": 1,
               "falseNegatives": 0,
@@ -421,6 +575,20 @@
               "meanAbsoluteErrorMs": 0,
               "precision": 1,
               "recall": 1
+            },
+            "pitchClassSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
+            },
+            "rankedChords": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
             }
           },
           "predictionPresent": true
@@ -464,6 +632,13 @@
               "recall": 0
             },
             "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": 0 },
+            "midiSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 1
+            },
             "onsets": {
               "f1": 1,
               "falseNegatives": 0,
@@ -472,6 +647,20 @@
               "meanAbsoluteErrorMs": 2.1600499167107046e-12,
               "precision": 1,
               "recall": 1
+            },
+            "pitchClassSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 1
+            },
+            "rankedChords": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 1
             }
           },
           "predictionPresent": true
@@ -515,6 +704,13 @@
               "recall": 0
             },
             "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": -1 },
+            "midiSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
+            },
             "onsets": {
               "f1": 1,
               "falseNegatives": 0,
@@ -523,6 +719,20 @@
               "meanAbsoluteErrorMs": 2,
               "precision": 1,
               "recall": 1
+            },
+            "pitchClassSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
+            },
+            "rankedChords": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
             }
           },
           "predictionPresent": true
@@ -572,6 +782,13 @@
           "recall": 0
         },
         "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": -0.6 },
+        "midiSets": {
+          "correctTop1": 0,
+          "correctTop3": 0,
+          "top1Accuracy": 0,
+          "top3Recall": 0,
+          "total": 1
+        },
         "onsets": {
           "f1": 1,
           "falseNegatives": 0,
@@ -580,6 +797,20 @@
           "meanAbsoluteErrorMs": 1.24999999999946,
           "precision": 1,
           "recall": 1
+        },
+        "pitchClassSets": {
+          "correctTop1": 0,
+          "correctTop3": 0,
+          "top1Accuracy": 0,
+          "top3Recall": 0,
+          "total": 1
+        },
+        "rankedChords": {
+          "correctTop1": 0,
+          "correctTop3": 0,
+          "top1Accuracy": 0,
+          "top3Recall": 0,
+          "total": 1
         }
       },
       "perFixture": [
@@ -622,6 +853,13 @@
               "recall": 0
             },
             "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": 0 },
+            "midiSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 1
+            },
             "onsets": {
               "f1": 1,
               "falseNegatives": 0,
@@ -630,6 +868,20 @@
               "meanAbsoluteErrorMs": 4.99999999999784,
               "precision": 1,
               "recall": 1
+            },
+            "pitchClassSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 1
+            },
+            "rankedChords": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 1
             }
           },
           "predictionPresent": true
@@ -673,6 +925,13 @@
               "recall": 0
             },
             "fusionImprovement": { "fretMidpointErrorReduction": null, "noteF1Delta": -1 },
+            "midiSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
+            },
             "onsets": {
               "f1": 1,
               "falseNegatives": 0,
@@ -681,6 +940,20 @@
               "meanAbsoluteErrorMs": 0,
               "precision": 1,
               "recall": 1
+            },
+            "pitchClassSets": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
+            },
+            "rankedChords": {
+              "correctTop1": 0,
+              "correctTop3": 0,
+              "top1Accuracy": 0,
+              "top3Recall": 0,
+              "total": 0
             }
           },
           "predictionPresent": true
