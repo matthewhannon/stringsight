@@ -114,12 +114,31 @@ describe('prediction contracts', () => {
       id: 'chord-1',
       kind: 'chord',
       lifecycle: 'finalized',
+      observedPitchClasses: [
+        { pitchClass: 'A', weight: 0.9 },
+        { pitchClass: 'C', weight: 0.7 },
+        { pitchClass: 'E', weight: 0.8 },
+      ],
       provenance,
       schemaVersion: CONTRACT_SCHEMA_VERSION,
       time: { endMs: 900, startMs: 200 },
     });
 
     expect(event.candidates).toMatchObject([{ symbol: 'Am' }]);
+    expect(event.observedPitchClasses).toEqual([
+      { pitchClass: 'A', weight: 0.9 },
+      { pitchClass: 'C', weight: 0.7 },
+      { pitchClass: 'E', weight: 0.8 },
+    ]);
+    expect(
+      ChordEventSchema.safeParse({
+        ...event,
+        observedPitchClasses: [
+          { pitchClass: 'A', weight: 0.9 },
+          { pitchClass: 'A', weight: 0.5 },
+        ],
+      }).success,
+    ).toBe(false);
   });
 
   it('parses ranked polyphonic note sets and requires ordered unique MIDI notes', () => {

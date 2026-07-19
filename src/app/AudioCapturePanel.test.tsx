@@ -106,6 +106,47 @@ describe('AudioCapturePanel', () => {
     expect(screen.getByRole('button', { name: 'Stop' })).toBeEnabled();
   });
 
+  it('exposes pause, resume, and stop controls for an active session', async () => {
+    const user = userEvent.setup();
+    const recordingCapture = captureWithSnapshot({
+      ...InitialCaptureSnapshot,
+      state: 'recording',
+    });
+    vi.spyOn(recordingCapture, 'listInputDevices').mockResolvedValue([]);
+    const pause = vi.spyOn(recordingCapture, 'pause').mockResolvedValue();
+    const recordingView = render(<AudioCapturePanel capture={recordingCapture} />);
+
+    await user.click(screen.getByRole('button', { name: 'Pause' }));
+    expect(pause).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeEnabled();
+    recordingView.unmount();
+
+    const pausedCapture = captureWithSnapshot({ ...InitialCaptureSnapshot, state: 'paused' });
+    vi.spyOn(pausedCapture, 'listInputDevices').mockResolvedValue([]);
+    const resume = vi.spyOn(pausedCapture, 'resume').mockResolvedValue();
+    const stop = vi.spyOn(pausedCapture, 'stop').mockResolvedValue(
+      CapturedRecordingSchema.parse({
+        channelCount: 1,
+        data: new Float32Array(),
+        discontinuityCount: 0,
+        durationMs: 0,
+        frameCount: 0,
+        recordedAt: '2026-07-18T00:00:00.000Z',
+        sampleRate: 48_000,
+        schemaVersion: 1,
+        startedAtMs: 0,
+      }),
+    );
+    render(<AudioCapturePanel capture={pausedCapture} />);
+
+    expect(screen.getByText('Paused')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Resume' }));
+    expect(resume).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(stop).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Start microphone' })).toBeDisabled();
+  });
+
   it('runs a known-level software meter check without opening the microphone', async () => {
     const user = userEvent.setup();
     const capture = captureWithSnapshot({

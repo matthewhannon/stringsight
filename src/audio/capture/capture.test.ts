@@ -83,6 +83,11 @@ class FakeAudioContext {
     this.state = 'running';
     return Promise.resolve();
   }
+
+  suspend(): Promise<void> {
+    this.state = 'suspended';
+    return Promise.resolve();
+  }
 }
 
 type PortMessageHandler = ((event: MessageEvent<unknown>) => void) | null;
@@ -556,6 +561,25 @@ describe('microphone capture orchestration', () => {
     });
   });
 
+  it('pauses, resumes, and safely finalizes a paused recording', async () => {
+    const capture = new MicrophoneCapture();
+    await capture.start();
+
+    await capture.pause();
+    expect(capture.currentSnapshot.state).toBe('paused');
+    await expect(capture.pause()).rejects.toThrow('Only an active recording');
+
+    await capture.resume();
+    expect(capture.currentSnapshot.state).toBe('recording');
+    await expect(capture.resume()).rejects.toThrow('Only a paused recording');
+
+    await capture.pause();
+    const recording = await capture.stop();
+    expect(recording.frameCount).toBe(0);
+    expect(capture.currentSnapshot.state).toBe('ready-to-replay');
+    await capture.dispose();
+  });
+
   it.each([
     ['NotFoundError', 'microphone-unavailable', 'select-device'],
     ['NotReadableError', 'microphone-not-readable', 'retry'],
@@ -571,6 +595,8 @@ describe('microphone capture orchestration', () => {
     const capture = new MicrophoneCapture();
     await expect(capture.stop()).rejects.toThrow('No active recording');
     await expect(capture.replay()).rejects.toThrow('No recording');
+    await expect(capture.pause()).rejects.toThrow('Only an active recording');
+    await expect(capture.resume()).rejects.toThrow('Only a paused recording');
     capture.stopReplay();
   });
 

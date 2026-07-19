@@ -17,6 +17,7 @@ export type AudioAnalysisSnapshot = {
   inputSampleRate: number | null;
   onsets: readonly OnsetObservation[];
   processingLatencyMs: number;
+  runComplete: boolean;
   runId: string | null;
   state: AnalysisState;
 };
@@ -31,6 +32,7 @@ export const InitialAudioAnalysisSnapshot: AudioAnalysisSnapshot = {
   inputSampleRate: null,
   onsets: [],
   processingLatencyMs: 0,
+  runComplete: false,
   runId: null,
   state: 'silence',
 };
@@ -156,6 +158,10 @@ export class AudioAnalysisController {
     const message = parsed.data;
     if (this.snapshot.runId === null || message.runId !== this.snapshot.runId) return;
     if (message.type === 'ready') return;
+    if (message.type === 'complete') {
+      this.update({ runComplete: true });
+      return;
+    }
     if (message.type === 'failure') {
       this.update({ error: message.message });
       return;

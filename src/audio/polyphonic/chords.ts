@@ -28,6 +28,8 @@ type ChordTemplateObservation = ChromaObservation & {
   noteMidiRange?: { max: number; min: number };
 };
 
+type ScoredChordCandidate = Omit<ChordCandidate, 'confidence' | 'rank'>;
+
 const CHORD_TEMPLATES: readonly ChordTemplate[] = [
   { intervals: [0, 4, 7], quality: 'major', suffix: '', weights: [1, 0.95, 0.82] },
   { intervals: [0, 3, 7], quality: 'minor', suffix: 'm', weights: [1, 0.95, 0.82] },
@@ -54,6 +56,34 @@ const CHORD_TEMPLATES: readonly ChordTemplate[] = [
   { intervals: [0, 3, 6], quality: 'diminished', suffix: 'dim', weights: [1, 0.95, 0.85] },
   { intervals: [0, 7], quality: 'power', suffix: '5', weights: [1, 0.9] },
 ];
+
+export type ChordTemplateCatalogEntry = {
+  readonly intervals: readonly number[];
+  readonly pitchClasses: readonly PitchClass[];
+  readonly quality: ChordQuality;
+  readonly root: PitchClass;
+  readonly rootIndex: number;
+  readonly suffix: string;
+  readonly symbol: string;
+  readonly weights: readonly number[];
+};
+
+/** Stable score-vector layout shared by retained acoustic hop observations. */
+export const CHORD_TEMPLATE_CATALOG: readonly ChordTemplateCatalogEntry[] = CHORD_TEMPLATES.flatMap(
+  (template) =>
+    PITCH_CLASSES.map((root, rootIndex) => ({
+      intervals: template.intervals,
+      pitchClasses: template.intervals.map(
+        (interval) => PITCH_CLASSES[(rootIndex + interval) % PITCH_CLASSES.length] ?? 'C',
+      ),
+      quality: template.quality,
+      root,
+      rootIndex,
+      suffix: template.suffix,
+      symbol: `${root}${template.suffix}`,
+      weights: template.weights,
+    })),
+);
 
 const clampUnit = (value: number): number => Math.max(0, Math.min(1, value));
 const ROOT_EVIDENCE_WEIGHT = 0.1;
@@ -93,6 +123,45 @@ const cosineSimilarity = (left: readonly number[], right: readonly number[]): nu
   return leftSquare === 0 || rightSquare === 0 ? 0 : dot / Math.sqrt(leftSquare * rightSquare);
 };
 
+const rankScoredChordCandidates = (
+  candidates: readonly ScoredChordCandidate[],
+  candidateLimit: number,
+): ChordCandidate[] => {
+  const scored = [...candidates].sort((left, right) => right.score - left.score);
+  const strongestScore = scored[0]?.score ?? 0;
+  const nextScore = scored[1]?.score ?? 0;
+  const strongestMargin = Math.max(0, strongestScore - nextScore);
+  const strongestConfidence =
+    clampUnit((strongestScore - 0.35) / 0.65) * (0.72 + Math.min(0.28, strongestMargin * 3));
+  return scored.slice(0, Math.max(1, candidateLimit)).map((candidate, index) => {
+    const scoreGap = Math.max(0, strongestScore - candidate.score);
+    const candidateConfidence =
+      index === 0 ? strongestConfidence : strongestConfidence * Math.exp(-4 * scoreGap);
+    return {
+      ...candidate,
+      confidence: confidence(clampUnit(candidateConfidence)),
+      rank: index + 1,
+    };
+  });
+};
+
+export function rerankChordCandidates(
+  candidates: readonly ChordCandidate[],
+  candidateLimit = candidates.length,
+): ChordCandidate[] {
+  return rankScoredChordCandidates(
+    candidates.map((candidate) => ({
+      ...(candidate.bass === undefined ? {} : { bass: candidate.bass }),
+      pitchClasses: candidate.pitchClasses,
+      quality: candidate.quality,
+      root: candidate.root,
+      score: candidate.score,
+      symbol: candidate.symbol,
+    })),
+    candidateLimit,
+  );
+}
+
 const lowRegisterShare = (
   observation: ChordTemplateObservation,
   pitchClassIndexes: readonly number[],
@@ -118,15 +187,12 @@ const lowRegisterShare = (
   return totalActivation <= Number.EPSILON ? null : lowActivation / totalActivation;
 };
 
-export function matchChordTemplates(
-  observation: ChordTemplateObservation,
-  candidateLimit = 5,
-): ChordCandidate[] {
+export function scoreChordTemplates(observation: ChordTemplateObservation): Float32Array {
   const bassIndex = strongestPitchClass(observation.bass);
-  const scored = CHORD_TEMPLATES.flatMap((template) =>
-    PITCH_CLASSES.map((root, rootIndex) => {
+  return Float32Array.from(
+    CHORD_TEMPLATE_CATALOG.map((template) => {
       const pitchClassIndexes = template.intervals.map(
-        (interval) => (rootIndex + interval) % PITCH_CLASSES.length,
+        (interval) => (template.rootIndex + interval) % PITCH_CLASSES.length,
       );
       const templateVector = Array.from({ length: PITCH_CLASSES.length }, () => 0);
       pitchClassIndexes.forEach((pitchClass, index) => {
@@ -137,14 +203,14 @@ export function matchChordTemplates(
         (sum, pitchClassIndex) => sum + (observation.values[pitchClassIndex] ?? 0),
         0,
       );
-      const rootEvidence = observation.values[rootIndex] ?? 0;
-      const rootBassEvidence = observation.bass[rootIndex] ?? 0;
-      const bassBonus = bassIndex === rootIndex ? STRONGEST_ROOT_BASS_BONUS : 0;
+      const rootEvidence = observation.values[template.rootIndex] ?? 0;
+      const rootBassEvidence = observation.bass[template.rootIndex] ?? 0;
+      const bassBonus = bassIndex === template.rootIndex ? STRONGEST_ROOT_BASS_BONUS : 0;
       const isSeventh = template.intervals.length === 4;
       const seventhInterval = template.intervals[3];
       const seventhEvidence =
         isSeventh && seventhInterval !== undefined
-          ? (observation.values[(rootIndex + seventhInterval) % PITCH_CLASSES.length] ?? 0)
+          ? (observation.values[(template.rootIndex + seventhInterval) % PITCH_CLASSES.length] ?? 0)
           : 0;
       const seventhToRootRatio = seventhEvidence / Math.max(0.05, rootEvidence);
       const weakSeventhPenalty = isSeventh
@@ -175,38 +241,40 @@ export function matchChordTemplates(
         complexityPenalty -
         weakSeventhPenalty -
         registerMismatchPenalty;
-      return {
-        bassIndex,
-        pitchClassIndexes,
-        quality: template.quality,
-        root,
-        score,
-        suffix: template.suffix,
-      };
+      return score;
     }),
   );
-  scored.sort((left, right) => right.score - left.score);
-  const strongestScore = scored[0]?.score ?? 0;
-  const nextScore = scored[1]?.score ?? 0;
-  const strongestMargin = Math.max(0, strongestScore - nextScore);
-  const strongestConfidence =
-    clampUnit((strongestScore - 0.35) / 0.65) * (0.72 + Math.min(0.28, strongestMargin * 3));
+}
 
-  return scored.slice(0, Math.max(1, candidateLimit)).map((candidate, index) => {
-    const scoreGap = Math.max(0, strongestScore - candidate.score);
-    const candidateConfidence =
-      index === 0 ? strongestConfidence : strongestConfidence * Math.exp(-4 * scoreGap);
-    return {
-      ...(candidate.bassIndex === null ? {} : { bass: PITCH_CLASSES[candidate.bassIndex] }),
-      confidence: confidence(clampUnit(candidateConfidence)),
-      pitchClasses: candidate.pitchClassIndexes.map(
-        (pitchClass) => PITCH_CLASSES[pitchClass] ?? 'C',
-      ),
-      quality: candidate.quality,
-      rank: index + 1,
-      root: candidate.root,
-      score: candidate.score,
-      symbol: `${candidate.root}${candidate.suffix}`,
-    };
-  });
+export function materializeChordCandidates(
+  scores: ArrayLike<number>,
+  bass: readonly number[],
+  candidateLimit = 5,
+): ChordCandidate[] {
+  if (scores.length !== CHORD_TEMPLATE_CATALOG.length) {
+    throw new RangeError('Chord template score vector does not match the stable catalog.');
+  }
+  const bassIndex = strongestPitchClass(bass);
+  return rankScoredChordCandidates(
+    CHORD_TEMPLATE_CATALOG.map((template, index) => ({
+      ...(bassIndex === null ? {} : { bass: PITCH_CLASSES[bassIndex] }),
+      pitchClasses: [...template.pitchClasses],
+      quality: template.quality,
+      root: template.root,
+      score: scores[index] ?? 0,
+      symbol: template.symbol,
+    })),
+    candidateLimit,
+  );
+}
+
+export function matchChordTemplates(
+  observation: ChordTemplateObservation,
+  candidateLimit = 5,
+): ChordCandidate[] {
+  return materializeChordCandidates(
+    scoreChordTemplates(observation),
+    observation.bass,
+    candidateLimit,
+  );
 }

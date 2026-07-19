@@ -91,15 +91,16 @@ type PolyphonicBrowserModule = {
     push(
       samples: Float32Array,
       startMs: number,
-    ): { events: BrowserChordEvent[]; sourceTimestampMs: number };
+    ): { events: BrowserChordEvent[]; observations: object[]; sourceTimestampMs: number };
   };
   basicPitchFrameToMs(frame: number): number;
   basicPitchNotesToNoteSetEvents(
     notes: readonly DecodedBasicPitchNote[],
     runId: string,
   ): BrowserNoteSetEvent[];
-  fuseAcousticAndModelChordEvents(
+  fuseAcousticHopAndModelChordEvents(
     noteSets: readonly BrowserNoteSetEvent[],
+    acousticHops: readonly object[],
     acousticEvents: readonly BrowserChordEvent[],
     runId: string,
     profile: 'accurate',
@@ -158,6 +159,7 @@ test('measures finalized polyphonic accuracy and performance with the pinned bro
           polyphonic.BASIC_PITCH_SAMPLE_RATE,
         );
         const acousticEvents = new Map<string, BrowserChordEvent>();
+        const acousticHops: object[] = [];
         const modelChunks: Float32Array[] = [];
         const chunkFrames = 2_048;
         const acousticStartedAt = performance.now();
@@ -169,6 +171,7 @@ test('measures finalized polyphonic accuracy and performance with the pinned bro
           );
           const result = analyzer.push(samples, (startFrame / decoded.sampleRate) * 1_000);
           result.events.forEach((event) => acousticEvents.set(event.id, event));
+          acousticHops.push(...result.observations);
           lastSourceTimestampMs = result.sourceTimestampMs;
           const modelChunk = modelResampler.push(samples);
           if (modelChunk.samples.length > 0) modelChunks.push(modelChunk.samples);
@@ -202,8 +205,9 @@ test('measures finalized polyphonic accuracy and performance with the pinned bro
           analysis.notes,
           `browser-evaluation-${fixture.fixtureId}`,
         );
-        const chordEvents = polyphonic.fuseAcousticAndModelChordEvents(
+        const chordEvents = polyphonic.fuseAcousticHopAndModelChordEvents(
           noteSetEvents,
+          acousticHops,
           [...acousticEvents.values()],
           `browser-evaluation-${fixture.fixtureId}`,
           'accurate',

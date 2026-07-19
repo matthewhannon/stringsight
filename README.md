@@ -2,8 +2,9 @@
 
 StringSight is a local-first guitar-analysis web application. The current working product captures
 guitar audio, detects monophonic notes, produces live ranked chord candidates from independent
-chroma evidence, and finalizes polyphonic note sets locally with Spotify Basic Pitch. Planned
-modules will add fretboard vision, scales, likely playing positions, and multimodal fusion.
+chroma evidence, finalizes polyphonic note sets locally with Spotify Basic Pitch, and derives ranked
+chord, scale, and key interpretations without changing detector output. Planned modules will add
+fretboard vision, likely playing positions, and multimodal fusion.
 
 The project is being built for OpenAI Build Week. See the
 [current project status](docs/project-status.md), [build checklist](BUILD_CHECKLIST.md), and
@@ -15,21 +16,24 @@ first-release contract.
 Working now:
 
 - Device-neutral microphone and audio-interface selection
-- Local PCM capture, calibrated input metering, recording, and replay
+- Local PCM capture, calibrated input metering, pause/resume, recording, and replay
 - Local WAV import through the same replay and analysis interfaces
 - Monophonic onset and pitch detection with confidence and ranked alternatives
 - Dedicated-worker chroma analysis with ranked provisional chord candidates
 - Worker-isolated Basic Pitch transcription with WASM-first execution and CPU fallback
+- Run-level duration-aware chord finalization that can revise and merge provisional transitions
 - Finalized ranked note sets plus reconciled chord timelines
+- Completed-session key and scale alternatives with explicit ambiguity
 - Event timelines and reviewed private note/chord evaluation-fixture export
 - A reusable realistic rack interface for product modules
 
 Planned next:
 
-- Private real-guitar chord evaluation and performance measurement
+- Continuous-transition guitar verification and held-out expansion
+- Append-only event correction, local persistence, and validated export
 - Optional fretboard and hand-position vision
 - Guitar-aware audio and vision fusion
-- Scale, chord-voicing, and likely string/fret interpretation
+- Chord-voicing and likely string/fret interpretation
 
 ## Requirements
 

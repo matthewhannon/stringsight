@@ -14,7 +14,8 @@ import { AudioAnalysisPanel } from './AudioAnalysisPanel';
 import { AudioCapturePanel } from './AudioCapturePanel';
 import { BenchmarkPanel } from './BenchmarkPanel';
 import { PolyphonicAnalysisPanel } from './PolyphonicAnalysisPanel';
-import { defaultMicrophoneCapture } from './audioCaptureController';
+import { defaultAudioSession } from './audioCaptureController';
+import { summarizeInterpretations } from './theoryPresentation';
 
 type EmbeddedToolProps = {
   embedded?: boolean;
@@ -71,6 +72,7 @@ const workspaceModules: readonly WorkspaceModuleDefinition[] = [
 const sessionStateLabels: Record<CaptureSnapshot['state'], string> = {
   failed: 'Needs attention',
   idle: 'Ready',
+  paused: 'Paused',
   'ready-to-replay': 'Take ready',
   recording: 'Recording',
   replaying: 'Replaying',
@@ -82,6 +84,7 @@ const sessionStateLabels: Record<CaptureSnapshot['state'], string> = {
 
 const sessionStatusTone = (state: CaptureSnapshot['state']): RackStatusTone => {
   if (state === 'recording' || state === 'replaying') return 'active';
+  if (state === 'paused') return 'warning';
   if (state === 'failed' || state === 'unsupported') return 'danger';
   if (state === 'requesting-permission' || state === 'starting' || state === 'stopping') {
     return 'warning';
@@ -98,20 +101,36 @@ const formatSessionDuration = (milliseconds: number): string => {
 
 function SessionModule() {
   const subscribe = useCallback(
-    (listener: () => void) => defaultMicrophoneCapture.subscribe(listener),
+    (listener: () => void) => defaultAudioSession.subscribe(listener),
     [],
   );
-  const getSnapshot = useCallback(() => defaultMicrophoneCapture.currentSnapshot, []);
+  const getSnapshot = useCallback(() => defaultAudioSession.currentSnapshot, []);
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  const sampleRate = snapshot.device?.sampleRate;
+  const sampleRate = snapshot.capture.device?.sampleRate;
+  const interpretationPending = snapshot.session !== null && snapshot.session.status !== 'complete';
+  const key = summarizeInterpretations(
+    snapshot.keyInterpretations.map(({ key: interpretation, score }) => ({
+      name: interpretation.name,
+      score,
+    })),
+  );
+  const scale = summarizeInterpretations(
+    snapshot.scaleInterpretations.map(({ scale: interpretation, score }) => ({
+      name: interpretation.name,
+      score,
+    })),
+  );
+  const audioEvents = snapshot.session?.events.audio ?? [];
+  const noteCount = audioEvents.filter(({ kind }) => kind === 'note').length;
+  const chordCount = audioEvents.filter(({ kind }) => kind === 'chord').length;
 
   return (
     <RackModule
       description="Current browser session and processing boundary."
       moduleId="session"
       size="compact"
-      status={sessionStateLabels[snapshot.state]}
-      statusTone={sessionStatusTone(snapshot.state)}
+      status={sessionStateLabels[snapshot.capture.state]}
+      statusTone={sessionStatusTone(snapshot.capture.state)}
       title="Session control"
       unit="SS · 00"
     >
@@ -126,7 +145,17 @@ function SessionModule() {
           }
         />
         <RackValue label="ANALYZER" value={`MONO v${MONOPHONIC_ANALYZER_VERSION}`} />
-        <RackValue label="SESSION" value={formatSessionDuration(snapshot.elapsedMs)} />
+        <RackValue label="SESSION" value={formatSessionDuration(snapshot.capture.elapsedMs)} />
+        <RackValue
+          label={key.ambiguous ? 'KEY · AMBIG' : 'KEY'}
+          value={interpretationPending ? 'AFTER STOP' : key.value}
+        />
+        <RackValue
+          label={scale.ambiguous ? 'SCALE · AMBIG' : 'SCALE'}
+          value={interpretationPending ? 'AFTER STOP' : scale.value}
+        />
+        <RackValue label="NOTES" value={String(noteCount).padStart(2, '0')} />
+        <RackValue label="CHORDS" value={String(chordCount).padStart(2, '0')} />
       </div>
     </RackModule>
   );

@@ -5,6 +5,8 @@ import {
   StreamingProvisionalChordAnalyzer,
   computeChroma,
   matchChordTemplates,
+  materializeChordCandidates,
+  scoreChordTemplates,
 } from './index';
 import { WORKER_PROTOCOL_VERSION } from '../../shared';
 
@@ -130,6 +132,17 @@ describe('chord template matching', () => {
     });
   });
 
+  it('materializes compact template scores without changing candidate ordering', () => {
+    const chroma = computeChroma(chordSignal([43, 47, 50, 55, 59, 67]), SAMPLE_RATE);
+    const direct = matchChordTemplates(chroma);
+    const compact = materializeChordCandidates(scoreChordTemplates(chroma), chroma.bass);
+
+    expect(compact.map(({ symbol }) => symbol)).toEqual(direct.map(({ symbol }) => symbol));
+    compact.forEach((candidate, index) => {
+      expect(candidate.score).toBeCloseTo(direct[index]?.score ?? 0, 6);
+    });
+  });
+
   it.each([
     {
       bass: { 2: 0.42, 9: 0.34 },
@@ -203,19 +216,22 @@ describe('chord template matching', () => {
 });
 
 describe('streaming provisional chord analysis', () => {
-  it('upserts a stable provisional chord and finalizes it at the end of a run', () => {
+  it('confirms startup and keeps closed live spans provisional through the end of a run', () => {
     const analyzer = new StreamingProvisionalChordAnalyzer(SAMPLE_RATE, 'replay-1', {
       profile: 'responsive',
     });
     const first = analyzer.push(chordSignal([48, 52, 55]), 0);
     const second = analyzer.push(chordSignal([48, 52, 55], 0.16, 0, 1_600, WINDOW_FRAMES), 384);
     const third = analyzer.push(chordSignal([48, 52, 55], 0.16, 0, 1_280, 7_744), 484);
-    const finalized = analyzer.finish(500);
+    const closed = analyzer.finish(564);
 
     expect(first).toMatchObject({ events: [], state: 'uncertain' });
-    expect(second.events[0]?.candidates[0]?.symbol).toBe('C');
-    expect(third.events[0]).toMatchObject({ id: second.events[0]?.id, lifecycle: 'provisional' });
-    expect(finalized.events[0]).toMatchObject({ id: second.events[0]?.id, lifecycle: 'finalized' });
+    expect(second.events).toEqual([]);
+    expect(third.events[0]?.candidates[0]?.symbol).toBe('C');
+    expect(closed.events[0]).toMatchObject({
+      id: third.events[0]?.id,
+      lifecycle: 'provisional',
+    });
   });
 
   it('warms up without inventing an event and closes a chord on silence', () => {
@@ -227,17 +243,18 @@ describe('streaming provisional chord analysis', () => {
       state: 'warming',
     });
     analyzer.push(chordSignal([45, 48, 52]), 62.5);
-    const chord = analyzer.push(chordSignal([45, 48, 52], 0.16, 0, 1_280, 6_144), 446.5);
+    analyzer.push(chordSignal([45, 48, 52], 0.16, 0, 1_280, 6_144), 446.5);
+    const chord = analyzer.push(chordSignal([45, 48, 52], 0.16, 0, 1_280, 7_424), 526.5);
     const silenceResults = Array.from({ length: 8 }, (_, index) =>
-      analyzer.push(new Float32Array(1_280), 526.5 + index * 80),
+      analyzer.push(new Float32Array(1_280), 606.5 + index * 80),
     );
     expect(chord.events[0]?.candidates[0]?.symbol).toBe('Am');
     expect(silenceResults.some((result) => result.state === 'tracking')).toBe(true);
     expect(
       silenceResults
         .flatMap((result) => result.events)
-        .find((event) => event.lifecycle === 'finalized'),
-    ).toMatchObject({ lifecycle: 'finalized' });
+        .find((event) => event.time.endMs !== undefined),
+    ).toMatchObject({ lifecycle: 'provisional' });
     expect(silenceResults.at(-1)?.state).toBe('silence');
   });
 
@@ -277,10 +294,14 @@ describe('streaming provisional chord analysis', () => {
     });
     expect(analyzer.finish().events).toEqual([]);
     analyzer.push(chordSignal([48, 52, 55]), 0);
-    const chord = analyzer.push(chordSignal([48, 52, 55], 0.16, 0, 1_280, 6_144), 384);
-    const discontinuity = analyzer.push(new Float32Array(100), 464, true);
+    analyzer.push(chordSignal([48, 52, 55], 0.16, 0, 1_280, 6_144), 384);
+    const chord = analyzer.push(chordSignal([48, 52, 55], 0.16, 0, 1_280, 7_424), 464);
+    const discontinuity = analyzer.push(new Float32Array(100), 544, true);
     expect(chord.events[0]?.lifecycle).toBe('provisional');
-    expect(discontinuity).toMatchObject({ state: 'warming', events: [{ lifecycle: 'finalized' }] });
+    expect(discontinuity).toMatchObject({
+      state: 'warming',
+      events: [{ lifecycle: 'provisional' }],
+    });
   });
 
   it('uses a longer evidence window by default for the accurate profile', () => {
@@ -294,10 +315,92 @@ describe('streaming provisional chord analysis', () => {
       analyzer.push(chordSignal([48, 52, 55], 0.16, 0, WINDOW_FRAMES, WINDOW_FRAMES), 384),
     ).toMatchObject({ events: [], state: 'uncertain' });
     expect(analyzer.push(chordSignal([48, 52, 55], 0.16, 0, 1_280, 12_288), 768)).toMatchObject({
+      events: [],
+      state: 'uncertain',
+    });
+    expect(analyzer.push(chordSignal([48, 52, 55], 0.16, 0, 1_280, 13_568), 848)).toMatchObject({
       events: [{ lifecycle: 'provisional' }],
       state: 'tracking',
     });
   });
+
+  it('retains every due acoustic hop from one large input push with source-aligned support', () => {
+    const analyzer = new StreamingProvisionalChordAnalyzer(SAMPLE_RATE, 'multi-hop-retention', {
+      profile: 'responsive',
+    });
+    const startMs = 1_000;
+    const samples = chordSignal([48, 52, 55], 0.16, 0, WINDOW_FRAMES + 3 * 1_280);
+
+    const result = analyzer.push(samples, startMs);
+
+    expect(result.observations).toHaveLength(4);
+    expect(result.observations.map(({ sequence }) => sequence)).toEqual([1, 2, 3, 4]);
+    expect(result.observations.map(({ featureTimeMs }) => featureTimeMs)).toEqual([
+      1_384, 1_464, 1_544, 1_624,
+    ]);
+    expect(result.observations.map(({ time }) => time)).toEqual([
+      { endMs: 1_384, startMs: 1_304 },
+      { endMs: 1_464, startMs: 1_384 },
+      { endMs: 1_544, startMs: 1_464 },
+      { endMs: 1_624, startMs: 1_544 },
+    ]);
+    expect(result.observations[0]?.support).toEqual({
+      endMs: 1_384,
+      longStartMs: 1_000,
+      shortStartMs: 1_064,
+    });
+    expect(result.observations.every(({ harmony }) => harmony.templateScores.length === 108)).toBe(
+      true,
+    );
+    expect(result.observations.at(-1)?.harmony.topCandidates[0]?.symbol).toBe('C');
+  }, 30_000);
+
+  it('marks the first retained hop after a discontinuity without compressing source time', () => {
+    const analyzer = new StreamingProvisionalChordAnalyzer(SAMPLE_RATE, 'hop-discontinuity', {
+      profile: 'responsive',
+    });
+    const before = analyzer.push(chordSignal([48, 52, 55]), 0);
+    const after = analyzer.push(chordSignal([48, 52, 55]), 2_000, true);
+
+    expect(before.observations[0]?.discontinuity).toBe(false);
+    expect(after.observations[0]).toMatchObject({
+      discontinuity: true,
+      featureTimeMs: 2_384,
+      support: { longStartMs: 2_000 },
+    });
+  }, 30_000);
+
+  it('accumulates partial hops across common 48 kHz callback boundaries', () => {
+    const inputSampleRate = 48_000;
+    const analyzer = new StreamingProvisionalChordAnalyzer(inputSampleRate, 'partial-hop-48khz', {
+      profile: 'responsive',
+    });
+    const samples = Float32Array.from({ length: inputSampleRate * 2 }, (_, frame) =>
+      [48, 52, 55].reduce((sum, midi) => {
+        const frequency = 440 * 2 ** ((midi - 69) / 12);
+        return sum + 0.08 * Math.sin((2 * Math.PI * frequency * frame) / inputSampleRate);
+      }, 0),
+    );
+    const observations = [] as ReturnType<typeof analyzer.push>['observations'];
+
+    for (let offset = 0; offset < samples.length; offset += 2_048) {
+      const result = analyzer.push(
+        samples.subarray(offset, Math.min(samples.length, offset + 2_048)),
+        (offset / inputSampleRate) * 1_000,
+      );
+      observations.push(...result.observations);
+    }
+
+    expect(observations).toHaveLength(21);
+    expect(observations[0]?.featureTimeMs).toBeCloseTo(384, 3);
+    expect(observations.at(-1)?.featureTimeMs).toBeCloseTo(1_984, 3);
+    observations.slice(1).forEach((observation, index) => {
+      expect(observation.featureTimeMs - (observations[index]?.featureTimeMs ?? 0)).toBeCloseTo(
+        80,
+        3,
+      );
+    });
+  }, 30_000);
 
   it('uses short-time evidence to locate a real change while pooling the chord labels', () => {
     const analyzer = new StreamingProvisionalChordAnalyzer(SAMPLE_RATE, 'multiscale-change');

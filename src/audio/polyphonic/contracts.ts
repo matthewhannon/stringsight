@@ -92,10 +92,17 @@ const FailureSchema = z.object({
   type: z.literal('failure'),
 });
 
+const CompleteSchema = z.object({
+  protocolVersion: z.literal(WORKER_PROTOCOL_VERSION),
+  runId: z.string().min(1).max(160),
+  type: z.literal('complete'),
+});
+
 export const PolyphonicWorkerOutboundSchema = z.discriminatedUnion('type', [
   ReadySchema,
   PolyphonicWorkerUpdateSchema,
   FailureSchema,
+  CompleteSchema,
 ]);
 
 export type PolyphonicWorkerOutbound = z.infer<typeof PolyphonicWorkerOutboundSchema>;

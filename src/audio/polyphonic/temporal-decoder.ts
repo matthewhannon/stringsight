@@ -1,10 +1,14 @@
 import type { ChordCandidate } from '../../shared';
 import type { ChordAnalysisProfile } from './contracts';
+import type { ChordBoundaryEvidence } from './chord-observations';
 
 export type ChordObservation = {
   candidates: readonly ChordCandidate[];
+  boundaryBefore?: ChordBoundaryEvidence;
   endMs: number;
   evidenceConfidence?: number;
+  requireBoundaryForTransition?: boolean;
+  sequenceBreakBefore?: boolean;
   startMs: number;
 };
 
@@ -16,43 +20,38 @@ const PROFILE_PARAMETERS: Record<
   ChordAnalysisProfile,
   {
     emissionScale: number;
-    extensionPrior: number;
     transitionPenalty: number;
-    weakExtensionPenalty: number;
   }
 > = {
   accurate: {
     emissionScale: 4,
-    extensionPrior: 0.08,
-    transitionPenalty: 0.32,
-    weakExtensionPenalty: 0.16,
+    transitionPenalty: 0.2,
   },
   responsive: {
     emissionScale: 4,
-    extensionPrior: 0.025,
-    transitionPenalty: 0.12,
-    weakExtensionPenalty: 0.08,
+    transitionPenalty: 0.1,
   },
 };
-
-const isSeventh = (candidate: ChordCandidate): boolean =>
-  candidate.quality === 'dominant-7' ||
-  candidate.quality === 'major-7' ||
-  candidate.quality === 'minor-7';
 
 const emissionScore = (
   candidate: ChordCandidate,
   durationMs: number,
   profile: ChordAnalysisProfile,
-  evidenceConfidence = 1,
 ): number => {
   const parameters = PROFILE_PARAMETERS[profile];
   const durationSeconds = Math.max(0.04, durationMs / 1_000);
-  const complexityPrior = isSeventh(candidate)
-    ? parameters.extensionPrior +
-      (1 - Math.max(0, Math.min(1, evidenceConfidence))) * parameters.weakExtensionPenalty
-    : 0;
-  return (candidate.score - complexityPrior) * durationSeconds * parameters.emissionScale;
+  return candidate.score * durationSeconds * parameters.emissionScale;
+};
+
+const transitionPenalty = (
+  basePenalty: number,
+  boundary: ChordBoundaryEvidence | undefined,
+  requireBoundary: boolean,
+): number => {
+  if (boundary?.mode === 'attack-change') return basePenalty * 0.15;
+  if (boundary?.mode === 'persistent-change') return basePenalty * 0.25;
+  if (requireBoundary) return 1_000_000;
+  return basePenalty;
 };
 
 /**
@@ -89,7 +88,6 @@ export function decodeChordSequence(
         candidate,
         firstObservation.endMs - firstObservation.startMs,
         profile,
-        firstObservation.evidenceConfidence,
       );
     }
   });
@@ -108,7 +106,14 @@ export function decodeChordSequence(
       symbols.forEach((previousSymbol, previousState) => {
         const previousScore =
           scores[observationIndex - 1]?.[previousState] ?? Number.NEGATIVE_INFINITY;
-        const transitionCost = previousSymbol === symbol ? 0 : parameters.transitionPenalty;
+        const transitionCost =
+          previousSymbol === symbol
+            ? 0
+            : transitionPenalty(
+                parameters.transitionPenalty,
+                observation.boundaryBefore,
+                observation.requireBoundaryForTransition ?? false,
+              );
         const score = previousScore - transitionCost;
         if (score > bestPreviousScore) {
           bestPreviousScore = score;
@@ -117,12 +122,7 @@ export function decodeChordSequence(
       });
       scoreRow[stateIndex] =
         bestPreviousScore +
-        emissionScore(
-          candidate,
-          observation.endMs - observation.startMs,
-          profile,
-          observation.evidenceConfidence,
-        );
+        emissionScore(candidate, observation.endMs - observation.startMs, profile);
       backPointerRow[stateIndex] = bestPreviousState;
     });
   }

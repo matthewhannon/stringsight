@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { ChordEventSchema } from '../../shared';
+import {
+  ChordEventSchema,
+  CONTRACT_SCHEMA_VERSION,
+  type ChordQuality,
+  type PitchClass,
+} from '../../shared';
 
 import {
   BASIC_PITCH_MIDI_OFFSET,
@@ -9,6 +14,7 @@ import {
   basicPitchNotesToNoteSetEvents,
   decodeBasicPitchNotes,
   fuseAcousticAndModelChordEvents,
+  modelGapSampleCount,
   noteSetEventsToChordEvents,
 } from './index';
 import {
@@ -44,6 +50,42 @@ function addNote(
     if (frameRow !== undefined) frameRow[bin] = activation;
   }
 }
+
+const acousticChord = (
+  id: string,
+  startMs: number,
+  endMs: number,
+  candidates: readonly {
+    bass?: PitchClass;
+    pitchClasses: readonly PitchClass[];
+    quality: ChordQuality;
+    root: PitchClass;
+    score: number;
+    symbol: string;
+  }[],
+  observedPitchClasses: readonly { pitchClass: PitchClass; weight: number }[] = [],
+) =>
+  ChordEventSchema.parse({
+    candidates: candidates.map((candidate, index) => ({
+      ...candidate,
+      confidence: Math.max(0, Math.min(1, candidate.score)),
+      rank: index + 1,
+    })),
+    diagnostics: {},
+    id,
+    kind: 'chord',
+    lifecycle: 'provisional',
+    observedPitchClasses,
+    provenance: {
+      algorithm: 'test-acoustic-frontend',
+      generatedAtMs: endMs,
+      runId: 'transition-run',
+      subsystem: 'polyphonic-analysis',
+      version: '1.0.0',
+    },
+    schemaVersion: CONTRACT_SCHEMA_VERSION,
+    time: { endMs, startMs },
+  });
 
 describe('Basic Pitch activation decoding', () => {
   it('decodes simultaneous onsets into bounded guitar-note events', () => {
@@ -176,6 +218,17 @@ describe('Basic Pitch note-set segmentation', () => {
       endMs: basicPitchFrameToMs(40),
       startMs: basicPitchFrameToMs(10),
     });
+    const offsetEvents = basicPitchNotesToNoteSetEvents(
+      decodeBasicPitchNotes(data.frames, data.onsets),
+      'replay-offset',
+      2_500,
+    );
+    expect(offsetEvents[0]?.time).toEqual({
+      endMs: 2_500 + basicPitchFrameToMs(40),
+      startMs: 2_500 + basicPitchFrameToMs(10),
+    });
+    expect(offsetEvents[0]?.provenance.generatedAtMs).toBe(2_500 + basicPitchFrameToMs(40));
+    expect(() => basicPitchNotesToNoteSetEvents([], 'invalid-offset', -1)).toThrow(/offset/i);
 
     const modelChords = noteSetEventsToChordEvents(events, 'replay-1');
     expect(modelChords[0]?.candidates[0]).toMatchObject({ root: 'C', symbol: 'C' });
@@ -220,6 +273,299 @@ describe('Basic Pitch note-set segmentation', () => {
       id: provisional.id,
       lifecycle: 'finalized',
     });
+  });
+
+  it('globally merges a suspension-like attack into the sustained finalized chord', () => {
+    const gCandidates = [
+      {
+        pitchClasses: ['G', 'B', 'D'] as const,
+        quality: 'major' as const,
+        root: 'G' as const,
+        score: 0.95,
+        symbol: 'G',
+      },
+    ];
+    const transitionCandidates = [
+      {
+        pitchClasses: ['D', 'G', 'A'] as const,
+        quality: 'suspended-4' as const,
+        root: 'D' as const,
+        score: 0.9,
+        symbol: 'Dsus4',
+      },
+      {
+        pitchClasses: ['D', 'F#', 'A'] as const,
+        quality: 'major' as const,
+        root: 'D' as const,
+        score: 0.82,
+        symbol: 'D',
+      },
+    ];
+    const stableCandidates = [
+      {
+        pitchClasses: ['D', 'F#', 'A'] as const,
+        quality: 'major' as const,
+        root: 'D' as const,
+        score: 0.94,
+        symbol: 'D',
+      },
+      {
+        pitchClasses: ['D', 'G', 'A'] as const,
+        quality: 'suspended-4' as const,
+        root: 'D' as const,
+        score: 0.65,
+        symbol: 'Dsus4',
+      },
+    ];
+    const provisional = [
+      acousticChord('transition-g-1', 0, 1_000, gCandidates),
+      acousticChord('transition-d-attack', 1_000, 1_300, transitionCandidates),
+      acousticChord('transition-d-stable', 1_300, 2_000, stableCandidates),
+      acousticChord('transition-g-2', 2_000, 3_000, gCandidates),
+    ];
+
+    const finalized = fuseAcousticAndModelChordEvents(
+      [],
+      provisional,
+      'transition-run',
+      'accurate',
+    );
+
+    expect(finalized.map((event) => event.candidates[0]?.symbol)).toEqual(['G', 'D', 'G']);
+    expect(finalized[1]).toMatchObject({
+      diagnostics: {
+        reconciliation: 'merged-provisional-overlap',
+        sourceAcousticEventCount: 2,
+        temporalDecoder: 'global-duration-aware-viterbi',
+      },
+      lifecycle: 'finalized',
+      time: { endMs: 2_000, startMs: 1_000 },
+    });
+  });
+
+  it('reranks final labels from the same fused evidence shown to the user', () => {
+    const data = matrices(70);
+    [45, 50, 54].forEach((midi) => addNote(data, midi, 0, 60));
+    const noteSets = basicPitchNotesToNoteSetEvents(
+      decodeBasicPitchNotes(data.frames, data.onsets),
+      'evidence-run',
+    );
+    const time = noteSets[0]?.time;
+    if (time?.endMs === undefined) throw new Error('Expected a finalized A-D-F# note set.');
+    const acoustic = acousticChord(
+      'evidence-acoustic',
+      time.startMs,
+      time.endMs,
+      [
+        {
+          bass: 'A',
+          pitchClasses: ['A', 'D', 'E'],
+          quality: 'suspended-4',
+          root: 'A',
+          score: 1.2,
+          symbol: 'Asus4',
+        },
+        {
+          bass: 'A',
+          pitchClasses: ['D', 'F#', 'A'],
+          quality: 'major',
+          root: 'D',
+          score: 1,
+          symbol: 'D',
+        },
+      ],
+      [
+        { pitchClass: 'A', weight: 0.4 },
+        { pitchClass: 'D', weight: 0.35 },
+        { pitchClass: 'E', weight: 0.25 },
+      ],
+    );
+
+    const [finalized] = fuseAcousticAndModelChordEvents(
+      noteSets,
+      [acoustic],
+      'evidence-run',
+      'accurate',
+    );
+
+    expect(finalized?.candidates[0]).toMatchObject({ bass: 'A', root: 'D', symbol: 'D' });
+    expect(finalized?.observedPitchClasses.map(({ pitchClass }) => pitchClass)).toEqual([
+      'D',
+      'F#',
+      'A',
+    ]);
+    expect(finalized?.diagnostics).toMatchObject({
+      harmonicAmbiguity: 'resolved',
+      reconciliation: 'weighted-evidence-fusion',
+    });
+    expect(finalized?.provenance.version).toBe('1.0.1-stringsight.5');
+  });
+
+  it('marks a two-note final observation as insufficient evidence instead of high strength', () => {
+    const data = matrices(70);
+    [45, 50].forEach((midi) => addNote(data, midi, 0, 60));
+    const noteSets = basicPitchNotesToNoteSetEvents(
+      decodeBasicPitchNotes(data.frames, data.onsets),
+      'dyad-run',
+    );
+    const time = noteSets[0]?.time;
+    if (time?.endMs === undefined) throw new Error('Expected a finalized A-D dyad.');
+    const acoustic = acousticChord(
+      'dyad-acoustic',
+      time.startMs,
+      time.endMs,
+      [
+        {
+          bass: 'A',
+          pitchClasses: ['A', 'D', 'E'],
+          quality: 'suspended-4',
+          root: 'A',
+          score: 1.2,
+          symbol: 'Asus4',
+        },
+        {
+          bass: 'A',
+          pitchClasses: ['D', 'A'],
+          quality: 'power',
+          root: 'D',
+          score: 1.15,
+          symbol: 'D5',
+        },
+      ],
+      [
+        { pitchClass: 'A', weight: 0.55 },
+        { pitchClass: 'D', weight: 0.45 },
+      ],
+    );
+
+    const [finalized] = fuseAcousticAndModelChordEvents(
+      noteSets,
+      [acoustic],
+      'dyad-run',
+      'accurate',
+    );
+
+    expect(finalized?.diagnostics.harmonicAmbiguity).toBe('insufficient-defining-tones');
+    expect(finalized?.candidates[0]?.confidence).toBeLessThanOrEqual(0.55);
+    expect(finalized?.candidates.length).toBeGreaterThan(1);
+  });
+
+  it('preserves a deliberate Asus4 when both sources support its defining tones', () => {
+    const data = matrices(70);
+    [45, 50, 52].forEach((midi) => addNote(data, midi, 0, 60));
+    const noteSets = basicPitchNotesToNoteSetEvents(
+      decodeBasicPitchNotes(data.frames, data.onsets),
+      'asus4-run',
+    );
+    const time = noteSets[0]?.time;
+    if (time?.endMs === undefined) throw new Error('Expected a finalized Asus4 note set.');
+    const acoustic = acousticChord(
+      'asus4-acoustic',
+      time.startMs,
+      time.endMs,
+      [
+        {
+          bass: 'A',
+          pitchClasses: ['A', 'D', 'E'],
+          quality: 'suspended-4',
+          root: 'A',
+          score: 1.2,
+          symbol: 'Asus4',
+        },
+      ],
+      [
+        { pitchClass: 'A', weight: 0.4 },
+        { pitchClass: 'D', weight: 0.3 },
+        { pitchClass: 'E', weight: 0.3 },
+      ],
+    );
+
+    expect(
+      fuseAcousticAndModelChordEvents(noteSets, [acoustic], 'asus4-run', 'accurate')[0]
+        ?.candidates[0]?.symbol,
+    ).toBe('Asus4');
+  });
+
+  it('uses defining extension evidence without overweighting doubled chord tones', () => {
+    const dmData = matrices(70);
+    [50, 57, 62, 65].forEach((midi) => addNote(dmData, midi, 0, 60));
+    const dmNoteSets = basicPitchNotesToNoteSetEvents(
+      decodeBasicPitchNotes(dmData.frames, dmData.onsets),
+      'dm-extension-run',
+    );
+    const dmTime = dmNoteSets[0]?.time;
+    if (dmTime?.endMs === undefined) throw new Error('Expected a finalized doubled Dm note set.');
+    const dmAcoustic = acousticChord(
+      'dm-extension-acoustic',
+      dmTime.startMs,
+      dmTime.endMs,
+      [
+        {
+          bass: 'D',
+          pitchClasses: ['D', 'F', 'A', 'C'],
+          quality: 'minor-7',
+          root: 'D',
+          score: 0.997,
+          symbol: 'Dm7',
+        },
+        {
+          bass: 'D',
+          pitchClasses: ['D', 'F', 'A'],
+          quality: 'minor',
+          root: 'D',
+          score: 0.924,
+          symbol: 'Dm',
+        },
+      ],
+      [
+        { pitchClass: 'D', weight: 0.4 },
+        { pitchClass: 'F', weight: 0.3 },
+        { pitchClass: 'A', weight: 0.3 },
+      ],
+    );
+    expect(
+      fuseAcousticAndModelChordEvents(dmNoteSets, [dmAcoustic], 'dm-extension-run', 'accurate')[0]
+        ?.candidates[0]?.symbol,
+    ).toBe('Dm');
+
+    const g7Data = matrices(70);
+    [43, 47, 50, 55, 59, 65].forEach((midi) => addNote(g7Data, midi, 0, 60));
+    const g7NoteSets = basicPitchNotesToNoteSetEvents(
+      decodeBasicPitchNotes(g7Data.frames, g7Data.onsets),
+      'g7-extension-run',
+    );
+    const g7Time = g7NoteSets[0]?.time;
+    if (g7Time?.endMs === undefined) throw new Error('Expected a finalized doubled G7 note set.');
+    const g7Acoustic = acousticChord('g7-extension-acoustic', g7Time.startMs, g7Time.endMs, [
+      {
+        bass: 'G',
+        pitchClasses: ['G', 'B', 'D', 'F'],
+        quality: 'dominant-7',
+        root: 'G',
+        score: 1.05,
+        symbol: 'G7',
+      },
+      {
+        bass: 'G',
+        pitchClasses: ['G', 'B', 'D'],
+        quality: 'major',
+        root: 'G',
+        score: 1,
+        symbol: 'G',
+      },
+    ]);
+    expect(
+      fuseAcousticAndModelChordEvents(g7NoteSets, [g7Acoustic], 'g7-extension-run', 'accurate')[0]
+        ?.candidates[0]?.symbol,
+    ).toBe('G7');
+  });
+
+  it('preserves real source-time gaps in the model sample timeline', () => {
+    expect(modelGapSampleCount(null, 1_000, 22_050)).toBe(0);
+    expect(modelGapSampleCount(1_100, 1_350, 22_050)).toBe(5_513);
+    expect(modelGapSampleCount(1_350, 1_350, 22_050)).toBe(0);
+    expect(modelGapSampleCount(1_400, 1_350, 22_050)).toBe(0);
+    expect(() => modelGapSampleCount(-1, 0, 22_050)).toThrow(/previous/i);
   });
 
   it('omits monophonic and over-dense segments from note-set output', () => {

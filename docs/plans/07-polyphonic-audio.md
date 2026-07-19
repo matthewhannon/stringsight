@@ -1,6 +1,6 @@
 # Polyphonic Note and Chord Detection
 
-**Status:** Complete; accepted with reviewed power-chord and inversion coverage
+**Status:** Finalization slice reopened; isolated-chord and power/inversion matrix remains accepted
 **Checklist item:** 7
 **Depends on:** Audio capture and replay, shared prediction contracts, evaluation harness,
 monophonic analysis
@@ -191,10 +191,12 @@ become invalid.
 4. The reconciler trims window margins, merges duplicate same-pitch intervals across overlaps,
    preserves re-articulations with distinct onsets, and resolves contradictory revisions by score
    and lifecycle.
-5. Simultaneous active notes remain note-set evidence, but their individual start/end boundaries do
-   not become chord boundaries. The continuous acoustic frontend supplies the spans.
-6. Finalized candidates fuse 70% acoustic chord evidence with 30% Basic Pitch note-set evidence
-   inside each span. Stable provisional identities are retained one-to-one and finalized in place.
+5. Simultaneous active notes remain note-set evidence. Their individual start/end boundaries may
+   subdivide observations for the offline decoder, but they do not become final chord boundaries
+   unless the duration-aware sequence path retains a label change.
+6. Closed acoustic spans remain provisional. After Stop, finalized candidates fuse acoustic chord
+   evidence with Basic Pitch note-set evidence across a global observation sequence. The decoder
+   may merge or revise provisional boundaries before stable identities are reconciled by overlap.
 
 Model unavailability must not disable the provisional chroma path. The worker reports the selected
 backend, model version, load/warmup/inference timings, rolling maximum memory when available, and
@@ -234,6 +236,10 @@ Metrics are reported separately for provisional and finalized output:
 - Reconciliation duplicates, contradictory revisions, and provisional-to-finalized improvement.
 - Label changes per held-chord minute, over-segmentation ratio, spurious-chord duration, and chord
   boundary F1.
+- Duration-weighted chord accuracy, transition settling time, attack-artifact duration, segment
+  edit distance, and wrong-label duration per reviewed chord interval.
+- Candidate reliability bins, overconfident-error rate, and ECE/Brier score once detector scores
+  have a held-out calibration mapping.
 - Model download size, cold/warm startup, p50/p95 processing latency, real-time factor, peak worker
   memory where the browser exposes it, and dropped chunks.
 
@@ -317,7 +323,77 @@ retains honest ambiguity among bare-fifth, suspended, and major interpretations 
 requested power chord in the top three. No fixture-specific ranking change is warranted. Combined
 with the public finalized-model matrix, measured runtime/model sizes, browser heap sample with its
 documented scope, live/import equivalence coverage, and existing decay/reconciliation regressions,
-this completes the Item 7 acceptance matrix.
+this completed the original isolated-chord acceptance matrix. A July 19 continuous G-to-D take
+reopened finalization semantics and transition-fragment acceptance without invalidating those
+isolated-chord measurements.
+
+### Continuous-transition corrective slice
+
+The reviewed 15.49-second G-to-D take repeatedly produced stable G labels but preserved transient
+`Asus4` or `Dsus4` segments at D attacks before settling on D. It also exposed a startup `E7`
+artifact. The recording has healthy level, no capture discontinuities, and a correct sustained final
+D, so the failure belongs to sequence finalization rather than capture quality.
+
+The corrective slice requires:
+
+- live and silence-closed acoustic spans remain provisional until run completion;
+- startup candidates receive the same confirmation discipline as later label changes;
+- finalized note evidence aggregates within acoustic change-supported spans, preventing note-decay
+  edges from inventing chords while still allowing global relabeling and adjacent-span merging;
+- final adjacent observations with the same decoded symbol merge before ID reconciliation;
+- the UI calls uncalibrated chord scores match strength, identifies template tones as templates,
+  and exposes close key/scale alternatives as ambiguous;
+- repeated open-chord transitions, deliberate suspended chords, strum direction, overlap, muting,
+  and ringing endings enter development and held-out evaluation before threshold tuning.
+
+The lifecycle and global-sequence implementation is versioned as provisional analyzer `0.4.0` and
+final fusion `1.0.1-stringsight.5`; the earlier `0.3.0` measurements remain historical baselines.
+
+### July 19 final-fusion audit
+
+An independent GPT-5.6 Sol/high review traced the full browser-input-to-final-chord path. The
+capture foundation is appropriate: browser voice processing is requested off, native PCM remains
+unchanged, and analysis uses separate resampled acoustic and Basic Pitch branches. Generic EQ is
+not the primary fix for the observed suspension errors.
+
+The immediate production defect was evidence inconsistency. A partial A-D attack with A strongest
+can provisionally favor Asus4, but complete A-D-F# evidence ranks D first. The former final fusion
+used hard-coded 70% acoustic and 30% model candidate scores while publishing model-only observed
+pitch classes whenever model notes existed.
+
+Final fusion `1.0.1-stringsight.5` removes that fixed source split. Acoustic analysis supplies
+change-supported spans and a bounded hypothesis set. Finalized note evidence contributes measured
+source reliability, pitch-class completeness, and defining-tone compatibility; it can promote a
+supported alternative but cannot invent decay-driven boundaries. Doubled octaves collapse to one
+pitch-class contribution, weak dyads remain explicitly ambiguous, and extension evidence applies
+uniformly across seventh qualities. Temporal decoding applies continuity only and no longer
+duplicates chord-complexity priors.
+
+Analyzer `0.5.0` retains exact source-aligned hops and adds normalized attack evidence plus an
+explicit causal state machine. The real browser production path yields 18/19 (94.7%) top-1/top-3
+with 18 clean final events. The former decay-only D7-to-Am and E7-to-E changes and contaminated
+Amaj7 startup fragment are removed. The sole miss remains adjacent Am7, but this take contains no A
+in either acoustic or Basic Pitch evidence, so it cannot justify a label-specific rewrite.
+
+Boundary-region final fusion and boundary-conditioned decoding are promoted. Earlier raw per-hop
+trials emitted 27-58 fragments; pooling one label per region reduces the preserved sequence to the
+same 18 supported labels as the former span path. Confirmed boundaries partition inference,
+one-to-one spans preserve their established aggregate evidence, and only genuinely split spans use
+regional hop pooling.
+
+Before further threshold tuning:
+
+1. Add final invariants for `A D F# -> D/A`, ambiguous A-D, and zero label/evidence contradictions.
+2. Evaluate the actual Basic Pitch fusion path on continuous strummed transitions; the 89.5%
+   private baseline currently measures acoustic-only finalization.
+3. Retain per-hop emissions and classify post-boundary audio separately from the rolling window
+   that still contains the previous chord. Retention, regional pooling, and worker promotion are
+   complete.
+4. Mark analysis backpressure gaps as discontinuities and preserve them in model timing; offset
+   zero-based Basic Pitch events onto the capture timebase.
+5. Only then compare treble/transient-aware scoring, explicit missing/extra/defining-tone evidence,
+   ambiguous dyad output, coherence-aware channel selection/downmixing, bounded analysis-only level
+   normalization, and stationary noise-floor subtraction against held-out recordings.
 
 ## Acceptance budgets
 

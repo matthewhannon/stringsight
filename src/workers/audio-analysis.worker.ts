@@ -58,7 +58,10 @@ workerScope.onmessage = (event: MessageEvent<unknown>) => {
       });
       return;
     }
-    if (analyzer === null) return;
+    if (analyzer === null) {
+      post({ protocolVersion: WORKER_PROTOCOL_VERSION, runId, type: 'complete' });
+      return;
+    }
     const startedAt = performance.now();
     const result = analyzer.finish(lastSourceTimestampMs);
     post({
@@ -69,6 +72,7 @@ workerScope.onmessage = (event: MessageEvent<unknown>) => {
       sourceTimestampMs: sessionTimestampMs(result.sourceTimestampMs),
       type: 'update',
     });
+    post({ protocolVersion: WORKER_PROTOCOL_VERSION, runId, type: 'complete' });
   } catch (error) {
     post({
       message: error instanceof Error ? error.message : 'Unknown audio analysis failure.',

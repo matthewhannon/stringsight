@@ -27,6 +27,7 @@ export type PolyphonicAnalysisSnapshot = {
   modelWindowCount: number;
   noteSetEvents: readonly NoteSetEvent[];
   processingLatencyMs: number;
+  runComplete: boolean;
   runId: string | null;
   state: PolyphonicAnalysisState;
 };
@@ -52,6 +53,7 @@ export const InitialPolyphonicAnalysisSnapshot: PolyphonicAnalysisSnapshot = {
   modelWindowCount: 0,
   noteSetEvents: [],
   processingLatencyMs: 0,
+  runComplete: false,
   runId: null,
   state: 'silence',
 };
@@ -73,6 +75,7 @@ export class PolyphonicAnalysisController {
   private readonly unsubscribeCaptureState: () => void;
   private readonly workerFactory: WorkerFactory;
   private inFlightChunks = 0;
+  private pendingDiscontinuity = false;
   private previousCaptureState: string;
   private runCounter = 0;
   private snapshot: PolyphonicAnalysisSnapshot = InitialPolyphonicAnalysisSnapshot;
@@ -115,6 +118,7 @@ export class PolyphonicAnalysisController {
     this.runCounter += 1;
     const runId = `${source}-${String(this.runCounter)}`;
     this.inFlightChunks = 0;
+    this.pendingDiscontinuity = false;
     this.snapshot = {
       ...InitialPolyphonicAnalysisSnapshot,
       chordAnalysisProfile: this.chordAnalysisProfile,
@@ -156,15 +160,24 @@ export class PolyphonicAnalysisController {
   private readonly handleChunk = (chunk: PcmChunk) => {
     if (chunk.sequence === 0) this.reset(chunk.source);
     if (this.inFlightChunks >= this.maxInFlightChunks) {
+      this.pendingDiscontinuity = true;
       this.update({ droppedChunks: this.snapshot.droppedChunks + 1 });
       return;
     }
     this.ensureWorker();
     const data = chunk.data.slice();
+    const forwardedChunk = this.pendingDiscontinuity
+      ? {
+          ...chunk,
+          data,
+          diagnostics: { ...chunk.diagnostics, discontinuity: true },
+        }
+      : { ...chunk, data };
+    this.pendingDiscontinuity = false;
     this.inFlightChunks += 1;
     this.worker?.postMessage(
       {
-        chunk: { ...chunk, data },
+        chunk: forwardedChunk,
         protocolVersion: WORKER_PROTOCOL_VERSION,
         type: 'chunk',
       } satisfies PolyphonicWorkerInbound,
@@ -194,6 +207,10 @@ export class PolyphonicAnalysisController {
     const message = parsed.data;
     if (this.snapshot.runId === null || message.runId !== this.snapshot.runId) return;
     if (message.type === 'ready') return;
+    if (message.type === 'complete') {
+      this.update({ runComplete: true });
+      return;
+    }
     if (message.type === 'failure') {
       this.update({ error: message.message });
       return;

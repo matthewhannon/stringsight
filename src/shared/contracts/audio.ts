@@ -122,6 +122,21 @@ export const ChordCandidateSchema = z.object({
 
 export type ChordCandidate = z.infer<typeof ChordCandidateSchema>;
 
+export const ObservedPitchClassSchema = z.object({
+  pitchClass: PitchClassSchema,
+  weight: ConfidenceSchema,
+});
+
+export type ObservedPitchClass = z.infer<typeof ObservedPitchClassSchema>;
+
+const UniqueObservedPitchClassesSchema = z
+  .array(ObservedPitchClassSchema)
+  .max(12)
+  .refine(
+    (values) => new Set(values.map(({ pitchClass }) => pitchClass)).size === values.length,
+    'Observed pitch classes must be unique.',
+  );
+
 const RankedChordCandidatesSchema = z
   .array(ChordCandidateSchema)
   .min(1)
@@ -133,6 +148,7 @@ export const ChordEventSchema = z.object({
   id: IdentifierSchema,
   kind: z.literal('chord'),
   lifecycle: LifecycleSchema,
+  observedPitchClasses: UniqueObservedPitchClassesSchema.default([]),
   provenance: ProvenanceSchema,
   schemaVersion: z.literal(CONTRACT_SCHEMA_VERSION),
   time: TimeRangeSchema,

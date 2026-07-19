@@ -89,7 +89,7 @@ describe('AudioAnalysisPanel', () => {
     analysis.dispose();
   });
 
-  it('keeps a rolling window of the latest 24 note events', () => {
+  it('shows the latest 6 note events newest-first in a bounded non-scrolling timeline', () => {
     const events = Array.from({ length: 30 }, (_, index) => ({
       ...noteEvent,
       id: `run-1-note-${String(index + 1)}`,
@@ -106,12 +106,21 @@ describe('AudioAnalysisPanel', () => {
 
     render(<AudioAnalysisPanel analysis={analysis} />);
 
-    expect(screen.getByText('Latest 24 of 30 events')).toBeVisible();
-    const timeline = screen.getByRole('list', { name: 'Latest note events' });
-    expect(within(timeline).getAllByRole('listitem')).toHaveLength(24);
-    expect(within(timeline).getByText('0.60s')).toBeVisible();
+    expect(screen.getByText('Latest 6 of 30 · 24 earlier hidden')).toBeVisible();
+    const timeline = screen.getByRole('list', { name: 'Latest note events, newest first' });
+    const items = within(timeline).getAllByRole('listitem');
+    expect(items).toHaveLength(6);
+    const newestItem = items.at(0);
+    const oldestVisibleItem = items.at(-1);
+    if (newestItem === undefined || oldestVisibleItem === undefined) {
+      throw new Error('Expected the bounded note timeline to contain events.');
+    }
+    expect(within(newestItem).getByText('2.90s')).toBeVisible();
+    expect(within(oldestVisibleItem).getByText('2.40s')).toBeVisible();
     expect(within(timeline).getByText('2.90s')).toBeVisible();
-    expect(within(timeline).queryByText('0.50s')).not.toBeInTheDocument();
+    expect(within(timeline).queryByText('2.30s')).not.toBeInTheDocument();
+    expect(within(newestItem).getByText('A4')).toBeVisible();
+    expect(within(newestItem).getByText('finalized')).toBeVisible();
     analysis.dispose();
   });
 });

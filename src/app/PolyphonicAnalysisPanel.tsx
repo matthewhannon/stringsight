@@ -25,7 +25,7 @@ const stateLabels: Record<PolyphonicAnalysisState, string> = {
 
 const pitchClasses = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
 const formatTime = (milliseconds: number): string => `${(milliseconds / 1_000).toFixed(2)}s`;
-const TIMELINE_EVENT_LIMIT = 16;
+const TIMELINE_EVENT_LIMIT = 6;
 
 export function PolyphonicAnalysisPanel({
   analysis,
@@ -44,7 +44,7 @@ export function PolyphonicAnalysisPanel({
       ? 'Finalized chord'
       : stateLabels[snapshot.state];
   const alternatives = snapshot.currentChord?.candidates.slice(1, 4) ?? [];
-  const timelineEvents = snapshot.chordEvents.slice(-TIMELINE_EVENT_LIMIT);
+  const timelineEvents = snapshot.chordEvents.slice(-TIMELINE_EVENT_LIMIT).reverse();
 
   return (
     <section
@@ -102,7 +102,7 @@ export function PolyphonicAnalysisPanel({
               <div className="note-readout chord-readout">
                 <strong>{currentCandidate.symbol}</strong>
                 <div>
-                  <span>{Math.round(currentCandidate.confidence * 100)}% confidence</span>
+                  <span>{Math.round(currentCandidate.confidence * 100)}% match strength</span>
                   <span>{currentCandidate.quality}</span>
                   <span>
                     {currentCandidate.bass === undefined
@@ -111,7 +111,7 @@ export function PolyphonicAnalysisPanel({
                   </span>
                 </div>
               </div>
-              <div className="candidate-confidence" aria-label="Chord confidence">
+              <div className="candidate-confidence" aria-label="Chord match strength">
                 <span style={{ width: `${(currentCandidate.confidence * 100).toFixed(1)}%` }} />
               </div>
               <div className="alternatives">
@@ -120,7 +120,7 @@ export function PolyphonicAnalysisPanel({
                   {alternatives.map((candidate) => (
                     <li key={`${String(candidate.rank)}-${candidate.symbol}`}>
                       <strong>{candidate.symbol}</strong>
-                      <span>{Math.round(candidate.confidence * 100)}%</span>
+                      <span>{Math.round(candidate.confidence * 100)}% match</span>
                     </li>
                   ))}
                 </ol>
@@ -218,25 +218,38 @@ export function PolyphonicAnalysisPanel({
           <h3 id="chord-timeline-title">Chord timeline</h3>
           <span>
             {snapshot.chordEvents.length > TIMELINE_EVENT_LIMIT
-              ? `Latest ${String(TIMELINE_EVENT_LIMIT)} of ${String(snapshot.chordEvents.length)}`
+              ? `Latest ${String(TIMELINE_EVENT_LIMIT)} of ${String(snapshot.chordEvents.length)} · ${String(snapshot.chordEvents.length - TIMELINE_EVENT_LIMIT)} earlier hidden`
               : `${String(snapshot.chordEvents.length)} events`}
           </span>
         </div>
         {timelineEvents.length === 0 ? (
           <p>Provisional chord candidates will appear here with timing and lifecycle.</p>
         ) : (
-          <ol aria-label="Latest chord events">
+          <ol aria-label="Latest chord events, newest first">
             {timelineEvents.map((event) => {
               const candidate = event.candidates[0];
               if (candidate === undefined) return null;
+              const observed = event.observedPitchClasses
+                .filter(({ weight }) => weight >= 0.08)
+                .map(({ pitchClass }) => pitchClass);
+              const evidenceLabel =
+                observed.length > 0
+                  ? `Observed ${observed.join(' ')}`
+                  : `Template ${candidate.pitchClasses.join(' ')}`;
               return (
                 <li key={event.id}>
-                  <time>{formatTime(event.time.startMs)}</time>
+                  <div className="timeline-card-heading">
+                    <time>{formatTime(event.time.startMs)}</time>
+                    <span className={`lifecycle lifecycle--${event.lifecycle}`}>
+                      {event.lifecycle}
+                    </span>
+                  </div>
                   <strong>{candidate.symbol}</strong>
-                  <span>{candidate.pitchClasses.join(' ')}</span>
-                  <span>{Math.round(candidate.confidence * 100)}%</span>
-                  <span className={`lifecycle lifecycle--${event.lifecycle}`}>
-                    {event.lifecycle}
+                  <span className="timeline-card-evidence" aria-label={evidenceLabel}>
+                    {evidenceLabel}
+                  </span>
+                  <span className="timeline-card-match">
+                    {Math.round(candidate.confidence * 100)}% match
                   </span>
                 </li>
               );

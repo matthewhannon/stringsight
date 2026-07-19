@@ -91,4 +91,28 @@ describe('temporal chord decoding', () => {
         .map(({ selected }) => selected.symbol),
     ).toEqual(['C', 'C']);
   });
+
+  it('does not swallow a long stable middle chord between repeated neighbors', () => {
+    const sequence = [
+      {
+        candidates: [candidate('G', 0.93), candidate('C', 0.7)],
+        endMs: 1_500,
+        startMs: 0,
+      },
+      {
+        candidates: [candidate('C', 0.85), candidate('G', 0.74)],
+        endMs: 3_000,
+        startMs: 1_500,
+      },
+      {
+        candidates: [candidate('G', 0.93), candidate('C', 0.7)],
+        endMs: 4_500,
+        startMs: 3_000,
+      },
+    ];
+
+    expect(
+      decodeChordSequence(sequence, 'accurate').map(({ selected }) => selected.symbol),
+    ).toEqual(['G', 'C', 'G']);
+  });
 });

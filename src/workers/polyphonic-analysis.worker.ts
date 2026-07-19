@@ -5,9 +5,11 @@ import {
   PolyphonicWorkerInboundSchema,
   StreamingProvisionalChordAnalyzer,
   basicPitchNotesToNoteSetEvents,
-  fuseAcousticAndModelChordEvents,
+  fuseAcousticHopAndModelChordEvents,
+  modelGapSampleCount,
   noteSetEventsToChordEvents,
   type PolyphonicWorkerOutbound,
+  type AcousticChordHop,
   type ChordAnalysisProfile,
 } from '../audio/polyphonic';
 import { StreamingAnalysisResampler } from '../audio/analysis/resample';
@@ -22,9 +24,12 @@ import {
 const workerScope = self as unknown as DedicatedWorkerGlobalScope;
 
 let analyzer: StreamingProvisionalChordAnalyzer | null = null;
+let acousticObservations: AcousticChordHop[] = [];
 let lastSourceTimestampMs = 0;
 let modelAudioChunks: Float32Array[] = [];
+let modelAudioStartMs: number | null = null;
 let modelResampler: StreamingAnalysisResampler | null = null;
+let modelSourceEndMs: number | null = null;
 let modelRunner = new BasicPitchModelRunner();
 let provisionalEvents = new Map<string, ChordEvent>();
 let runId = 'polyphonic-analysis';
@@ -53,9 +58,12 @@ function post(message: PolyphonicWorkerOutbound): void {
 
 function reset(nextRunId: string): void {
   analyzer = null;
+  acousticObservations = [];
   lastSourceTimestampMs = 0;
   modelAudioChunks = [];
+  modelAudioStartMs = null;
   modelResampler = null;
+  modelSourceEndMs = null;
   provisionalEvents = new Map();
   runId = nextRunId;
   sampleRate = 0;
@@ -68,6 +76,7 @@ function postUpdate(
   noteSetEvents: NoteSetEvent[] = [],
   eventUpdateMode: 'replace' | 'upsert' = 'upsert',
 ): void {
+  acousticObservations.push(...result.observations);
   result.events.forEach((event) => provisionalEvents.set(event.id, event));
   post({
     analysisSampleRate: result.analysisSampleRate,
@@ -117,21 +126,24 @@ async function finalizeModel(
     }
     const analysis = await modelRunner.analyze(concatenateModelAudio());
     if (runId !== targetRunId) return;
-    const noteSetEvents = basicPitchNotesToNoteSetEvents(analysis.notes, targetRunId);
+    const noteSetEvents = basicPitchNotesToNoteSetEvents(
+      analysis.notes,
+      targetRunId,
+      modelAudioStartMs ?? 0,
+    );
     const acousticEvents = [...provisionalEvents.values()];
     const chordEvents =
       acousticEvents.length === 0
         ? noteSetEventsToChordEvents(noteSetEvents, targetRunId, [], chordAnalysisProfile)
-        : fuseAcousticAndModelChordEvents(
+        : fuseAcousticHopAndModelChordEvents(
             noteSetEvents,
+            acousticObservations,
             acousticEvents,
             targetRunId,
             chordAnalysisProfile,
           );
-    const finalizedChordEvents =
-      chordEvents.length === 0 ? [...provisionalEvents.values()] : chordEvents;
     postUpdate(
-      { ...result, events: finalizedChordEvents },
+      { ...result, events: chordEvents },
       startedAt,
       {
         backend: analysis.backend,
@@ -145,7 +157,21 @@ async function finalizeModel(
     );
   } catch (error) {
     if (runId !== targetRunId) return;
-    postUpdate(result, startedAt, { ...EMPTY_MODEL_DIAGNOSTICS, state: 'failed' });
+    const fallbackEvents = [...provisionalEvents.values()];
+    const acousticFallback = fuseAcousticHopAndModelChordEvents(
+      [],
+      acousticObservations,
+      fallbackEvents,
+      targetRunId,
+      chordAnalysisProfile,
+    );
+    postUpdate(
+      { ...result, events: acousticFallback },
+      startedAt,
+      { ...EMPTY_MODEL_DIAGNOSTICS, state: 'failed' },
+      [],
+      'replace',
+    );
     post({
       message: error instanceof Error ? error.message : 'Unknown finalized transcription failure.',
       protocolVersion: WORKER_PROTOCOL_VERSION,
@@ -154,7 +180,10 @@ async function finalizeModel(
     });
     modelRunner = new BasicPitchModelRunner();
   } finally {
-    if (runId === targetRunId) modelAudioChunks = [];
+    if (runId === targetRunId) {
+      modelAudioChunks = [];
+      post({ protocolVersion: WORKER_PROTOCOL_VERSION, runId: targetRunId, type: 'complete' });
+    }
   }
 }
 
@@ -184,6 +213,13 @@ workerScope.onmessage = (event: MessageEvent<unknown>) => {
         throw new Error('Audio sample rate changed during a polyphonic analysis run.');
       }
       const startedAt = performance.now();
+      modelAudioStartMs ??= message.chunk.startMs;
+      const gapSamples = modelGapSampleCount(
+        modelSourceEndMs,
+        message.chunk.startMs,
+        BASIC_PITCH_SAMPLE_RATE,
+      );
+      if (gapSamples > 0) modelAudioChunks.push(new Float32Array(gapSamples));
       const result = analyzer.push(
         message.chunk.data,
         message.chunk.startMs,
@@ -196,11 +232,15 @@ workerScope.onmessage = (event: MessageEvent<unknown>) => {
       if (modelChunk !== undefined && modelChunk.samples.length > 0) {
         modelAudioChunks.push(modelChunk.samples);
       }
+      modelSourceEndMs = message.chunk.startMs + message.chunk.durationMs;
       lastSourceTimestampMs = result.sourceTimestampMs;
       postUpdate(result, startedAt);
       return;
     }
-    if (analyzer === null) return;
+    if (analyzer === null) {
+      post({ protocolVersion: WORKER_PROTOCOL_VERSION, runId, type: 'complete' });
+      return;
+    }
     const startedAt = performance.now();
     const targetRunId = runId;
     const result = analyzer.finish(lastSourceTimestampMs);

@@ -149,7 +149,13 @@ export class MicrophoneCapture {
       this.update({ state: 'unsupported' });
       return;
     }
-    if (this.snapshot.state === 'recording' || this.snapshot.state === 'starting') return;
+    if (
+      this.snapshot.state === 'recording' ||
+      this.snapshot.state === 'paused' ||
+      this.snapshot.state === 'starting'
+    ) {
+      return;
+    }
 
     this.resetSessionState();
     this.update({ error: null, state: 'requesting-permission', warning: null });
@@ -238,13 +244,30 @@ export class MicrophoneCapture {
       this.finalizationResolve = resolve;
       this.finalizationReject = reject;
     });
-    this.workletNode.port.postMessage({ type: 'flush' });
+    void this.flushWorklet();
     return this.stopPromise;
+  }
+
+  async pause(): Promise<void> {
+    if (this.snapshot.state !== 'recording' || this.audioContext === null) {
+      throw new Error('Only an active recording can be paused.');
+    }
+    await this.audioContext.suspend();
+    if (this.isState('recording')) this.update({ state: 'paused' });
+  }
+
+  async resume(): Promise<void> {
+    if (this.snapshot.state !== 'paused' || this.audioContext === null) {
+      throw new Error('Only a paused recording can be resumed.');
+    }
+    await this.audioContext.resume();
+    if (this.isState('paused')) this.update({ state: 'recording' });
   }
 
   loadRecording(recording: CapturedRecording): void {
     if (
       this.snapshot.state === 'recording' ||
+      this.snapshot.state === 'paused' ||
       this.snapshot.state === 'replaying' ||
       this.snapshot.state === 'requesting-permission' ||
       this.snapshot.state === 'starting' ||
@@ -316,8 +339,21 @@ export class MicrophoneCapture {
 
   private readonly handleTrackEnded = () => {
     this.update({ warning: 'device-ended' });
-    if (this.snapshot.state === 'recording') void this.stop();
+    if (this.snapshot.state === 'recording' || this.snapshot.state === 'paused') void this.stop();
   };
+
+  private async flushWorklet(): Promise<void> {
+    try {
+      if (this.audioContext?.state === 'suspended') await this.audioContext.resume();
+      this.workletNode?.port.postMessage({ type: 'flush' });
+    } catch (error) {
+      this.failTransport(error instanceof Error ? error : new Error('Audio finalization failed.'));
+    }
+  }
+
+  private isState(state: CaptureSnapshot['state']): boolean {
+    return this.snapshot.state === state;
+  }
 
   private readonly handleWorkletMessage = (event: MessageEvent<unknown>) => {
     const parsed = WorkletOutboundMessageSchema.safeParse(event.data);

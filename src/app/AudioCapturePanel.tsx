@@ -25,6 +25,7 @@ type AudioCapturePanelProps = {
 const stateLabels: Record<CaptureSnapshot['state'], string> = {
   failed: 'Needs attention',
   idle: 'Ready',
+  paused: 'Paused',
   'ready-to-replay': 'Recording ready',
   recording: 'Recording',
   replaying: 'Replaying',
@@ -119,7 +120,7 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
   }, [refreshDevices]);
 
   const isBusy =
-    ['recording', 'replaying', 'requesting-permission', 'starting', 'stopping'].includes(
+    ['paused', 'recording', 'replaying', 'requesting-permission', 'starting', 'stopping'].includes(
       snapshot.state,
     ) || isImporting;
   const canStart = !isBusy && snapshot.state !== 'unsupported';
@@ -303,11 +304,21 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
             </button>
             <button
               className="button"
-              disabled={snapshot.state !== 'recording'}
+              disabled={snapshot.state !== 'recording' && snapshot.state !== 'paused'}
               onClick={() => void controller.stop()}
               type="button"
             >
               Stop
+            </button>
+            <button
+              className="button"
+              disabled={snapshot.state !== 'recording' && snapshot.state !== 'paused'}
+              onClick={() =>
+                void (snapshot.state === 'paused' ? controller.resume() : controller.pause())
+              }
+              type="button"
+            >
+              {snapshot.state === 'paused' ? 'Resume' : 'Pause'}
             </button>
             <button
               className="button"

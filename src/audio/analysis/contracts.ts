@@ -92,10 +92,17 @@ export const AnalysisWorkerFailureSchema = z.object({
   type: z.literal('failure'),
 });
 
+export const AnalysisWorkerCompleteSchema = z.object({
+  protocolVersion: z.literal(WORKER_PROTOCOL_VERSION),
+  runId: z.string().min(1).max(160),
+  type: z.literal('complete'),
+});
+
 export const AnalysisWorkerOutboundSchema = z.discriminatedUnion('type', [
   AnalysisWorkerReadySchema,
   AnalysisWorkerUpdateSchema,
   AnalysisWorkerFailureSchema,
+  AnalysisWorkerCompleteSchema,
 ]);
 
 export type AnalysisWorkerOutbound = z.infer<typeof AnalysisWorkerOutboundSchema>;

@@ -21,7 +21,7 @@ const formatTime = (milliseconds: number): string => `${(milliseconds / 1_000).t
 
 const formatCents = (cents: number): string => `${cents >= 0 ? '+' : ''}${cents.toFixed(1)}¢`;
 
-const TIMELINE_EVENT_LIMIT = 24;
+const TIMELINE_EVENT_LIMIT = 6;
 
 export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysisPanelProps) {
   const controller = analysis ?? defaultAudioAnalysis;
@@ -33,7 +33,7 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const currentCandidate = snapshot.currentEvent?.candidates[0] ?? null;
   const alternatives = snapshot.currentEvent?.candidates.slice(1) ?? [];
-  const timelineEvents = snapshot.events.slice(-TIMELINE_EVENT_LIMIT);
+  const timelineEvents = snapshot.events.slice(-TIMELINE_EVENT_LIMIT).reverse();
 
   return (
     <section
@@ -149,26 +149,30 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
           <h3 id="timeline-title">Note timeline</h3>
           <span>
             {snapshot.events.length > TIMELINE_EVENT_LIMIT
-              ? `Latest ${String(TIMELINE_EVENT_LIMIT)} of ${String(snapshot.events.length)} events`
+              ? `Latest ${String(TIMELINE_EVENT_LIMIT)} of ${String(snapshot.events.length)} · ${String(snapshot.events.length - TIMELINE_EVENT_LIMIT)} earlier hidden`
               : `${String(snapshot.events.length)} events`}
           </span>
         </div>
         {snapshot.events.length === 0 ? (
           <p>Detected notes will appear here with their timing, confidence, and lifecycle.</p>
         ) : (
-          <ol aria-label="Latest note events">
+          <ol aria-label="Latest note events, newest first">
             {timelineEvents.map((event) => {
               const candidate = event.candidates[0];
               if (candidate === undefined) return null;
               return (
                 <li key={event.id}>
-                  <time>{formatTime(event.time.startMs)}</time>
+                  <div className="timeline-card-heading">
+                    <time>{formatTime(event.time.startMs)}</time>
+                    <span className={`lifecycle lifecycle--${event.lifecycle}`}>
+                      {event.lifecycle}
+                    </span>
+                  </div>
                   <strong>{candidate.noteName}</strong>
-                  <span>{formatCents(candidate.centsOffset)}</span>
-                  <span>{Math.round(candidate.confidence * 100)}%</span>
-                  <span className={`lifecycle lifecycle--${event.lifecycle}`}>
-                    {event.lifecycle}
-                  </span>
+                  <div className="timeline-card-details">
+                    <span>{formatCents(candidate.centsOffset)}</span>
+                    <span>{Math.round(candidate.confidence * 100)}%</span>
+                  </div>
                 </li>
               );
             })}

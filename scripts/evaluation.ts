@@ -11,6 +11,7 @@ import {
   POLYPHONIC_ANALYZER_VERSION,
   StreamingProvisionalChordAnalyzer,
 } from '../src/audio/polyphonic/streaming';
+import { finalizeChordSequence } from '../src/audio/polyphonic/finalized-sequence';
 import type { ChordAnalysisProfile } from '../src/audio/polyphonic/contracts';
 import type { ChordEvent, NoteEvent } from '../src/shared/contracts/audio';
 import {
@@ -861,7 +862,7 @@ function runPrivatePolyphonicRecording(
     `private-${recordingId}-${profile}`,
     { profile },
   );
-  const events: ChordEvent[] = [];
+  const eventsById = new Map<string, ChordEvent>();
   const chunkFrames = 2_048;
   const startedAt = performance.now();
   for (let startFrame = 0; startFrame < samples.length; startFrame += chunkFrames) {
@@ -869,12 +870,31 @@ function runPrivatePolyphonicRecording(
       samples.subarray(startFrame, Math.min(samples.length, startFrame + chunkFrames)),
       (startFrame / sampleRate) * 1_000,
     );
-    events.push(...result.events.filter((event) => event.lifecycle === 'finalized'));
+    result.events.forEach((event) => eventsById.set(event.id, event));
   }
-  events.push(
-    ...analyzer
-      .finish((samples.length / sampleRate) * 1_000)
-      .events.filter((event) => event.lifecycle === 'finalized'),
+  analyzer
+    .finish((samples.length / sampleRate) * 1_000)
+    .events.forEach((event) => eventsById.set(event.id, event));
+  const provisionalEvents = [...eventsById.values()];
+  const runId = `private-${recordingId}-${profile}`;
+  const events = finalizeChordSequence(
+    provisionalEvents.map((event) => ({
+      candidates: event.candidates,
+      endMs: event.time.endMs ?? event.time.startMs,
+      evidenceConfidence: event.candidates[0]?.confidence ?? 0,
+      observedPitchClasses: event.observedPitchClasses,
+      sourceAcousticEventIds: [event.id],
+      sourceNoteSetIds: [],
+      startMs: event.time.startMs,
+    })),
+    {
+      algorithm: 'hpss-nnls-chroma-offline-sequence-decoder',
+      analysisPath: 'acoustic-global-duration-aware-sequence',
+      profile,
+      provenanceVersion: POLYPHONIC_ANALYZER_VERSION,
+      provisionalEvents,
+      runId,
+    },
   );
   return {
     events: events.sort((left, right) => left.time.startMs - right.time.startMs),

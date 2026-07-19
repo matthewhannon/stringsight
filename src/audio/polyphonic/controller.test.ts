@@ -140,6 +140,21 @@ describe('PolyphonicAnalysisController', () => {
       modelState: 'ready',
       state: 'tracking',
     });
+    sendChunk(PcmChunkSchema.parse({ ...pcmChunk, sequence: 2, startMs: 8, startSampleFrame: 8 }));
+    expect(worker.messages.at(-1)).toMatchObject({
+      chunk: {
+        diagnostics: { discontinuity: true },
+        sequence: 2,
+        startMs: 8,
+      },
+      type: 'chunk',
+    });
+    worker.emit({
+      protocolVersion: WORKER_PROTOCOL_VERSION,
+      runId: 'microphone-1',
+      type: 'complete',
+    });
+    expect(controller.currentSnapshot.runComplete).toBe(true);
     worker.emit({
       analysisSampleRate: 16_000,
       chordAnalysisProfile: 'accurate',
@@ -183,7 +198,11 @@ describe('PolyphonicAnalysisController', () => {
       runId: 'microphone-1',
       type: 'failure',
     });
-    expect(controller.currentSnapshot).toMatchObject({ error: null, runId: 'replay-2' });
+    expect(controller.currentSnapshot).toMatchObject({
+      error: null,
+      runComplete: false,
+      runId: 'replay-2',
+    });
     worker.emit({ invalid: true });
     expect(controller.currentSnapshot.error).toMatch(/invalid data/i);
 

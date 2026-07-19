@@ -105,6 +105,7 @@ export type CaptureState =
   | 'requesting-permission'
   | 'starting'
   | 'recording'
+  | 'paused'
   | 'stopping'
   | 'ready-to-replay'
   | 'replaying'

@@ -749,7 +749,8 @@ select:disabled {
 
 .note-timeline {
   margin-top: 18px;
-  padding: 24px 26px;
+  min-width: 0;
+  padding: 18px 20px 20px;
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 18px;
   background: rgb(255 255 255 / 2%);
@@ -762,7 +763,7 @@ select:disabled {
 }
 
 .note-timeline h3 {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   font-size: 1rem;
 }
 
@@ -773,19 +774,23 @@ select:disabled {
 
 .note-timeline ol {
   display: grid;
-  gap: 0;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
   margin: 0;
   padding: 0;
+  overflow: hidden;
   list-style: none;
 }
 
 .note-timeline li {
-  display: grid;
-  grid-template-columns: 70px minmax(50px, 0.7fr) 0.8fr 0.7fr 1fr;
-  gap: 12px;
-  align-items: center;
-  padding: 11px 0;
-  border-top: 1px solid rgb(255 255 255 / 7%);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 10px;
+  background: rgb(0 0 0 / 18%);
   color: #aeb3bc;
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
@@ -794,16 +799,40 @@ select:disabled {
 
 .note-timeline li strong {
   color: #eef0f3;
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
-.chord-timeline li {
-  grid-template-columns: 70px minmax(54px, 0.5fr) minmax(110px, 1.2fr) 0.5fr 1fr;
+.timeline-card-heading,
+.timeline-card-details {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.timeline-card-heading time {
+  color: #8f96a1;
+  font-size: 0.7rem;
+}
+
+.timeline-card-details,
+.timeline-card-match {
+  color: #9299a4;
+  font-size: 0.7rem;
+}
+
+.timeline-card-evidence {
+  overflow: hidden;
+  color: #aeb3bc;
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lifecycle {
-  justify-self: end;
   color: #d6b47a;
-  font-size: 0.68rem;
+  font-size: 0.58rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -815,7 +844,7 @@ select:disabled {
 @keyframes note-timeline-enter {
   from {
     opacity: 0;
-    transform: translateY(7px);
+    transform: translateX(-7px);
   }
 
   to {
@@ -1121,6 +1150,20 @@ footer {
   .note-readout {
     align-items: start;
     flex-direction: column;
+  }
+
+  .note-timeline {
+    padding-inline: 14px;
+  }
+
+  .note-timeline > div {
+    align-items: start;
+    gap: 8px;
+  }
+
+  .note-timeline > div > span {
+    max-width: 60%;
+    text-align: right;
   }
 
   .waveform {

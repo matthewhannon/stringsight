@@ -32,6 +32,8 @@ describe('harmonic chord frontend', () => {
 
     expect(observation.energy).toBe(0);
     expect(observation.tuningCents).toBe(0);
+    expect(observation.activationTotal).toBe(0);
+    expect(observation.pitchClassActivations).toHaveLength(12);
     expect(observation.values.every((value) => value === 0)).toBe(true);
   });
 
@@ -44,6 +46,10 @@ describe('harmonic chord frontend', () => {
     expect(observation.tuningCents).toBeGreaterThan(18);
     expect(observation.tuningCents).toBeLessThan(35);
     expect(topSymbol(observation.values)).toBe('G');
+    expect(observation.activationTotal).toBeGreaterThan(0);
+    expect(
+      observation.pitchClassActivations.reduce((sum, activation) => sum + activation, 0),
+    ).toBeCloseTo(observation.activationTotal, 8);
   });
 
   it('suppresses broadband pick attack evidence while retaining the sustained chord', () => {

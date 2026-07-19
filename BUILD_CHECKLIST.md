@@ -145,22 +145,30 @@ An item is complete only when:
 - [x] Extract polyphonic note events and align them to the shared timebase.
 - [x] Compute chroma or pitch-class evidence independently of Basic Pitch.
 - [x] Build a chord-template matcher that supports inversions, omitted notes, doubled notes, and partial confidence.
-- [x] Separate live provisional results from higher-accuracy finalized results.
-- [x] Reconcile duplicate and contradictory candidates across overlapping windows.
+- [x] Separate live provisional results from higher-accuracy finalized results, including closed
+      live spans that remain provisional until run-level finalization.
+- [x] Reconcile duplicate, contradictory, and transition-fragment candidates across overlapping
+      windows with a post-run sequence decoder.
 - [x] Evaluate note, chord, onset, memory, and throughput performance.
 
 **Done when:** Recorded and live guitar chords produce ranked, time-aligned note sets and chord candidates, and finalized results improve on the provisional live path.
+
+**Resolved July 19, 2026:** Isolated-chord recognition remains accepted. Continuous G-to-D
+testing exposed premature `finalized` lifecycle labels, transition fragments retained after Stop,
+and uncalibrated match scores presented as probabilities. Closed spans now remain provisional until
+run-level finalization, and the promoted boundary-region decoder reconciles the retained evidence
+without regressing the reviewed 97.6-second sequence.
 
 ### 8. Build the music-theory interpretation engine
 
 **Planning:** Direct implementation for the initial rule-based engine; create a plan before probabilistic or learned extensions.
 
-- [ ] Represent pitch classes, intervals, chords, scales, keys, and enharmonic spelling.
-- [ ] Generate chord names from detected pitch-class evidence.
-- [ ] Identify likely scales and keys from a time window of events.
-- [ ] Model musical continuity without overwriting raw detector output.
-- [ ] Return ranked interpretations with evidence and alternatives.
-- [ ] Add comprehensive table-driven tests for music-theory rules.
+- [x] Represent pitch classes, intervals, chords, scales, keys, and enharmonic spelling.
+- [x] Generate chord names from detected pitch-class evidence.
+- [x] Identify likely scales and keys from a time window of events.
+- [x] Model musical continuity without overwriting raw detector output.
+- [x] Return ranked interpretations with evidence and alternatives.
+- [x] Add comprehensive table-driven tests for music-theory rules.
 
 **Done when:** The same sequence can be inspected as raw detections and as explainable chord, scale, and key interpretations.
 
@@ -168,9 +176,9 @@ An item is complete only when:
 
 **Planning:** Create a UI plan if the session timeline and correction workflow require multiple views.
 
-- [ ] Support starting, pausing, stopping, and replaying a session.
-- [ ] Display live and finalized notes and chords distinctly.
-- [ ] Allow the user to inspect confidence and alternate candidates.
+- [x] Support starting, pausing, stopping, and replaying a session.
+- [x] Display live and finalized notes and chords distinctly.
+- [x] Allow the user to inspect confidence and alternate candidates.
 - [ ] Allow correction of recognized events without destroying original predictions.
 - [ ] Persist a session locally and reload it.
 - [ ] Export structured JSON and, if supported by the data, MIDI.

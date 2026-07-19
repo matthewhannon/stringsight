@@ -3,18 +3,45 @@ import {
   CONTRACT_SCHEMA_VERSION,
   type ChordCandidate,
   type ChordEvent,
+  type PitchClass,
 } from '../../shared';
 import { StreamingAnalysisResampler } from '../analysis/resample';
 import { ChordAnalysisBandPassFilter } from './analysis-filter';
-import { matchChordTemplates } from './chords';
+import { StreamingAttackDetector } from './attack-detector';
+import { materializeChordCandidates, scoreChordTemplates } from './chords';
+import {
+  CHORD_CHANGE_ACTIVITY_PEAK_RATIO,
+  POLYPHONIC_ACTIVITY_OPEN_THRESHOLD,
+  type AcousticChordHop,
+  type ChordBoundaryEvidence,
+} from './chord-observations';
 import type { ChordAnalysisProfile } from './contracts';
-import { computeHarmonicChroma, type HarmonicChromaObservation } from './harmonic-chroma';
+import {
+  HARMONIC_CHROMA_FRAME_SIZE,
+  HARMONIC_CHROMA_HOP_SIZE,
+  computeHarmonicChroma,
+  type HarmonicChromaObservation,
+} from './harmonic-chroma';
+import { OnlineChordDecoder } from './online-chord-decoder';
 
 export const POLYPHONIC_ANALYSIS_SAMPLE_RATE = 16_000;
-export const POLYPHONIC_ANALYZER_VERSION = '0.3.0';
+export const POLYPHONIC_ANALYZER_VERSION = '0.5.0';
 export const RESPONSIVE_CHORD_WINDOW_FRAMES = 6_144;
 export const ACCURATE_CHORD_WINDOW_FRAMES = 12_288;
-const ACTIVITY_OPEN_THRESHOLD = 0.012;
+const PITCH_CLASSES: readonly PitchClass[] = [
+  'C',
+  'C#',
+  'D',
+  'D#',
+  'E',
+  'F',
+  'F#',
+  'G',
+  'G#',
+  'A',
+  'A#',
+  'B',
+];
 
 export type PolyphonicAnalysisState = 'silence' | 'warming' | 'tracking' | 'uncertain';
 
@@ -23,6 +50,7 @@ export type ProvisionalChordResult = {
   chroma: HarmonicChromaObservation;
   events: ChordEvent[];
   inputSampleRate: number;
+  observations: AcousticChordHop[];
   sourceTimestampMs: number;
   state: PolyphonicAnalysisState;
 };
@@ -67,12 +95,14 @@ class Float32RollingBuffer {
 }
 
 const emptyChroma = (): HarmonicChromaObservation => ({
+  activationTotal: 0,
   activityEnergy: 0,
   bass: Array.from({ length: 12 }, () => 0),
   changeValues: Array.from({ length: 12 }, () => 0),
   energy: 0,
   noteActivations: [],
   noteMidiRange: { max: 88, min: 40 },
+  pitchClassActivations: Array.from({ length: 12 }, () => 0),
   transientRatio: 0,
   treble: Array.from({ length: 12 }, () => 0),
   tuningCents: 0,
@@ -84,7 +114,9 @@ export class StreamingProvisionalChordAnalyzer {
   readonly inputSampleRate: number;
   private readonly buffer = new Float32RollingBuffer(ACCURATE_CHORD_WINDOW_FRAMES);
   private readonly analysisFilter: ChordAnalysisBandPassFilter;
+  private readonly attackDetector: StreamingAttackDetector;
   private readonly hopFrames: number;
+  private readonly onlineDecoder: OnlineChordDecoder;
   private readonly resampler: StreamingAnalysisResampler;
   private readonly runId: string;
   private activityActive = false;
@@ -92,24 +124,21 @@ export class StreamingProvisionalChordAnalyzer {
   private activityPeakEnergy = 0;
   private activityReleaseCount = 0;
   private activityReleaseSinceMs = 0;
+  private activitySinceMs = 0;
   private inactiveFloorEnergy = Number.POSITIVE_INFINITY;
   private activityAttackFrames: number;
   private activityReleaseFrames: number;
+  private currentAttackCount = 0;
+  private currentBoundary: ChordBoundaryEvidence | null = null;
   private currentEvent: ChordEvent | null = null;
-  private changeCandidateSymbol: string | null = null;
-  private changeConfirmationCount = 0;
-  private changeSinceMs = 0;
   private eventCounter = 0;
   private framesSinceAnalysis = 0;
+  private hopSequence = 0;
   private analysisWindowFrames: number;
   private lastChroma: HarmonicChromaObservation = emptyChroma();
   private lastSourceTimestampMs = 0;
-  private pendingCandidates: readonly ChordCandidate[] | null = null;
-  private pendingConfirmationCount = 0;
-  private pendingSinceMs = 0;
-  private switchConfirmationFrames: number;
-  private changeConfirmationFrames: number;
-  private minimumSwitchScoreMargin: number;
+  private pendingObservationDiscontinuity = false;
+  private silenceLatched = false;
 
   constructor(
     inputSampleRate: number,
@@ -124,189 +153,245 @@ export class StreamingProvisionalChordAnalyzer {
     );
     this.analysisSampleRate = this.resampler.outputSampleRate;
     this.analysisFilter = new ChordAnalysisBandPassFilter(this.analysisSampleRate);
+    this.attackDetector = new StreamingAttackDetector(this.analysisSampleRate);
     this.hopFrames = Math.max(
       1,
       Math.round(((options.hopMs ?? 80) / 1_000) * this.analysisSampleRate),
     );
     const profile = options.profile ?? 'accurate';
+    this.onlineDecoder = new OnlineChordDecoder(profile);
     this.analysisWindowFrames =
       profile === 'responsive' ? RESPONSIVE_CHORD_WINDOW_FRAMES : ACCURATE_CHORD_WINDOW_FRAMES;
-    this.switchConfirmationFrames = 2;
-    this.changeConfirmationFrames = profile === 'responsive' ? 1 : 2;
     this.activityAttackFrames = 2;
     this.activityReleaseFrames = profile === 'responsive' ? 3 : 4;
-    this.minimumSwitchScoreMargin = profile === 'responsive' ? 0.025 : 0.04;
   }
 
   setProfile(profile: ChordAnalysisProfile): void {
     this.analysisWindowFrames =
       profile === 'responsive' ? RESPONSIVE_CHORD_WINDOW_FRAMES : ACCURATE_CHORD_WINDOW_FRAMES;
-    this.switchConfirmationFrames = 2;
-    this.changeConfirmationFrames = profile === 'responsive' ? 1 : 2;
     this.activityAttackFrames = 2;
     this.activityReleaseFrames = profile === 'responsive' ? 3 : 4;
-    this.minimumSwitchScoreMargin = profile === 'responsive' ? 0.025 : 0.04;
-    this.clearTransitionState();
+    this.onlineDecoder.setProfile(profile);
   }
 
   push(samples: Float32Array, startMs: number, discontinuity = false): ProvisionalChordResult {
     const events: ChordEvent[] = [];
+    const observations: AcousticChordHop[] = [];
     if (discontinuity) {
-      const finalized = this.finalizeCurrent(this.lastSourceTimestampMs);
-      if (finalized !== null) events.push(finalized);
-      this.clearTransitionState();
+      const closed = this.closeCurrent(this.lastSourceTimestampMs);
+      if (closed !== null) events.push(closed);
+      this.onlineDecoder.reset();
       this.resetActivityGate();
+      this.attackDetector.reset();
       this.buffer.clear();
       this.framesSinceAnalysis = 0;
+      this.pendingObservationDiscontinuity = true;
     }
     const resampled = this.resampler.push(samples, discontinuity);
     const analysisSamples = this.analysisFilter.process(resampled.samples, discontinuity);
-    this.buffer.push(analysisSamples);
-    this.framesSinceAnalysis += analysisSamples.length;
-    this.lastSourceTimestampMs = startMs + (samples.length / this.inputSampleRate) * 1_000;
+    const chunkEndMs = startMs + (samples.length / this.inputSampleRate) * 1_000;
+    const sourceFramesPerAnalysisFrame = this.inputSampleRate / this.analysisSampleRate;
+    let consumedAnalysisFrames = 0;
+    let state: PolyphonicAnalysisState = 'warming';
 
-    if (this.buffer.available < this.analysisWindowFrames) {
-      return this.result(events, 'warming');
+    while (consumedAnalysisFrames < analysisSamples.length) {
+      const warmingBeforeSlice = this.buffer.available < this.analysisWindowFrames;
+      const framesUntilAnalysis = warmingBeforeSlice
+        ? this.analysisWindowFrames - this.buffer.available
+        : this.hopFrames - this.framesSinceAnalysis;
+      const frameCount = Math.min(
+        framesUntilAnalysis,
+        analysisSamples.length - consumedAnalysisFrames,
+      );
+      const sliceStartFrameOffset =
+        resampled.firstSourceFrameOffset + consumedAnalysisFrames * sourceFramesPerAnalysisFrame;
+      const sliceStartMs = startMs + (sliceStartFrameOffset / this.inputSampleRate) * 1_000;
+      const slice = analysisSamples.subarray(
+        consumedAnalysisFrames,
+        consumedAnalysisFrames + frameCount,
+      );
+      this.attackDetector.push(slice, sliceStartMs, false);
+      this.buffer.push(slice);
+      consumedAnalysisFrames += frameCount;
+
+      if (this.buffer.available < this.analysisWindowFrames) continue;
+      if (!warmingBeforeSlice) {
+        this.framesSinceAnalysis += frameCount;
+        if (this.framesSinceAnalysis < this.hopFrames) continue;
+      }
+      this.framesSinceAnalysis = 0;
+      const sourceFrameOffset =
+        resampled.firstSourceFrameOffset + consumedAnalysisFrames * sourceFramesPerAnalysisFrame;
+      this.lastSourceTimestampMs = Math.min(
+        chunkEndMs,
+        startMs + (sourceFrameOffset / this.inputSampleRate) * 1_000,
+      );
+      const analyzed = this.analyzeCurrentHop();
+      events.push(...analyzed.events);
+      observations.push(analyzed.observation);
+      state = analyzed.state;
     }
-    if (this.framesSinceAnalysis < this.hopFrames) {
-      return this.result(events, this.currentEvent === null ? 'uncertain' : 'tracking');
+
+    this.lastSourceTimestampMs = chunkEndMs;
+    if (observations.length === 0) {
+      state =
+        this.buffer.available < this.analysisWindowFrames
+          ? this.silenceLatched
+            ? 'silence'
+            : 'warming'
+          : this.currentEvent === null
+            ? 'uncertain'
+            : 'tracking';
     }
-    this.framesSinceAnalysis %= this.hopFrames;
+    return this.result(events, state, observations);
+  }
+
+  private analyzeCurrentHop(): {
+    events: ChordEvent[];
+    observation: AcousticChordHop;
+    state: PolyphonicAnalysisState;
+  } {
+    const events: ChordEvent[] = [];
     const buffered = this.buffer.copy();
     this.lastChroma = computeHarmonicChroma(
       buffered.slice(buffered.length - this.analysisWindowFrames),
       this.analysisSampleRate,
     );
-
-    const activity = this.updateActivityGate();
-    if (activity === 'inactive') {
-      const finalized = this.finalizeCurrent(
-        this.activityReleaseSinceMs || this.lastSourceTimestampMs,
-      );
-      this.clearTransitionState();
-      if (finalized !== null) events.push(finalized);
-      return this.result(events, 'silence');
-    }
-    if (activity === 'holding') {
-      if (this.currentEvent !== null) {
-        this.currentEvent = this.createEvent(
-          this.currentEvent.id,
-          this.currentEvent.time.startMs,
-          this.lastSourceTimestampMs,
-          this.currentEvent.candidates,
-          'provisional',
-        );
-        events.push(this.currentEvent);
-      }
-      return this.result(events, this.currentEvent === null ? 'uncertain' : 'tracking');
-    }
-
-    const candidates = matchChordTemplates(this.lastChroma);
-    const best = candidates[0];
-    if (best === undefined || best.confidence < 0.3 || best.score < 0.58) {
-      this.clearTransitionState();
-      return this.result(events, 'uncertain');
-    }
-    const currentBest = this.currentEvent?.candidates[0];
-    const changeCandidates = matchChordTemplates({
+    const templateScores = scoreChordTemplates(this.lastChroma);
+    const candidates = materializeChordCandidates(templateScores, this.lastChroma.bass);
+    const shortTemplateScores = scoreChordTemplates({
       ...this.lastChroma,
       values: this.lastChroma.changeValues,
     });
-    this.updateChangeCue(changeCandidates[0], currentBest);
-    if (this.currentEvent !== null && currentBest?.symbol === best.symbol) {
-      this.clearPending();
+    const shortCandidates = materializeChordCandidates(shortTemplateScores, this.lastChroma.bass);
+    const attack = this.attackDetector.consumeUntil(this.lastSourceTimestampMs);
+    let observation = this.createHopObservation(
+      templateScores,
+      candidates,
+      shortTemplateScores,
+      shortCandidates,
+      attack,
+    );
+
+    const activity = this.updateActivityGate();
+    if (activity === 'active') this.silenceLatched = false;
+    const decision = this.onlineDecoder.push(observation, activity, {
+      activityStartMs: this.activitySinceMs,
+      changeActivitySupported:
+        this.lastChroma.activityEnergy >=
+        Math.max(
+          POLYPHONIC_ACTIVITY_OPEN_THRESHOLD,
+          this.activityPeakEnergy * CHORD_CHANGE_ACTIVITY_PEAK_RATIO,
+        ),
+      releaseAtMs: this.activityReleaseSinceMs || this.lastSourceTimestampMs,
+    });
+    if (decision.action === 'change' && decision.boundary !== undefined) {
+      observation = { ...observation, boundaryBefore: decision.boundary };
+    }
+    if (decision.action === 'close') {
+      const closed = this.closeCurrent(decision.eventStartMs ?? this.lastSourceTimestampMs);
+      if (closed !== null) events.push(closed);
+    } else if (decision.action === 'start' && decision.candidates !== undefined) {
+      this.eventCounter += 1;
+      this.currentAttackCount = observation.attack.strength > 0 ? 1 : 0;
+      this.currentBoundary = null;
+      this.currentEvent = this.createEvent(
+        `${this.runId}-chord-${String(this.eventCounter)}`,
+        decision.eventStartMs ?? observation.time.startMs,
+        this.lastSourceTimestampMs,
+        decision.candidates,
+        'provisional',
+      );
+      events.push(this.currentEvent);
+    } else if (decision.action === 'change' && decision.candidates !== undefined) {
+      const eventStartMs = Math.max(
+        this.currentEvent?.time.startMs ?? 0,
+        decision.eventStartMs ?? observation.time.startMs,
+      );
+      const closed = this.closeCurrent(eventStartMs);
+      if (closed !== null) events.push(closed);
+      this.eventCounter += 1;
+      this.currentAttackCount = observation.attack.strength > 0 ? 1 : 0;
+      this.currentBoundary = decision.boundary ?? null;
+      this.currentEvent = this.createEvent(
+        `${this.runId}-chord-${String(this.eventCounter)}`,
+        eventStartMs,
+        this.lastSourceTimestampMs,
+        decision.candidates,
+        'provisional',
+      );
+      events.push(this.currentEvent);
+    } else if (decision.action === 'extend' && this.currentEvent !== null) {
+      if (observation.attack.strength > 0) this.currentAttackCount += 1;
       this.currentEvent = this.createEvent(
         this.currentEvent.id,
         this.currentEvent.time.startMs,
         this.lastSourceTimestampMs,
-        candidates,
+        decision.candidates ?? this.currentEvent.candidates,
         'provisional',
       );
       events.push(this.currentEvent);
-      return this.result(events, 'tracking');
     }
-
-    if (this.currentEvent !== null) {
-      const currentFrameCandidate = candidates.find(
-        (candidate) => candidate.symbol === currentBest?.symbol,
-      );
-      const currentFrameScore = currentFrameCandidate?.score ?? 0.58;
-      const changeConfirmed =
-        this.changeCandidateSymbol === best.symbol &&
-        this.changeConfirmationCount >= this.changeConfirmationFrames;
-      const switchHasActivity =
-        this.lastChroma.activityEnergy >=
-        Math.max(ACTIVITY_OPEN_THRESHOLD, this.activityPeakEnergy * 0.2);
-      if (
-        !changeConfirmed ||
-        !switchHasActivity ||
-        best.score - currentFrameScore < this.minimumSwitchScoreMargin
-      ) {
-        this.clearPending();
-        this.currentEvent = this.createEvent(
-          this.currentEvent.id,
-          this.currentEvent.time.startMs,
-          this.lastSourceTimestampMs,
-          this.currentEvent.candidates,
-          'provisional',
-        );
-        events.push(this.currentEvent);
-        return this.result(events, 'tracking');
-      }
-      if (this.pendingCandidates?.[0]?.symbol === best.symbol) {
-        this.pendingConfirmationCount += 1;
-        this.pendingCandidates = candidates;
-      } else {
-        this.pendingCandidates = candidates;
-        this.pendingConfirmationCount = 1;
-        this.pendingSinceMs =
-          this.changeCandidateSymbol === best.symbol &&
-          this.changeConfirmationCount >= this.changeConfirmationFrames
-            ? this.changeSinceMs
-            : Math.max(
-                this.currentEvent.time.startMs,
-                this.lastSourceTimestampMs - (this.hopFrames / this.analysisSampleRate) * 1_000,
-              );
-      }
-      if (this.pendingConfirmationCount < this.switchConfirmationFrames) {
-        this.currentEvent = this.createEvent(
-          this.currentEvent.id,
-          this.currentEvent.time.startMs,
-          this.lastSourceTimestampMs,
-          this.currentEvent.candidates,
-          'provisional',
-        );
-        events.push(this.currentEvent);
-        return this.result(events, 'tracking');
-      }
+    const state: PolyphonicAnalysisState =
+      activity === 'inactive' ? 'silence' : this.currentEvent === null ? 'uncertain' : 'tracking';
+    if (activity === 'inactive') {
+      this.silenceLatched = true;
+      this.buffer.clear();
+      this.framesSinceAnalysis = 0;
     }
-
-    const eventStartMs =
-      this.currentEvent === null
-        ? Math.max(
-            0,
-            this.lastSourceTimestampMs -
-              (this.analysisWindowFrames / this.analysisSampleRate) * 1_000,
-          )
-        : this.pendingSinceMs;
-    const finalized = this.finalizeCurrent(eventStartMs);
-    if (finalized !== null) events.push(finalized);
-    this.eventCounter += 1;
-    this.currentEvent = this.createEvent(
-      `${this.runId}-chord-${String(this.eventCounter)}`,
-      eventStartMs,
-      this.lastSourceTimestampMs,
-      candidates,
-      'provisional',
-    );
-    this.clearTransitionState();
-    events.push(this.currentEvent);
-    return this.result(events, 'tracking');
+    return { events, observation, state };
   }
 
   finish(atMs = this.lastSourceTimestampMs): ProvisionalChordResult {
-    const finalized = this.finalizeCurrent(atMs);
-    return this.result(finalized === null ? [] : [finalized], 'silence');
+    const closed = this.closeCurrent(atMs);
+    this.onlineDecoder.reset();
+    return this.result(closed === null ? [] : [closed], 'silence', []);
+  }
+
+  private createHopObservation(
+    templateScores: Float32Array,
+    topCandidates: readonly ChordCandidate[],
+    shortTemplateScores: Float32Array,
+    shortCandidates: readonly ChordCandidate[],
+    attack: AcousticChordHop['attack'],
+  ): AcousticChordHop {
+    const endMs = this.lastSourceTimestampMs;
+    const hopDurationMs = (this.hopFrames / this.analysisSampleRate) * 1_000;
+    const longDurationMs = (this.analysisWindowFrames / this.analysisSampleRate) * 1_000;
+    const shortDurationMs =
+      ((HARMONIC_CHROMA_FRAME_SIZE + HARMONIC_CHROMA_HOP_SIZE) / this.analysisSampleRate) * 1_000;
+    this.hopSequence += 1;
+    const observation: AcousticChordHop = {
+      activityEnergy: this.lastChroma.activityEnergy,
+      attack: {
+        ...attack,
+        percussiveRatio: this.lastChroma.transientRatio,
+      },
+      discontinuity: this.pendingObservationDiscontinuity,
+      featureTimeMs: endMs,
+      harmony: {
+        activationTotal: this.lastChroma.activationTotal,
+        bassChroma: Float32Array.from(this.lastChroma.bass),
+        longChroma: Float32Array.from(this.lastChroma.values),
+        pitchClassActivations: Float32Array.from(this.lastChroma.pitchClassActivations),
+        shortChroma: Float32Array.from(this.lastChroma.changeValues),
+        shortCandidates,
+        shortTemplateScores,
+        templateScores,
+        topCandidates,
+        trebleChroma: Float32Array.from(this.lastChroma.treble),
+        tuningCents: this.lastChroma.tuningCents,
+      },
+      sequence: this.hopSequence,
+      support: {
+        endMs,
+        longStartMs: Math.max(0, endMs - longDurationMs),
+        shortStartMs: Math.max(0, endMs - shortDurationMs),
+      },
+      time: { endMs, startMs: Math.max(0, endMs - hopDurationMs) },
+    };
+    this.pendingObservationDiscontinuity = false;
+    return observation;
   }
 
   private createEvent(
@@ -320,13 +405,29 @@ export class StreamingProvisionalChordAnalyzer {
       candidates,
       diagnostics: {
         analysisPath: 'tuned-harmonic-chroma',
+        attackCount: this.currentAttackCount,
+        ...(this.currentBoundary === null
+          ? {}
+          : {
+              attackStrength: this.currentBoundary.attackStrength,
+              boundaryMode: this.currentBoundary.mode,
+              boundaryScore: this.currentBoundary.score,
+              changePersistenceMs: this.currentBoundary.persistenceMs,
+              harmonicDistance: this.currentBoundary.harmonicDistance,
+              novelToneStrength: this.currentBoundary.novelToneStrength,
+            }),
         chromaEnergy: this.lastChroma.energy,
+        scoreSemantics: 'uncalibrated-match-strength',
         transientRatio: this.lastChroma.transientRatio,
         tuningCents: this.lastChroma.tuningCents,
       },
       id,
       kind: 'chord',
       lifecycle,
+      observedPitchClasses: this.lastChroma.values.flatMap((weight, index) => {
+        const pitchClass = PITCH_CLASSES[index];
+        return pitchClass === undefined || weight <= 0 ? [] : [{ pitchClass, weight }];
+      }),
       provenance: {
         algorithm: 'hpss-nnls-chroma-chord-templates',
         generatedAtMs: endMs,
@@ -339,30 +440,24 @@ export class StreamingProvisionalChordAnalyzer {
     });
   }
 
-  private finalizeCurrent(endMs: number): ChordEvent | null {
+  private closeCurrent(endMs: number): ChordEvent | null {
     if (this.currentEvent === null) return null;
-    const finalized = this.createEvent(
-      this.currentEvent.id,
-      this.currentEvent.time.startMs,
-      Math.max(endMs, this.currentEvent.time.startMs),
-      this.currentEvent.candidates,
-      'finalized',
-    );
+    const closed = ChordEventSchema.parse({
+      ...this.currentEvent,
+      lifecycle: 'provisional',
+      provenance: {
+        ...this.currentEvent.provenance,
+        generatedAtMs: Math.max(endMs, this.currentEvent.time.startMs),
+      },
+      time: {
+        endMs: Math.max(endMs, this.currentEvent.time.startMs),
+        startMs: this.currentEvent.time.startMs,
+      },
+    });
     this.currentEvent = null;
-    return finalized;
-  }
-
-  private clearPending(): void {
-    this.pendingCandidates = null;
-    this.pendingConfirmationCount = 0;
-    this.pendingSinceMs = 0;
-  }
-
-  private clearTransitionState(): void {
-    this.clearPending();
-    this.changeCandidateSymbol = null;
-    this.changeConfirmationCount = 0;
-    this.changeSinceMs = 0;
+    this.currentAttackCount = 0;
+    this.currentBoundary = null;
+    return closed;
   }
 
   private resetActivityGate(): void {
@@ -371,12 +466,14 @@ export class StreamingProvisionalChordAnalyzer {
     this.activityPeakEnergy = 0;
     this.activityReleaseCount = 0;
     this.activityReleaseSinceMs = 0;
+    this.activitySinceMs = 0;
     this.inactiveFloorEnergy = Number.POSITIVE_INFINITY;
+    this.silenceLatched = false;
   }
 
   private updateActivityGate(): 'active' | 'holding' | 'inactive' {
     const energy = this.lastChroma.activityEnergy;
-    const openThreshold = ACTIVITY_OPEN_THRESHOLD;
+    const openThreshold = POLYPHONIC_ACTIVITY_OPEN_THRESHOLD;
 
     if (!this.activityActive) {
       const riseThreshold = Number.isFinite(this.inactiveFloorEnergy)
@@ -384,8 +481,15 @@ export class StreamingProvisionalChordAnalyzer {
         : openThreshold;
       if (energy < openThreshold || (this.activityAttackCount === 0 && energy < riseThreshold)) {
         this.activityAttackCount = 0;
+        this.activitySinceMs = 0;
         this.inactiveFloorEnergy = Math.min(this.inactiveFloorEnergy, energy);
         return 'inactive';
+      }
+      if (this.activityAttackCount === 0) {
+        this.activitySinceMs = Math.max(
+          0,
+          this.lastSourceTimestampMs - (this.hopFrames / this.analysisSampleRate) * 1_000,
+        );
       }
       this.activityAttackCount += 1;
       if (this.activityAttackCount < this.activityAttackFrames) return 'holding';
@@ -423,41 +527,17 @@ export class StreamingProvisionalChordAnalyzer {
     return 'inactive';
   }
 
-  private updateChangeCue(
-    candidate: ChordCandidate | undefined,
-    current: ChordCandidate | undefined,
-  ): void {
-    if (
-      candidate === undefined ||
-      current === undefined ||
-      candidate.symbol === current.symbol ||
-      candidate.confidence < 0.3 ||
-      candidate.score < 0.58
-    ) {
-      this.changeCandidateSymbol = null;
-      this.changeConfirmationCount = 0;
-      this.changeSinceMs = 0;
-      return;
-    }
-    if (this.changeCandidateSymbol === candidate.symbol) {
-      this.changeConfirmationCount += 1;
-      return;
-    }
-    this.changeCandidateSymbol = candidate.symbol;
-    this.changeConfirmationCount = 1;
-    const changeSupportFrames = 5_120;
-    this.changeSinceMs = Math.max(
-      this.currentEvent?.time.startMs ?? 0,
-      this.lastSourceTimestampMs - (changeSupportFrames / this.analysisSampleRate) * 1_000,
-    );
-  }
-
-  private result(events: ChordEvent[], state: PolyphonicAnalysisState): ProvisionalChordResult {
+  private result(
+    events: ChordEvent[],
+    state: PolyphonicAnalysisState,
+    observations: AcousticChordHop[],
+  ): ProvisionalChordResult {
     return {
       analysisSampleRate: this.analysisSampleRate,
       chroma: this.lastChroma,
       events,
       inputSampleRate: this.inputSampleRate,
+      observations,
       sourceTimestampMs: this.lastSourceTimestampMs,
       state,
     };

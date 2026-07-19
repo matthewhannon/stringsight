@@ -12,12 +12,16 @@ const MAX_SPECTRUM_MIDI = 112;
 const MAX_HARMONIC = 16;
 
 export type HarmonicChromaObservation = ChromaObservation & {
+  /** Total unnormalized activation supporting pitch-class evidence. */
+  activationTotal: number;
   /** Short-window signal level used only for activity gating. */
   activityEnergy: number;
   /** Short-time evidence used only to locate a possible chord change. */
   changeValues: readonly number[];
   noteActivations: readonly number[];
   noteMidiRange: { max: number; min: number };
+  /** Unnormalized activation folded to the twelve pitch classes. */
+  pitchClassActivations: readonly number[];
   transientRatio: number;
   treble: readonly number[];
   tuningCents: number;
@@ -298,7 +302,7 @@ const weightedPool = (
 const foldActivations = (
   activations: Float64Array,
   minNoteMidi: number,
-): { bass: number[]; treble: number[]; values: number[] } => {
+): { bass: number[]; pitchClassActivations: number[]; treble: number[]; values: number[] } => {
   const values = new Float64Array(CHROMA_BIN_COUNT);
   const bass = new Float64Array(CHROMA_BIN_COUNT);
   const treble = new Float64Array(CHROMA_BIN_COUNT);
@@ -312,7 +316,12 @@ const foldActivations = (
       treble[pitchClass] = arrayValue(treble, pitchClass) + activation;
     }
   });
-  return { bass: normalize(bass), treble: normalize(treble), values: normalize(values) };
+  return {
+    bass: normalize(bass),
+    pitchClassActivations: Array.from(values),
+    treble: normalize(treble),
+    values: normalize(values),
+  };
 };
 
 const weightedEnergy = (samples: Float32Array, startIndex = 0): number => {
@@ -384,12 +393,14 @@ export function computeHarmonicChroma(
   const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
 
   return {
+    activationTotal: folded.pitchClassActivations.reduce((sum, value) => sum + value, 0),
     activityEnergy: weightedEnergy(samples, Math.max(0, samples.length - 2_048)),
     bass: folded.bass,
     changeValues: recentFolded.values,
     energy: weightedEnergy(samples),
     noteActivations: Array.from(activations),
     noteMidiRange: { max: maxNoteMidi, min: minNoteMidi },
+    pitchClassActivations: folded.pitchClassActivations,
     transientRatio: transientWeight / Math.max(Number.EPSILON, totalWeight),
     treble: folded.treble,
     tuningCents,

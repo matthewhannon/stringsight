@@ -165,10 +165,20 @@ describe('AudioAnalysisController', () => {
     });
     expect(controller.currentSnapshot.events).toHaveLength(1);
     expect(controller.currentSnapshot.onsets).toHaveLength(1);
+    worker.emit({
+      protocolVersion: WORKER_PROTOCOL_VERSION,
+      runId: 'microphone-1',
+      type: 'complete',
+    });
+    expect(controller.currentSnapshot.runComplete).toBe(true);
 
     controller.reset('replay');
     worker.emit(updateMessage);
-    expect(controller.currentSnapshot).toMatchObject({ events: [], runId: 'replay-2' });
+    expect(controller.currentSnapshot).toMatchObject({
+      events: [],
+      runComplete: false,
+      runId: 'replay-2',
+    });
 
     captureSnapshot = { ...captureSnapshot, state: 'stopping' };
     const notifyState = stateListener as unknown as () => void;

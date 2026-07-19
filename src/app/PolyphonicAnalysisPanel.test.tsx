@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { vi } from 'vitest';
 
 import type { PolyphonicAnalysisSnapshot } from '../audio/polyphonic';
@@ -95,6 +95,7 @@ const emptySnapshot: PolyphonicAnalysisSnapshot = {
   modelWindowCount: 0,
   noteSetEvents: [],
   processingLatencyMs: 0,
+  runComplete: false,
   runId: null,
   state: 'silence',
 };
@@ -153,11 +154,27 @@ describe('PolyphonicAnalysisPanel', () => {
     expect(screen.getByText('Am7')).toBeVisible();
     expect(screen.getByText('Csus4')).toBeVisible();
     expect(screen.getByText('C5')).toBeVisible();
-    expect(screen.getByText('Latest 16 of 18')).toBeVisible();
+    expect(screen.getByText('Latest 6 of 18 · 12 earlier hidden')).toBeVisible();
+    const timeline = screen.getByRole('list', { name: 'Latest chord events, newest first' });
+    const items = within(timeline).getAllByRole('listitem');
+    expect(items).toHaveLength(6);
+    const newestItem = items.at(0);
+    const oldestVisibleItem = items.at(-1);
+    if (newestItem === undefined || oldestVisibleItem === undefined) {
+      throw new Error('Expected the bounded chord timeline to contain events.');
+    }
+    expect(within(newestItem).getByText('1.80s')).toBeVisible();
+    expect(within(oldestVisibleItem).getByText('1.30s')).toBeVisible();
+    expect(within(newestItem).getByText('C')).toBeVisible();
+    expect(within(newestItem).getByText('provisional')).toBeVisible();
+    expect(within(newestItem).getByText('86% match')).toBeVisible();
+    expect(within(newestItem).getByText('Template C E G')).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent('Model finalization is unavailable.');
     expect(screen.getByText('16,000 Hz')).toBeVisible();
     expect(screen.getByText('WASM')).toBeVisible();
     expect(screen.getByText('125.6 ms / 3 windows')).toBeVisible();
     expect(screen.getByText(/shorter look-ahead/i)).toBeVisible();
+    expect(screen.getByText('86% match strength')).toBeVisible();
+    expect(screen.getAllByText('Template C E G').length).toBeGreaterThan(0);
   });
 });
