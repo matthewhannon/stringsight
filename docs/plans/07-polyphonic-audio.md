@@ -1,6 +1,6 @@
 # Polyphonic Note and Chord Detection
 
-**Status:** In progress; stability and root-aware ranking measured, final acceptance matrix remains
+**Status:** Complete; accepted with reviewed power-chord and inversion coverage
 **Checklist item:** 7
 **Depends on:** Audio capture and replay, shared prediction contracts, evaluation harness,
 monophonic analysis
@@ -292,6 +292,32 @@ complete peak-memory measurement.
 The decoder now rejects note blips of seven frames or fewer (about 81 ms) by default while retaining
 an explicit shorter-note option. This removed a transient G harmonic from the C fixture; finalized
 note-set provenance is `1.0.1-stringsight.2`.
+
+### Reviewed power-chord and inversion acceptance
+
+A second private recording covers root-position C and G controls, C/E and G/B inversions, E5, A5,
+G5, B5, Dm, and Dm7. The user confirmed the requested order and clean performance. FFmpeg silence
+detection at -30 dB with at least 800 ms of silence produced exactly ten non-overlapping sounding
+regions; the exact millisecond boundaries remain automatically proposed rather than manually
+auditioned.
+
+| Metric                  | Accurate | Responsive |
+| ----------------------- | -------: | ---------: |
+| Overall chord top-1     |    70.0% |      80.0% |
+| Overall chord top-3     |   100.0% |     100.0% |
+| Inversion chord top-1   |      2/2 |        2/2 |
+| Inversion bass accuracy |      2/2 |        2/2 |
+| Power-chord top-1       |      1/4 |        2/4 |
+| Power-chord top-3       |      4/4 |        4/4 |
+| Active fragmentation    |    1.10x |      1.10x |
+| Real-time factor        |    0.619 |      0.206 |
+
+Both profiles distinguish the independently recorded Dm and Dm7 at top-1. The power-chord ranking
+retains honest ambiguity among bare-fifth, suspended, and major interpretations while placing every
+requested power chord in the top three. No fixture-specific ranking change is warranted. Combined
+with the public finalized-model matrix, measured runtime/model sizes, browser heap sample with its
+documented scope, live/import equivalence coverage, and existing decay/reconciliation regressions,
+this completes the Item 7 acceptance matrix.
 
 ## Acceptance budgets
 

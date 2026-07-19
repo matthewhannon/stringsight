@@ -39,34 +39,26 @@ public verification suite remains independent of these private files.
 
 ## Next implementation milestone
 
-Polyphonic note and chord recognition is in progress. The official Basic Pitch model runs only
-inside the dedicated worker, with exact asset provenance, cached warmup, overlapping-window
-inference, and finalized MIDI note sets. A purpose-built chord frontend now adds analysis-only band
-limiting, attack/sustain separation, tuning-aware log-frequency whitening, harmonic-note
-estimation, separate bass/treble evidence, and short/long time scales. Basic Pitch note sets are
-fused inside the acoustic spans rather than controlling segmentation. The licensed C-major fixture
-completes on WASM as one finalized C event.
+Item 7 polyphonic note and chord recognition is complete. The official Basic Pitch model runs only
+inside the dedicated worker, while a purpose-built deterministic frontend provides fast provisional
+chord evidence and stable acoustic segmentation. The public real-browser matrix reaches 100% note
+F1, onset F1, pitch-class-set recall, and finalized chord accuracy on its development and held-out
+fixtures. Model/runtime sizes, load and inference timing, real-time factors, and the browser-exposed
+JavaScript heap sample are recorded with the memory sample's scope stated explicitly.
 
-A permitted private recording now provides a focused 19-chord regression sequence with
-user-confirmed chord order and deterministically proposed, not manually auditioned, boundaries.
-Activity attack/release hysteresis, decay-time switch suppression, continuous root/bass support,
-template coverage, and evidence-aware seventh selection reduced Accurate from 55 to 20 events and
-Responsive from 102 to 25. Analyzer 0.3.0 also discounts a seventh extension when its note evidence
-is isolated in a much higher register than the chord core. Both profiles now produce only two
-silence-only events and reach 89.5% top-1 and 94.7% top-3. Real-time factors are 0.632 and 0.208
-respectively on the current machine.
+The original reviewed private 19-chord regression remains at 89.5% top-1 and 94.7% top-3 in both
+profiles. A second reviewed ten-chord take now supplies the missing C/E and G/B inversion, four
+power-chord, and independent Dm/Dm7 coverage. Both profiles identify both inversions and their bass
+notes correctly, distinguish Dm from Dm7 at top-1, and place all four power chords in the top three.
+Accurate and Responsive process that 50.3-second take at 0.619x and 0.206x real time. Bare fifths
+remain intentionally uncertain among power, suspended, and major interpretations rather than being
+forced to a fixture-specific label.
 
-The remaining Item 7 work is to improve or explicitly bound the Dm/Am7 confusions, add reviewed
-power-chord and inversion coverage, broaden the two-fixture finalized-note matrix, and obtain a
-complete worker/WASM peak-memory measurement if the supported browser exposes one. The private
-sequence is a development regression input rather than universal or held-out accuracy evidence.
-
-A separate real-browser finalized-model evaluation now covers the public C-major development and
-A-minor held-out chord fixtures. Combined finalized note F1, onset F1, pitch-class-set recall, and
-chord accuracy are 100%; exact MIDI-set accuracy is 50% because the held-out doubled A decays before
-the longest note-set segment. Finalized chord top-1 improves from 50% provisional to 100%. WASM model
-inference is at most 0.060x real time in this two-fixture run. These fixtures validate the harness and
-budgets but are too small to replace reviewed power-chord and inversion coverage.
+The next milestone is Item 8: a deterministic music-theory interpretation engine. It will represent
+pitch classes, intervals, chord qualities, scales, keys, and enharmonic spelling; infer ranked chord,
+scale, and key interpretations over event windows; preserve raw detector output; and add exhaustive
+table-driven rule tests. Item 9 can then build the complete audio-only session, correction,
+persistence, and export workflow on those stable interpretations.
 
 Later milestones add optional fretboard vision, guitar geometry, audio/vision fusion, and musical
 interpretation. Audio must remain useful without a camera.
