@@ -1,8 +1,8 @@
 # Audio Input rack UI migration
 
-**Status:** In progress  
-**Scope:** Production Audio Input presentation and the minimum capture-controller transition needed
-for source changes. Item 10 remains deferred.
+- **Status:** In progress
+- **Scope:** Production Audio Input presentation and the minimum capture-controller transition needed
+  for source changes. Item 10 remains deferred.
 
 ## Invariants
 

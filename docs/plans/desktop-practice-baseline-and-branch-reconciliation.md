@@ -1,9 +1,9 @@
 # Desktop Practice Workspace baseline and branch reconciliation
 
-**Status:** Accepted working baseline  
-**Recorded:** 2026-07-20  
-**Scope:** Establish the production baseline and classify the isolated rack/UI work before the
-Practice Workspace architecture or implementation begins.
+- **Status:** Accepted working baseline
+- **Recorded:** 2026-07-20
+- **Scope:** Establish the production baseline and classify the isolated rack/UI work before the
+  Practice Workspace architecture or implementation begins.
 
 ## 1. Decision
 
