@@ -10,3 +10,20 @@ export {
 } from './RackControls';
 export { RackModule, type RackModuleProps, type RackModuleSize } from './RackModule';
 export { rackEmbeddedClassNames } from './embedded';
+export {
+  RackDetailKey,
+  RackRecordPunch,
+  RackRockerSwitch,
+  RackSegmentedMeter,
+  RackSourceSelector,
+  RackStatusLamp,
+  RackUtilityKey,
+  type RackDetailKeyProps,
+  type RackRecordPunchProps,
+  type RackRockerSwitchProps,
+  type RackSegmentedMeterProps,
+  type RackSourceOption,
+  type RackSourceSelectorProps,
+  type RackStatusLampProps,
+  type RackUtilityKeyProps,
+} from './RackAudioControls';

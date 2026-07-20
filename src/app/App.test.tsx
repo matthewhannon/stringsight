@@ -17,7 +17,8 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /audio input/i })).toBeVisible();
     expect(screen.getByRole('heading', { name: /pitch analysis/i })).toBeVisible();
     expect(screen.getByRole('heading', { name: /evaluation bench/i })).toBeVisible();
-    expect(screen.getByRole('button', { name: /^connect microphone$/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Input' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('combobox', { name: 'Source' })).toBeEnabled();
     expect(screen.queryByText(/rack stack concepts/i)).not.toBeInTheDocument();
   });
 });

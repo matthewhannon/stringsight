@@ -11,6 +11,9 @@ status/control presentation.
 - `RackStatus`: a consistent status light and label.
 - `RackButton`: hardware and primary button treatments for rack-level actions.
 - `RackValue`: a compact label/value readout.
+- `RackRockerSwitch`, `RackStatusLamp`, `RackSegmentedMeter`, `RackUtilityKey`,
+  `RackRecordPunch`, `RackSourceSelector`, and `RackDetailKey`: controlled physical input controls
+  that do not own domain lifecycle state.
 - `rackEmbeddedClassNames`: stable, domain-neutral styling hooks for embedded product surfaces.
 
 Import these through `src/ui/rack/index.ts`, not their individual files.

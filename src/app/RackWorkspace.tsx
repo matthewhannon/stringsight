@@ -24,7 +24,7 @@ type EmbeddedToolProps = {
 
 type WorkspaceModuleDefinition = {
   Component: ComponentType<EmbeddedToolProps>;
-  description: string;
+  description?: string;
   id: string;
   size: RackModuleSize;
   title: string;
@@ -34,7 +34,6 @@ type WorkspaceModuleDefinition = {
 const workspaceModules: readonly WorkspaceModuleDefinition[] = [
   {
     Component: AudioCapturePanel,
-    description: 'Device routing, calibrated level monitoring, recording, and replay.',
     id: 'capture',
     size: 'expanded',
     title: 'Audio input',
@@ -199,7 +198,7 @@ export function RackWorkspace() {
           <SessionModule />
           {workspaceModules.map(({ Component, ...module }) => (
             <RackModule
-              description={module.description}
+              {...(module.description === undefined ? {} : { description: module.description })}
               key={module.id}
               moduleId={module.id}
               size={module.size}
