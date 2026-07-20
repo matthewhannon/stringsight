@@ -157,7 +157,13 @@ An item is complete only when:
 testing exposed premature `finalized` lifecycle labels, transition fragments retained after Stop,
 and uncalibrated match scores presented as probabilities. Closed spans now remain provisional until
 run-level finalization, and the promoted boundary-region decoder reconciles the retained evidence
-without regressing the reviewed 97.6-second sequence.
+without regressing the reviewed 97.6-second sequence. A fresh continuous G-D-E-G-D-E take then
+exposed bounded-candidate and label-support defects in production fusion. The generalized
+correction evaluates the full retained acoustic hypothesis catalog, labels regions only from
+settled acoustic support, checks essential model-tone completeness, and smooths low-definition
+transition regions. The reviewed take now finalizes as exactly G-D-E-G-D-E; the 19-chord sequence
+remains unchanged, and the ten-chord power/inversion sequence now places every intended chord at
+top-1 with no extra event.
 
 ### 8. Build the music-theory interpretation engine
 
@@ -179,12 +185,21 @@ without regressing the reviewed 97.6-second sequence.
 - [x] Support starting, pausing, stopping, and replaying a session.
 - [x] Display live and finalized notes and chords distinctly.
 - [x] Allow the user to inspect confidence and alternate candidates.
-- [ ] Allow correction of recognized events without destroying original predictions.
-- [ ] Persist a session locally and reload it.
-- [ ] Export structured JSON and, if supported by the data, MIDI.
-- [ ] Run the complete audio evaluation suite and document the baseline.
+- [x] Allow correction of recognized events without destroying original predictions.
+- [x] Persist a session locally and reload it.
+- [x] Export structured JSON and, if supported by the data, MIDI.
+- [x] Run the complete audio evaluation suite and document the baseline.
 
 **Done when:** StringSight is useful as an audio-only guitar transcription application and provides the stable candidate data needed by vision and fusion.
+
+**Resolved July 19, 2026:** The review layer projects append-only replacement and revert commands
+over immutable detector events, preserving raw predictions, timing, confidence, alternatives, and
+provenance. Validated structured sessions and replayable PCM are stored atomically in separate
+IndexedDB stores and reload across a browser refresh. Versioned JSON round-trips the complete
+structured session; MIDI is offered only for finalized note evidence and never invents chord
+voicings. The real-browser save/reload/replay workflow passes with the reviewed G-D-E-G-D-E take,
+the full repository verification passes, and label-driven private production replays retain the
+accepted 18/19 common-chord and 10/10 power/inversion results without fixture-specific rules.
 
 ## Phase 3: Guitar-domain model
 
@@ -397,12 +412,12 @@ without regressing the reviewed 97.6-second sequence.
 - [x] Complete item 5 hardware verification and automated implementation.
 - [x] Complete item 6 real-guitar verification; automated implementation and corpus baseline pass.
 - [x] Complete item 7 polyphonic evaluation with reviewed power-chord and inversion coverage.
-- [ ] Build items 5 through 9 as the first complete vertical slice.
+- [x] Build items 5 through 9 as the first complete vertical slice.
 
 ## Major completion gates
 
 - [x] **Foundation gate:** Items 1-4 complete.
-- [ ] **Audio gate:** Items 5-9 complete and evaluated.
+- [x] **Audio gate:** Items 5-9 complete and evaluated.
 - [ ] **Guitar-model gate:** Item 10 complete.
 - [ ] **Vision gate:** Items 11-13 complete and evaluated.
 - [ ] **Fusion gate:** Items 14-15 complete with measured improvement.

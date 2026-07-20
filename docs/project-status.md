@@ -45,10 +45,9 @@ public verification suite remains independent of these private files.
 
 ## Next implementation milestone
 
-Item 7's isolated-chord recognition matrix remains accepted, but its finalization slice was
-reopened on July 19 after a reviewed continuous G-to-D take exposed premature finalized lifecycle
-labels, transition fragments retained after Stop, and match scores presented as probabilities. The
-official Basic Pitch model runs only
+Item 7's isolated-chord recognition matrix and finalization slice are accepted. A reviewed
+continuous G-to-D take exposed premature finalized lifecycle labels, transition fragments retained
+after Stop, and match scores presented as probabilities. The official Basic Pitch model runs only
 inside the dedicated worker, while a purpose-built deterministic frontend provides fast provisional
 chord evidence and stable acoustic segmentation. The public real-browser matrix reaches 100% note
 F1, onset F1, pitch-class-set recall, and finalized chord accuracy on its development and held-out
@@ -82,7 +81,7 @@ adapter converts the existing shared note, note-set, and chord event contracts i
 keeps ranked detector uncertainty, excludes provisional events by default, and leaves every source
 event unchanged.
 
-Item 9, the complete audio-only session product slice, is now in progress under
+Item 9, the complete audio-only session product slice, is complete under
 `docs/plans/09-audio-only-product-slice.md`. Capture supports start, pause, resume, stop, and replay.
 Pausing suspends the active audio context so it produces no PCM and does not advance the audio
 timeline; stopping while paused resumes only long enough to flush and finalize the buffered take.
@@ -110,6 +109,41 @@ performs conservative missed-boundary inference only within those partitions, an
 evidence only when a live span actually needs splitting. Its preserved-sequence output matches the
 former production labels exactly with no extra event.
 
+A fresh 18.69-second G-D-E-G-D-E take with continuous strumming and a final E ring-out supplied the
+remaining product confirmation. Before correction, production fusion emitted seven events: G,
+Dsus4, Esus4, E, G, Asus4, E. Fusion now considers the complete retained acoustic hypothesis
+catalog instead of only the five live display candidates, limits model labeling to settled acoustic
+support windows, scores essential candidate-tone completeness uniformly across roots and qualities,
+and discourages extra transitions through low-definition regions. The same take now emits exactly
+G, D, E, G, D, E. The independent 19-chord sequence remains unchanged at 18 supported/18 correct
+events, while the power/inversion take emits exactly its ten intended events with all four power
+chords at top-1. No chord name, transition pair, recording timestamp, or guitar-specific rule is
+encoded in the correction.
+
+The rack now includes a session review module for finalized notes and chords. It shows immutable raw
+predictions beside the corrected projection, timing, match strength, ranked alternatives, and
+algorithm provenance. Replacements and reverts append correction records rather than mutating
+detector output; invalid or orphaned history is reported explicitly.
+
+Complete sessions can be saved, listed, loaded, replayed, and deleted through an injectable local
+repository. The browser implementation validates structured sessions and stores them atomically in
+IndexedDB separately from optional PCM media. Versioned JSON export/import preserves raw events,
+settings, provenance, confidence, timing, recording metadata, and correction history. Standard MIDI
+export is available only when finalized note evidence supplies a defensible MIDI pitch, onset, and
+duration; chord-only sessions never invent voicings.
+
+A real page refresh retained and restored the reviewed six-chord session, its two correction
+records, and replayable PCM. The reusable private browser replay now optionally validates a sidecar
+label file generically by bounded onset alignment and interval overlap. It enforces unique emitted
+events, exact supported chord labels, and labeled inversion basses without encoding any recording
+or chord sequence in the test.
+
+The older Node acoustic-only diagnostic was also rerun rather than conflated with production fusion.
+On the 19-chord take, Accurate is 89.5% top-1/94.7% top-3 and Responsive is 84.2%/94.7%. On the
+power/inversion take, Accurate is 60.0%/90.0% and Responsive is 90.0%/100%. These profiles omit the
+promoted per-hop Basic Pitch fusion used by the application; the label-driven production checks
+above are the product acceptance baseline.
+
 Later milestones add optional fretboard vision, guitar geometry, audio/vision fusion, and musical
 interpretation. Audio must remain useful without a camera.
 
@@ -127,11 +161,11 @@ interpretation. Audio must remain useful without a camera.
 
 The current verification passes formatting, linting, type checking, dependency-license checks,
 corpus validation, evaluation self-tests, coverage, and the production build. The suite contains
-254 unit/integration tests across 27 files with 93.53% statement and 82.52% branch coverage. The
+267 unit/integration tests across 30 files with 90.87% statement and 80.26% branch coverage. The
 public production browser matrix remains 100% chord top-1/top-3 on its two fixtures, and the private
-browser replay above exercises the real model/fusion path. Item 7's reopened finalization checkbox
-is closed. A fresh user G-to-D/G-D-E transition take remains the immediate product-level
-confirmation. Local
+browser replay now asserts the supported labels and inversions on the real model/fusion path. Item
+7's reopened finalization checkbox and Item 9 are closed, including the fresh
+continuous-transition product confirmation. Local
 personal-guitar media remains ignored and outside public acceptance data.
 
 See [BUILD_CHECKLIST.md](../BUILD_CHECKLIST.md) for the complete implementation sequence and

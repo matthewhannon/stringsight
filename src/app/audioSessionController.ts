@@ -1,6 +1,16 @@
 import type { AudioAnalysisSnapshot } from '../audio/analysis';
-import type { CaptureSnapshot } from '../audio/capture';
+import type { CapturedRecording, CaptureSnapshot } from '../audio/capture';
 import type { PolyphonicAnalysisSnapshot } from '../audio/polyphonic';
+import {
+  recordingMetadata,
+  type AudioSessionRepository,
+  type SavedSessionSummary,
+} from '../persistence';
+import {
+  createReplacementCorrection,
+  createRevertCorrection,
+  type ReplacementCorrectionInput,
+} from '../session';
 import {
   audioEventsToTimedPitchClassEvidence,
   rankKeyInterpretations,
@@ -17,7 +27,10 @@ import {
 } from '../shared';
 
 type CaptureSource = {
+  readonly currentRecording: CapturedRecording | null;
   readonly currentSnapshot: CaptureSnapshot;
+  clearRecording(): void;
+  loadRecording(recording: CapturedRecording): void;
   subscribe(listener: (snapshot: CaptureSnapshot) => void): () => void;
 };
 
@@ -29,6 +42,7 @@ type SnapshotSource<TSnapshot> = {
 export type AudioSessionControllerOptions = {
   readonly idFactory?: () => string;
   readonly now?: () => Date;
+  readonly repository?: AudioSessionRepository;
   readonly settings?: SessionSettings;
   readonly titleFactory?: (createdAt: Date) => string;
 };
@@ -37,8 +51,11 @@ export type AudioSessionSnapshot = {
   readonly capture: CaptureSnapshot;
   readonly keyInterpretations: readonly RankedKeyInterpretation[];
   readonly pendingRevision: boolean;
+  readonly savedSessions: readonly SavedSessionSummary[];
   readonly scaleInterpretations: readonly RankedScaleInterpretation[];
   readonly session: Session | null;
+  readonly storageError: string | null;
+  readonly storageState: 'idle' | 'loading' | 'saving';
 };
 
 const DEFAULT_SETTINGS: SessionSettings = {
@@ -99,6 +116,7 @@ export class AudioSessionController {
   private readonly listeners = new Set<() => void>();
   private readonly now: () => Date;
   private readonly polyphonic: SnapshotSource<PolyphonicAnalysisSnapshot>;
+  private readonly repository: AudioSessionRepository | null;
   private readonly settings: SessionSettings;
   private readonly titleFactory: (createdAt: Date) => string;
   private readonly unsubscribers: readonly (() => void)[];
@@ -126,9 +144,13 @@ export class AudioSessionController {
       capture: capture.currentSnapshot,
       keyInterpretations: [],
       pendingRevision: false,
+      savedSessions: [],
       scaleInterpretations: [],
       session: null,
+      storageError: null,
+      storageState: 'idle',
     };
+    this.repository = options.repository ?? null;
     this.unsubscribers = [
       capture.subscribe(this.handleCaptureUpdate),
       analysis.subscribe(this.handleAnalyzerUpdate),
@@ -148,6 +170,109 @@ export class AudioSessionController {
   dispose(): void {
     this.unsubscribers.forEach((unsubscribe) => unsubscribe());
     this.listeners.clear();
+  }
+
+  appendCorrection(input: ReplacementCorrectionInput, reason?: string): void {
+    if (this.snapshot.session?.status !== 'complete') {
+      throw new Error('A complete session is required before correcting an event.');
+    }
+    const correction = createReplacementCorrection(this.snapshot.session, input, {
+      createdAtMs: this.sessionDurationMs(),
+      id: this.idFactory(),
+      ...(reason === undefined ? {} : { reason }),
+    });
+    this.publishSession(
+      this.updatedSession({ corrections: [...this.snapshot.session.corrections, correction] }),
+    );
+    this.emit();
+  }
+
+  revertCorrection(eventId: string): void {
+    if (this.snapshot.session?.status !== 'complete') {
+      throw new Error('A complete session is required before reverting an event.');
+    }
+    const correction = createRevertCorrection(this.snapshot.session, eventId, {
+      createdAtMs: this.sessionDurationMs(),
+      id: this.idFactory(),
+    });
+    this.publishSession(
+      this.updatedSession({ corrections: [...this.snapshot.session.corrections, correction] }),
+    );
+    this.emit();
+  }
+
+  replaceWithImportedSession(session: Session): void {
+    if (this.captureIsBusy()) throw new Error('Stop the current audio operation before importing.');
+    const parsed = SessionSchema.parse(session);
+    if (parsed.status !== 'complete') throw new Error('Only complete sessions can be imported.');
+    this.cancelRevision();
+    this.capture.clearRecording();
+    this.publishSession(parsed);
+    this.emit();
+  }
+
+  async refreshSavedSessions(): Promise<void> {
+    if (this.repository === null) return;
+    this.setStorageState('loading');
+    try {
+      const savedSessions = await this.repository.list();
+      this.snapshot = { ...this.snapshot, savedSessions, storageError: null, storageState: 'idle' };
+    } catch (error) {
+      this.setStorageFailure(error);
+    }
+    this.emit();
+  }
+
+  async saveSession(): Promise<void> {
+    if (this.repository === null) throw new Error('Local session storage is unavailable.');
+    if (this.snapshot.session?.status !== 'complete') {
+      throw new Error('Only a complete session can be saved.');
+    }
+    this.setStorageState('saving');
+    try {
+      const recording = this.capture.currentRecording;
+      const session = this.updatedSession({
+        recording: recording === null ? null : recordingMetadata(recording),
+      });
+      await this.repository.save({ recording, session });
+      this.publishSession(session);
+      const savedSessions = await this.repository.list();
+      this.snapshot = { ...this.snapshot, savedSessions, storageError: null, storageState: 'idle' };
+    } catch (error) {
+      this.setStorageFailure(error);
+    }
+    this.emit();
+  }
+
+  async loadSavedSession(id: string): Promise<void> {
+    if (this.repository === null) throw new Error('Local session storage is unavailable.');
+    if (this.captureIsBusy()) throw new Error('Stop the current audio operation before loading.');
+    this.setStorageState('loading');
+    try {
+      const value = await this.repository.get(id);
+      if (value === null) throw new Error('The saved session no longer exists.');
+      this.cancelRevision();
+      if (value.recording === null) this.capture.clearRecording();
+      else this.capture.loadRecording(value.recording);
+      this.publishSession(value.session);
+      this.snapshot = { ...this.snapshot, storageError: null, storageState: 'idle' };
+    } catch (error) {
+      this.setStorageFailure(error);
+    }
+    this.emit();
+  }
+
+  async deleteSavedSession(id: string): Promise<void> {
+    if (this.repository === null) throw new Error('Local session storage is unavailable.');
+    this.setStorageState('saving');
+    try {
+      await this.repository.delete(id);
+      const savedSessions = await this.repository.list();
+      this.snapshot = { ...this.snapshot, savedSessions, storageError: null, storageState: 'idle' };
+    } catch (error) {
+      this.setStorageFailure(error);
+    }
+    this.emit();
   }
 
   private readonly handleCaptureUpdate = () => {
@@ -185,7 +310,7 @@ export class AudioSessionController {
       this.replaceVisibleEvents(stagedEvents);
     }
     if (this.activeRunsAreComplete()) {
-      this.replaceVisibleEvents(stagedEvents, 'complete');
+      this.replaceVisibleEvents(stagedEvents, 'complete', this.capture.currentRecording);
       this.revisionMode = null;
       this.snapshot = { ...this.snapshot, pendingRevision: false };
     }
@@ -225,11 +350,18 @@ export class AudioSessionController {
     this.publishSession(this.updatedSession({ status }));
   }
 
-  private replaceVisibleEvents(audio: readonly AudioEvent[], status?: Session['status']): void {
+  private replaceVisibleEvents(
+    audio: readonly AudioEvent[],
+    status?: Session['status'],
+    recording?: CapturedRecording | null,
+  ): void {
     if (this.snapshot.session === null) return;
     this.publishSession(
       this.updatedSession({
         events: { ...this.snapshot.session.events, audio: [...audio] },
+        ...(recording === undefined
+          ? {}
+          : { recording: recording === null ? null : recordingMetadata(recording) }),
         ...(status === undefined ? {} : { status }),
       }),
     );
@@ -299,6 +431,46 @@ export class AudioSessionController {
       (this.polyphonic.currentSnapshot.runComplete ||
         this.polyphonic.currentSnapshot.error !== null)
     );
+  }
+
+  private captureIsBusy(): boolean {
+    return [
+      'paused',
+      'recording',
+      'replaying',
+      'requesting-permission',
+      'starting',
+      'stopping',
+    ].includes(this.capture.currentSnapshot.state);
+  }
+
+  private cancelRevision(): void {
+    this.revisionMode = null;
+    this.activeAnalysisRunId = null;
+    this.activePolyphonicRunId = null;
+    this.snapshot = { ...this.snapshot, pendingRevision: false };
+  }
+
+  private sessionDurationMs(): number {
+    const session = this.snapshot.session;
+    if (session === null) return 0;
+    return Math.max(
+      session.recording?.durationMs ?? 0,
+      ...session.events.audio.map((event) => Number(event.time.endMs ?? event.time.startMs)),
+    );
+  }
+
+  private setStorageState(storageState: AudioSessionSnapshot['storageState']): void {
+    this.snapshot = { ...this.snapshot, storageError: null, storageState };
+    this.emit();
+  }
+
+  private setStorageFailure(error: unknown): void {
+    this.snapshot = {
+      ...this.snapshot,
+      storageError: error instanceof Error ? error.message : 'The local session operation failed.',
+      storageState: 'idle',
+    };
   }
 
   private emit(): void {

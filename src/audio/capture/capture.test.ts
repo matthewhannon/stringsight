@@ -479,6 +479,13 @@ describe('microphone capture orchestration', () => {
     expect(chunks).toHaveLength(1);
     expect(chunks[0]).toMatchObject({ sampleRate: 1_000, source: 'replay' });
     expect(getUserMedia).not.toHaveBeenCalled();
+
+    capture.clearRecording();
+    expect(capture.currentRecording).toBeNull();
+    expect(capture.currentSnapshot).toMatchObject({
+      bufferedDurationMs: 0,
+      state: 'idle',
+    });
   });
 
   it('captures, reports actual settings, finalizes, and replays through the same contract', async () => {
@@ -564,6 +571,8 @@ describe('microphone capture orchestration', () => {
   it('pauses, resumes, and safely finalizes a paused recording', async () => {
     const capture = new MicrophoneCapture();
     await capture.start();
+
+    expect(() => capture.clearRecording()).toThrow('Stop the current audio operation');
 
     await capture.pause();
     expect(capture.currentSnapshot.state).toBe('paused');

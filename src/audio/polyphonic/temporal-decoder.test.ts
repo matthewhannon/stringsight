@@ -7,8 +7,9 @@ const candidate = (
   symbol: string,
   score: number,
   quality: ChordQuality = 'major',
+  matchStrength = 0.7,
 ): ChordCandidate => ({
-  confidence: confidence(0.7),
+  confidence: confidence(matchStrength),
   pitchClasses: ['G', 'B', 'D'],
   quality,
   rank: 1,
@@ -114,5 +115,46 @@ describe('temporal chord decoding', () => {
     expect(
       decodeChordSequence(sequence, 'accurate').map(({ selected }) => selected.symbol),
     ).toEqual(['G', 'C', 'G']);
+  });
+
+  it('absorbs a low-definition transition region into its supported stable neighbor', () => {
+    const attackedBoundary = {
+      atMs: 1_600,
+      attackStrength: 0.9,
+      candidateMargin: 0.1,
+      harmonicDistance: 0.4,
+      mode: 'attack-change' as const,
+      novelToneStrength: 0.3,
+      persistenceMs: 240,
+      score: 0.8,
+    };
+    const sequence: ChordObservation[] = [
+      {
+        candidates: [candidate('D', 1.2), candidate('E', 0.7)],
+        endMs: 1_600,
+        startMs: 0,
+      },
+      {
+        boundaryBefore: attackedBoundary,
+        candidates: [
+          candidate('Esus4', 1.058, 'suspended-4', 0.55),
+          candidate('E', 0.987, 'major', 0.39),
+        ],
+        endMs: 2_510,
+        requireBoundaryForTransition: true,
+        startMs: 1_600,
+      },
+      {
+        boundaryBefore: { ...attackedBoundary, atMs: 2_510 },
+        candidates: [candidate('E', 1.128, 'major', 0.9), candidate('Esus4', 0.9)],
+        endMs: 6_000,
+        requireBoundaryForTransition: true,
+        startMs: 2_510,
+      },
+    ];
+
+    expect(
+      decodeChordSequence(sequence, 'accurate').map(({ selected }) => selected.symbol),
+    ).toEqual(['D', 'E', 'E']);
   });
 });

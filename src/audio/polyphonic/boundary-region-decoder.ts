@@ -20,6 +20,7 @@ export type AcousticChordBoundaryRegion = {
   readonly boundaryBefore?: ChordBoundaryEvidence;
   readonly candidates: readonly ChordCandidate[];
   readonly endMs: number;
+  readonly labelEvidenceSpans: readonly AcousticActivitySpan[];
   readonly pitchClassValues: Float32Array;
   readonly sequenceBreakBefore: boolean;
   readonly sourceHopSequences: readonly number[];
@@ -91,6 +92,25 @@ const mergeActivitySpans = (spans: readonly AcousticActivitySpan[]): AcousticAct
   for (const span of sorted) {
     const current = merged.at(-1);
     if (current !== undefined && span.startMs - current.endMs <= MAXIMUM_ACTIVE_GAP_MS) {
+      merged[merged.length - 1] = {
+        endMs: Math.max(current.endMs, span.endMs),
+        startMs: current.startMs,
+      };
+    } else {
+      merged.push({ ...span });
+    }
+  }
+  return merged;
+};
+
+const mergeOverlappingSpans = (spans: readonly AcousticActivitySpan[]): AcousticActivitySpan[] => {
+  const sorted = spans
+    .filter(({ endMs, startMs }) => endMs > startMs)
+    .sort((left, right) => left.startMs - right.startMs);
+  const merged: AcousticActivitySpan[] = [];
+  for (const span of sorted) {
+    const current = merged.at(-1);
+    if (current !== undefined && span.startMs <= current.endMs) {
       merged[merged.length - 1] = {
         endMs: Math.max(current.endMs, span.endMs),
         startMs: current.startMs,
@@ -299,9 +319,19 @@ const poolRegion = (
           .slice(0, MAXIMUM_REGION_LABEL_HOPS)
       : eligibleHops
           .filter(({ sequence }) => sequence >= confirmationHop.sequence)
+          .sort(
+            (left, right) =>
+              right.activityEnergy - left.activityEnergy || left.sequence - right.sequence,
+          )
           .slice(0, MAXIMUM_REGION_LABEL_HOPS);
   const selectedSequences = new Set(labelHops.map(({ sequence }) => sequence));
   const selectedHops = eligibleHops.filter(({ sequence }) => selectedSequences.has(sequence));
+  const labelEvidenceSpans = mergeOverlappingSpans(
+    selectedHops.map((hop) => ({
+      endMs: Math.min(endMs, hop.support.endMs),
+      startMs: Math.max(startMs, useLong ? hop.support.longStartMs : hop.support.shortStartMs),
+    })),
+  );
   const scoreVectors = selectedHops.map((hop) =>
     useLong
       ? hop.harmony.templateScores
@@ -328,6 +358,7 @@ const poolRegion = (
     ...(boundaryBefore === undefined ? {} : { boundaryBefore }),
     candidates,
     endMs,
+    labelEvidenceSpans,
     pitchClassValues,
     sequenceBreakBefore,
     sourceHopSequences: assignedHops.map(({ sequence }) => sequence),

@@ -1,6 +1,6 @@
 # Audio-only product slice plan
 
-**Status:** In progress
+**Status:** Complete (July 19, 2026)
 **Checklist parent:** `BUILD_CHECKLIST.md`, Item 9
 
 ## Objective
@@ -10,12 +10,13 @@ started, paused, resumed, stopped, replayed, inspected, corrected, saved, restor
 Raw detector events, deterministic theory interpretations, and user corrections remain separate
 throughout the workflow.
 
-## Current baseline
+## Delivered baseline
 
-Items 5-8 already provide microphone capture, deterministic WAV replay, monophonic events,
-polyphonic note-set and chord events, and pure chord/scale/key interpretation. The rack exposes
-these subsystems independently, but it does not yet own a durable session, correction projection,
-or persistence lifecycle. Capture can start, stop, and replay, but cannot pause.
+Items 5-8 provide microphone capture, deterministic WAV replay, monophonic events, polyphonic
+note-set and chord events, and pure chord/scale/key interpretation. Item 9 adds the complete session
+lifecycle around them: review/correction projection, durable local persistence, validated import
+and export, and browser UI. The controller publishes deterministic theory only after run completion
+and preserves completed results until replay replacement is ready.
 
 ## Boundaries
 
@@ -91,3 +92,22 @@ states use both text and visual treatment.
 - JSON round-trips retain schema version, timing, confidence, provenance, and corrections.
 - MIDI is offered only when note evidence supports it.
 - Existing monophonic and polyphonic accuracy, latency, and browser workflows do not regress.
+
+## Completion evidence
+
+- Corrections are append-only `replace` or `revert` commands. Review projection supports finalized
+  note and chord events; raw events remain unchanged and invalid/orphaned history remains visible.
+- The IndexedDB repository validates every boundary and atomically stores structured sessions and
+  optional mono PCM in separate stores. A memory implementation exercises the same contract in
+  deterministic tests.
+- JSON export is versioned and schema-validated on import. MIDI exports only finalized note events
+  with defensible pitch and timing; chord-only sessions correctly disable MIDI.
+- A real browser refresh retained a saved reviewed session, restored its six finalized events, two
+  correction commands, and replayable PCM, then deleted the test record cleanly.
+- The public production browser matrix remains 100% for finalized chord accuracy, note F1, onset
+  F1, and pitch-class-set recall. The generic label-driven private production replay validates 18
+  correctly labeled events from the 19-chord take and all 10 power/inversion events, including both
+  labeled bass inversions. The fresh transition take remains exactly G-D-E-G-D-E.
+- `npm run verify` passes 267 tests across 30 files with 90.87% statement and 80.26% branch coverage,
+  plus formatting, linting, type checking, license checks, corpus validation, evaluator self-tests,
+  monophonic evaluation, and the production build.

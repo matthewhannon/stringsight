@@ -1,15 +1,18 @@
 import { MicrophoneCapture } from '../audio/capture';
 import { AudioAnalysisController } from '../audio/analysis';
 import { PolyphonicAnalysisController } from '../audio/polyphonic';
+import { IndexedDbAudioSessionRepository } from '../persistence';
 import { AudioSessionController } from './audioSessionController';
 
 export const defaultMicrophoneCapture = new MicrophoneCapture();
 export const defaultAudioAnalysis = new AudioAnalysisController(defaultMicrophoneCapture);
 export const defaultPolyphonicAnalysis = new PolyphonicAnalysisController(defaultMicrophoneCapture);
+export const defaultAudioSessionRepository = new IndexedDbAudioSessionRepository();
 export const defaultAudioSession = new AudioSessionController(
   defaultMicrophoneCapture,
   defaultAudioAnalysis,
   defaultPolyphonicAnalysis,
+  { repository: defaultAudioSessionRepository },
 );
 
 if (import.meta.hot !== undefined) {

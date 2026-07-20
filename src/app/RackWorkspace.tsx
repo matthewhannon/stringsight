@@ -14,6 +14,7 @@ import { AudioAnalysisPanel } from './AudioAnalysisPanel';
 import { AudioCapturePanel } from './AudioCapturePanel';
 import { BenchmarkPanel } from './BenchmarkPanel';
 import { PolyphonicAnalysisPanel } from './PolyphonicAnalysisPanel';
+import { SessionReviewPanel } from './SessionReviewPanel';
 import { defaultAudioSession } from './audioCaptureController';
 import { summarizeInterpretations } from './theoryPresentation';
 
@@ -55,6 +56,15 @@ const workspaceModules: readonly WorkspaceModuleDefinition[] = [
     title: 'Chord analysis',
     unit: 'ANALYSIS · 03',
   },
+  {
+    Component: SessionReviewPanel,
+    description:
+      'Inspect raw predictions, append corrections, restore sessions, and export evidence.',
+    id: 'session-review',
+    size: 'expanded',
+    title: 'Session review',
+    unit: 'REVIEW · 04',
+  },
   ...(import.meta.env.DEV
     ? [
         {
@@ -63,7 +73,7 @@ const workspaceModules: readonly WorkspaceModuleDefinition[] = [
           id: 'benchmark',
           size: 'expanded' as const,
           title: 'Evaluation bench',
-          unit: 'TOOLS · 04',
+          unit: 'TOOLS · 05',
         },
       ]
     : []),

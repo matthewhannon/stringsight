@@ -36,23 +36,65 @@ export const SessionSettingsSchema = z.object({
 
 export type SessionSettings = z.infer<typeof SessionSettingsSchema>;
 
-export const CorrectionSchema = z.object({
-  author: z.literal('user'),
-  chordSymbol: z.string().min(1).max(32).optional(),
-  createdAtMs: SessionTimestampMsSchema,
-  eventId: IdentifierSchema,
-  id: IdentifierSchema,
-  note: z
-    .object({
-      midi: z.number().int().min(0).max(127),
-      pitchClass: PitchClassSchema,
-    })
-    .optional(),
-  positions: z.array(GuitarPositionSchema).max(6).optional(),
-  reason: z.string().max(500).optional(),
-});
+export const CorrectedChordSymbolSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^[A-G](?:#|b)?(?:maj7|m7|sus2|sus4|dim|m|7|5)?(?:\/[A-G](?:#|b)?)?$/,
+    'Chord symbol is outside the supported StringSight chord vocabulary.',
+  );
+
+export const CorrectionSchema = z
+  .object({
+    author: z.literal('user'),
+    chordSymbol: CorrectedChordSymbolSchema.optional(),
+    createdAtMs: SessionTimestampMsSchema,
+    eventId: IdentifierSchema,
+    id: IdentifierSchema,
+    note: z
+      .object({
+        midi: z.number().int().min(0).max(127),
+        pitchClass: PitchClassSchema,
+      })
+      .optional(),
+    operation: z.enum(['replace', 'revert']).default('replace'),
+    positions: z.array(GuitarPositionSchema).min(1).max(6).optional(),
+    reason: z.string().trim().max(500).optional(),
+  })
+  .superRefine(({ chordSymbol, note, operation, positions }, context) => {
+    const replacementCount = [chordSymbol, note, positions].filter(
+      (replacement) => replacement !== undefined,
+    ).length;
+    if (operation === 'replace' && replacementCount !== 1) {
+      context.addIssue({
+        code: 'custom',
+        message: 'A replacement correction must provide exactly one corrected value.',
+        path: ['operation'],
+      });
+    }
+    if (operation === 'revert' && replacementCount !== 0) {
+      context.addIssue({
+        code: 'custom',
+        message: 'A revert correction cannot also provide a replacement value.',
+        path: ['operation'],
+      });
+    }
+  });
 
 export type Correction = z.infer<typeof CorrectionSchema>;
+
+export const SessionRecordingMetadataSchema = z.object({
+  channelCount: z.literal(1),
+  discontinuityCount: z.number().int().nonnegative(),
+  durationMs: z.number().nonnegative(),
+  frameCount: z.number().int().nonnegative(),
+  recordedAt: z.iso.datetime({ offset: true }),
+  sampleRate: z.number().int().positive(),
+  schemaVersion: z.literal(CONTRACT_SCHEMA_VERSION),
+  startedAtMs: SessionTimestampMsSchema,
+});
+
+export type SessionRecordingMetadata = z.infer<typeof SessionRecordingMetadataSchema>;
 
 export const SessionSchema = z
   .object({
@@ -64,6 +106,7 @@ export const SessionSchema = z
       visual: z.array(VisualPositionEstimateSchema),
     }),
     id: IdentifierSchema,
+    recording: SessionRecordingMetadataSchema.nullable().default(null),
     schemaVersion: z.literal(CONTRACT_SCHEMA_VERSION),
     settings: SessionSettingsSchema,
     status: z.enum(['idle', 'recording', 'paused', 'processing', 'complete', 'failed']),

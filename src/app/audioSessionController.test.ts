@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { InitialAudioAnalysisSnapshot, type AudioAnalysisSnapshot } from '../audio/analysis';
-import { InitialCaptureSnapshot, type CaptureSnapshot } from '../audio/capture';
+import {
+  CapturedRecordingSchema,
+  InitialCaptureSnapshot,
+  type CapturedRecording,
+  type CaptureSnapshot,
+} from '../audio/capture';
 import {
   InitialPolyphonicAnalysisSnapshot,
   type PolyphonicAnalysisSnapshot,
@@ -12,11 +17,13 @@ import {
   type ChordEvent,
   type PitchClass,
 } from '../shared';
+import { MemoryAudioSessionRepository } from '../persistence';
 import { AudioSessionController } from './audioSessionController';
 
 class MutableCaptureSource {
   private readonly listeners = new Set<(snapshot: CaptureSnapshot) => void>();
   private snapshot: CaptureSnapshot = InitialCaptureSnapshot;
+  currentRecording: CapturedRecording | null = null;
 
   get currentSnapshot(): CaptureSnapshot {
     return this.snapshot;
@@ -25,6 +32,20 @@ class MutableCaptureSource {
   set(snapshot: CaptureSnapshot): void {
     this.snapshot = snapshot;
     this.listeners.forEach((listener) => listener(snapshot));
+  }
+
+  clearRecording(): void {
+    this.currentRecording = null;
+    this.set({ ...InitialCaptureSnapshot, state: 'idle' });
+  }
+
+  loadRecording(recording: CapturedRecording): void {
+    this.currentRecording = recording;
+    this.set({
+      ...InitialCaptureSnapshot,
+      bufferedDurationMs: recording.durationMs,
+      state: 'ready-to-replay',
+    });
   }
 
   subscribe(listener: (snapshot: CaptureSnapshot) => void): () => void {
@@ -228,6 +249,57 @@ describe('AudioSessionController', () => {
     });
     capture.set({ ...capture.currentSnapshot, state: 'failed' });
     expect(controller.currentSnapshot.session?.status).toBe('failed');
+    controller.dispose();
+  });
+
+  it('keeps corrections append-only and saves and restores structured events with recording media', async () => {
+    const capture = new MutableCaptureSource();
+    const analysis = new MutableSnapshotSource<AudioAnalysisSnapshot>(InitialAudioAnalysisSnapshot);
+    const polyphonic = new MutableSnapshotSource<PolyphonicAnalysisSnapshot>(
+      InitialPolyphonicAnalysisSnapshot,
+    );
+    const repository = new MemoryAudioSessionRepository();
+    let id = 0;
+    const controller = new AudioSessionController(capture, analysis, polyphonic, {
+      idFactory: () => `id-${String(++id)}`,
+      now: () => new Date('2026-07-18T20:00:00.000Z'),
+      repository,
+    });
+    capture.currentRecording = CapturedRecordingSchema.parse({
+      channelCount: 1,
+      data: new Float32Array([0.1, -0.1]),
+      discontinuityCount: 0,
+      durationMs: 2,
+      frameCount: 2,
+      recordedAt: '2026-07-18T20:00:00.000Z',
+      sampleRate: 1000,
+      schemaVersion: CONTRACT_SCHEMA_VERSION,
+      startedAtMs: 0,
+    });
+    capture.set({ ...InitialCaptureSnapshot, state: 'recording' });
+    analysis.set({ ...InitialAudioAnalysisSnapshot, runComplete: false, runId: 'run-1' });
+    const events = cMajorEvents('run-1');
+    polyphonic.set({
+      ...InitialPolyphonicAnalysisSnapshot,
+      chordEvents: events,
+      runComplete: false,
+      runId: 'run-1',
+    });
+    analysis.set({ ...analysis.currentSnapshot, runComplete: true });
+    polyphonic.set({ ...polyphonic.currentSnapshot, runComplete: true });
+
+    const rawEvents = structuredClone(controller.currentSnapshot.session?.events.audio);
+    controller.appendCorrection({ chordSymbol: 'Cmaj7', eventId: events[0]?.id ?? '' });
+    controller.revertCorrection(events[0]?.id ?? '');
+    expect(controller.currentSnapshot.session?.corrections).toHaveLength(2);
+    expect(controller.currentSnapshot.session?.events.audio).toEqual(rawEvents);
+
+    await controller.saveSession();
+    expect(controller.currentSnapshot.savedSessions).toHaveLength(1);
+    capture.clearRecording();
+    await controller.loadSavedSession(controller.currentSnapshot.session?.id ?? '');
+    expect(capture.currentRecording.data).toEqual(new Float32Array([0.1, -0.1]));
+    expect(controller.currentSnapshot.session?.corrections).toHaveLength(2);
     controller.dispose();
   });
 });

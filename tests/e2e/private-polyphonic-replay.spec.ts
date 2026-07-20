@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { z } from 'zod';
 
 type DecodedNote = {
   durationFrames: number;
@@ -61,9 +62,27 @@ type PrivateReplayResult = {
   windowCount: number;
 };
 
+const PrivateLabelsSchema = z.object({
+  intervals: z
+    .array(
+      z.object({
+        bass: z.string().min(1).optional(),
+        endMs: z.number().positive(),
+        index: z.number().int().positive(),
+        startMs: z.number().nonnegative(),
+        symbol: z.string().min(1),
+      }),
+    )
+    .min(1),
+  recordingId: z.string().min(1),
+});
+
 const privateAudioPath = process.env.STRINGSIGHT_PRIVATE_WAV;
+const privateLabelsPath = process.env.STRINGSIGHT_PRIVATE_LABELS;
 const privateAudioUrl = 'http://127.0.0.1:4173/__stringsight_private_audio.wav';
 const reportPath = path.resolve('.local/evaluation/private-polyphonic-browser-replay.local.json');
+const minimumLabelOverlapMs = 200;
+const maximumLabelOnsetErrorMs = 800;
 
 test.skip(privateAudioPath === undefined, 'Set STRINGSIGHT_PRIVATE_WAV to replay a private WAV.');
 
@@ -73,6 +92,12 @@ test('replays a private WAV through the production acoustic and Basic Pitch fusi
   test.setTimeout(120_000);
   if (privateAudioPath === undefined) throw new Error('STRINGSIGHT_PRIVATE_WAV was not provided.');
   const audioBytes = await readFile(path.resolve(privateAudioPath));
+  const labels =
+    privateLabelsPath === undefined
+      ? null
+      : PrivateLabelsSchema.parse(
+          JSON.parse(await readFile(path.resolve(privateLabelsPath), 'utf8')),
+        );
   await page.route(privateAudioUrl, async (route) => {
     await route.fulfill({ body: audioBytes, contentType: 'audio/wav', status: 200 });
   });
@@ -222,6 +247,47 @@ test('replays a private WAV through the production acoustic and Basic Pitch fusi
   expect(result.boundaryRegionEvents.every(({ lifecycle }) => lifecycle === 'finalized')).toBe(
     true,
   );
+  const labelValidation =
+    labels === null
+      ? null
+      : result.boundaryRegionEvents.map((event) => {
+          const eventEndMs = event.time.endMs ?? result.audioDurationMs;
+          const matches = labels.intervals
+            .map((interval) => ({
+              interval,
+              onsetErrorMs: Math.abs(event.time.startMs - interval.startMs),
+              overlapMs: Math.max(
+                0,
+                Math.min(eventEndMs, interval.endMs) -
+                  Math.max(event.time.startMs, interval.startMs),
+              ),
+            }))
+            .sort(
+              (left, right) =>
+                left.onsetErrorMs - right.onsetErrorMs || right.overlapMs - left.overlapMs,
+            );
+          const best = matches[0];
+          if (
+            best === undefined ||
+            best.onsetErrorMs > maximumLabelOnsetErrorMs ||
+            best.overlapMs < minimumLabelOverlapMs
+          ) {
+            throw new Error(`Production event ${event.id} does not align to a labeled interval.`);
+          }
+          return {
+            bassMatches:
+              best.interval.bass === undefined
+                ? null
+                : event.candidates[0]?.bass === best.interval.bass,
+            expectedBass: best.interval.bass ?? null,
+            expectedSymbol: best.interval.symbol,
+            intervalIndex: best.interval.index,
+            onsetErrorMs: best.onsetErrorMs,
+            overlapMs: best.overlapMs,
+            predictedBass: event.candidates[0]?.bass ?? null,
+            predictedSymbol: event.candidates[0]?.symbol ?? null,
+          };
+        });
   await mkdir(path.dirname(reportPath), { recursive: true });
   await writeFile(
     reportPath,
@@ -229,6 +295,8 @@ test('replays a private WAV through the production acoustic and Basic Pitch fusi
       {
         audioPath: path.resolve(privateAudioPath),
         generatedAt: new Date().toISOString(),
+        labelValidation,
+        labelsPath: privateLabelsPath === undefined ? null : path.resolve(privateLabelsPath),
         result,
       },
       null,
@@ -236,4 +304,15 @@ test('replays a private WAV through the production acoustic and Basic Pitch fusi
     )}\n`,
     'utf8',
   );
+  if (labelValidation !== null) {
+    expect(new Set(labelValidation.map(({ intervalIndex }) => intervalIndex)).size).toBe(
+      labelValidation.length,
+    );
+    expect(
+      labelValidation.filter(
+        ({ expectedSymbol, predictedSymbol }) => expectedSymbol !== predictedSymbol,
+      ),
+    ).toEqual([]);
+    expect(labelValidation.filter(({ bassMatches }) => bassMatches === false)).toEqual([]);
+  }
 });

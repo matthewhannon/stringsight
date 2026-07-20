@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { ChordEventSchema, CONTRACT_SCHEMA_VERSION, type PitchClass } from '../../shared';
+import {
+  ChordEventSchema,
+  CONTRACT_SCHEMA_VERSION,
+  NoteSetEventSchema,
+  type NoteSetEvent,
+  type PitchClass,
+} from '../../shared';
+import { midiToNoteName } from '../analysis/pitch';
 import { buildAcousticChordBoundaryRegions } from './boundary-region-decoder';
 import type { AcousticChordHop, ChordBoundaryEvidence } from './chord-observations';
 import { matchChordTemplates, scoreChordTemplates } from './chords';
@@ -11,6 +18,22 @@ const G_MAJOR = [0, 0, 0.3, 0, 0, 0, 0, 0.36, 0, 0, 0, 0.34];
 const A_SUS4 = [0, 0, 0.33, 0, 0.33, 0, 0, 0, 0, 0.34, 0, 0];
 const D_DOMINANT_7 = [0.24, 0, 0.28, 0, 0, 0, 0.24, 0, 0, 0.24, 0, 0];
 const A_MINOR = [0.33, 0, 0, 0, 0.33, 0, 0, 0, 0, 0.34, 0, 0];
+const D_MAJOR = [0, 0, 0.34, 0, 0, 0, 0.33, 0, 0, 0.33, 0, 0];
+const D_MAJOR_WITH_ATTACK_RESIDUE = [0, 0, 0.32, 0, 0.08, 0, 0.06, 0.12, 0, 0.34, 0, 0];
+const PITCH_CLASSES = [
+  'C',
+  'C#',
+  'D',
+  'D#',
+  'E',
+  'F',
+  'F#',
+  'G',
+  'G#',
+  'A',
+  'A#',
+  'B',
+] as const satisfies readonly PitchClass[];
 
 const boundary = (atMs: number): ChordBoundaryEvidence => ({
   atMs,
@@ -67,22 +90,19 @@ const hop = (
   };
 };
 
-const provisionalSpan = (endMs = 800) =>
+const provisionalSpanFor = (values: readonly number[], endMs = 800) =>
   ChordEventSchema.parse({
-    candidates: matchChordTemplates({ bass: C_MAJOR, energy: 0.1, values: C_MAJOR }),
+    candidates: matchChordTemplates({ bass: values, energy: 0.1, values }),
     diagnostics: {},
     id: 'merged-live-span',
     kind: 'chord',
     lifecycle: 'provisional',
-    observedPitchClasses: C_MAJOR.flatMap((weight, index) =>
+    observedPitchClasses: values.flatMap((weight, index) =>
       weight <= 0
         ? []
         : [
             {
-              pitchClass:
-                (['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as PitchClass[])[
-                  index
-                ] ?? 'C',
+              pitchClass: PITCH_CLASSES[index] ?? 'C',
               weight,
             },
           ],
@@ -96,6 +116,47 @@ const provisionalSpan = (endMs = 800) =>
     },
     schemaVersion: CONTRACT_SCHEMA_VERSION,
     time: { endMs, startMs: 0 },
+  });
+
+const provisionalSpan = (endMs = 800) => provisionalSpanFor(C_MAJOR, endMs);
+
+const noteSet = (
+  id: string,
+  midiNotes: readonly number[],
+  startMs: number,
+  endMs: number,
+): NoteSetEvent =>
+  NoteSetEventSchema.parse({
+    candidates: [
+      {
+        confidence: 0.9,
+        evidence: ['synthetic-independent-note-model'],
+        notes: midiNotes.map((midi) => ({
+          confidence: 0.9,
+          evidence: ['synthetic-independent-note-model'],
+          frameConfidence: 0.9,
+          midi,
+          noteName: midiToNoteName(midi),
+          onsetConfidence: 0.9,
+          pitchClass: PITCH_CLASSES[midi % 12] ?? 'C',
+        })),
+        rank: 1,
+        score: 0.9,
+      },
+    ],
+    diagnostics: {},
+    id,
+    kind: 'note-set',
+    lifecycle: 'finalized',
+    provenance: {
+      algorithm: 'synthetic-independent-note-model',
+      generatedAtMs: endMs,
+      runId: 'per-hop-run',
+      subsystem: 'polyphonic-analysis',
+      version: 'test',
+    },
+    schemaVersion: CONTRACT_SCHEMA_VERSION,
+    time: { endMs, startMs },
   });
 
 describe('per-hop finalized chord fusion', () => {
@@ -138,6 +199,99 @@ describe('per-hop finalized chord fusion', () => {
     expect(finalized).toHaveLength(1);
     expect(finalized[0]?.candidates[0]?.symbol).toBe('C');
     expect(finalized[0]?.diagnostics.sourceHopCount).toBe(10);
+  });
+
+  it('can promote a complete model-supported triad beyond the five live hypotheses', () => {
+    const hops = Array.from({ length: 10 }, (_, index) =>
+      hop(D_MAJOR_WITH_ATTACK_RESIDUE, index + 1, index * 80),
+    );
+    const liveSpan = provisionalSpanFor(D_MAJOR_WITH_ATTACK_RESIDUE);
+
+    expect(liveSpan.candidates.map(({ symbol }) => symbol)).not.toContain('D');
+
+    const finalized = fuseAcousticHopAndModelChordEvents(
+      [noteSet('d-major-model', [50, 54, 57], 0, 800)],
+      hops,
+      [liveSpan],
+      'complete-triad-run',
+      'accurate',
+    );
+
+    expect(finalized).toHaveLength(1);
+    expect(finalized[0]?.candidates[0]?.symbol).toBe('D');
+    expect(
+      finalized[0]?.observedPitchClasses
+        .slice(0, 3)
+        .map(({ pitchClass }) => pitchClass)
+        .sort(),
+    ).toEqual(['A', 'D', 'F#']);
+  });
+
+  it('limits model labeling evidence to settled acoustic supports inside a region', () => {
+    const hops = Array.from({ length: 10 }, (_, index) => ({
+      ...hop(D_MAJOR, index + 1, index * 80),
+      activityEnergy: index < 6 ? 0.2 : 0.1,
+    }));
+
+    const finalized = fuseAcousticHopAndModelChordEvents(
+      [
+        noteSet('settled-d-major', [50, 54, 57], 0, 600),
+        noteSet('incoming-e-major', [52, 56, 59], 600, 800),
+      ],
+      hops,
+      [provisionalSpanFor(D_MAJOR)],
+      'settled-support-run',
+      'accurate',
+    );
+
+    expect(finalized).toHaveLength(1);
+    expect(finalized[0]?.candidates[0]?.symbol).toBe('D');
+    expect(finalized[0]?.observedPitchClasses.find(({ pitchClass }) => pitchClass === 'G#')).toBe(
+      undefined,
+    );
+  });
+
+  it('preserves a deliberate suspended chord when the independent notes define it', () => {
+    const hops = Array.from({ length: 10 }, (_, index) => hop(A_SUS4, index + 1, index * 80));
+
+    const finalized = fuseAcousticHopAndModelChordEvents(
+      [noteSet('a-sus4-model', [45, 50, 52], 0, 800)],
+      hops,
+      [provisionalSpanFor(A_SUS4)],
+      'deliberate-suspension-run',
+      'accurate',
+    );
+
+    expect(finalized).toHaveLength(1);
+    expect(finalized[0]?.candidates[0]?.symbol).toBe('Asus4');
+  });
+
+  it('rejects a superset chord when its essential root is absent from independent notes', () => {
+    const catalog = matchChordTemplates({ bass: G_MAJOR, energy: 0.1, values: G_MAJOR }, 108);
+    const gMajor = catalog.find(({ symbol }) => symbol === 'G');
+    const eMinorSeven = catalog.find(({ symbol }) => symbol === 'Em7');
+    if (gMajor === undefined || eMinorSeven === undefined) {
+      throw new Error('Expected G and Em7 in the stable chord catalog.');
+    }
+    const misleadingLiveSpan = ChordEventSchema.parse({
+      ...provisionalSpanFor(G_MAJOR),
+      candidates: [
+        { ...eMinorSeven, confidence: 0.8, rank: 1, score: gMajor.score + 0.04 },
+        { ...gMajor, confidence: 0.7, rank: 2 },
+      ],
+    });
+    const hops = Array.from({ length: 10 }, (_, index) => hop(G_MAJOR, index + 1, index * 80));
+
+    const finalized = fuseAcousticHopAndModelChordEvents(
+      [noteSet('g-major-model', [43, 47, 50], 0, 800)],
+      hops,
+      [misleadingLiveSpan],
+      'missing-superset-root-run',
+      'accurate',
+    );
+
+    expect(finalized).toHaveLength(1);
+    expect(finalized[0]?.candidates[0]?.symbol).toBe('G');
   });
 
   it('pools a partial attack into the confirmed post-boundary region instead of publishing it', () => {

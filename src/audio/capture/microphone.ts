@@ -287,6 +287,21 @@ export class MicrophoneCapture {
     });
   }
 
+  clearRecording(): void {
+    if (
+      this.snapshot.state === 'recording' ||
+      this.snapshot.state === 'paused' ||
+      this.snapshot.state === 'replaying' ||
+      this.snapshot.state === 'requesting-permission' ||
+      this.snapshot.state === 'starting' ||
+      this.snapshot.state === 'stopping'
+    ) {
+      throw new Error('Stop the current audio operation before clearing its recording.');
+    }
+    this.resetSessionState();
+    this.update({ state: browserSupportsCapture() ? 'idle' : 'unsupported' });
+  }
+
   async replay(): Promise<void> {
     if (this.recording === null) throw new Error('No recording is available for replay.');
     const recording = this.recording;

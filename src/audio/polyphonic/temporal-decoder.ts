@@ -1,6 +1,9 @@
 import type { ChordCandidate } from '../../shared';
 import type { ChordAnalysisProfile } from './contracts';
-import type { ChordBoundaryEvidence } from './chord-observations';
+import {
+  CHORD_LOW_DEFINITION_MATCH_STRENGTH,
+  type ChordBoundaryEvidence,
+} from './chord-observations';
 
 export type ChordObservation = {
   candidates: readonly ChordCandidate[];
@@ -33,6 +36,8 @@ const PROFILE_PARAMETERS: Record<
   },
 };
 
+const LOW_DEFINITION_EXIT_PENALTY_MULTIPLIER = 1.5;
+
 const emissionScore = (
   candidate: ChordCandidate,
   durationMs: number,
@@ -47,11 +52,23 @@ const transitionPenalty = (
   basePenalty: number,
   boundary: ChordBoundaryEvidence | undefined,
   requireBoundary: boolean,
+  previousObservation: ChordObservation,
 ): number => {
-  if (boundary?.mode === 'attack-change') return basePenalty * 0.15;
-  if (boundary?.mode === 'persistent-change') return basePenalty * 0.25;
-  if (requireBoundary) return 1_000_000;
-  return basePenalty;
+  const boundaryPenalty =
+    boundary?.mode === 'attack-change'
+      ? basePenalty * 0.15
+      : boundary?.mode === 'persistent-change'
+        ? basePenalty * 0.25
+        : requireBoundary
+          ? 1_000_000
+          : basePenalty;
+  const strongestPreviousMatch = Math.max(
+    0,
+    ...previousObservation.candidates.map(({ confidence }) => confidence),
+  );
+  return strongestPreviousMatch <= CHORD_LOW_DEFINITION_MATCH_STRENGTH
+    ? boundaryPenalty + basePenalty * LOW_DEFINITION_EXIT_PENALTY_MULTIPLIER
+    : boundaryPenalty;
 };
 
 /**
@@ -113,6 +130,7 @@ export function decodeChordSequence(
                 parameters.transitionPenalty,
                 observation.boundaryBefore,
                 observation.requireBoundaryForTransition ?? false,
+                observations[observationIndex - 1] ?? observation,
               );
         const score = previousScore - transitionCost;
         if (score > bestPreviousScore) {

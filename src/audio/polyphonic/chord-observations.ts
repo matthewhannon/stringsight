@@ -4,6 +4,7 @@ import type { ChordCandidate } from '../../shared';
 export const POLYPHONIC_ACTIVITY_OPEN_THRESHOLD = 0.012;
 export const CHORD_CHANGE_ACTIVITY_PEAK_RATIO = 0.2;
 export const CHORD_ATTACK_EVIDENCE_THRESHOLD = 0.2;
+export const CHORD_LOW_DEFINITION_MATCH_STRENGTH = 0.55;
 
 export type AttackObservation = {
   readonly energyRiseDb: number;

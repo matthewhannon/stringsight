@@ -18,8 +18,11 @@ import {
 import { matchChordTemplates, rerankChordCandidates } from './chords';
 import { finalizeChordSequence, type FinalizedChordObservation } from './finalized-sequence';
 import type { ChordAnalysisProfile } from './contracts';
-import type { AcousticChordHop } from './chord-observations';
-import { buildAcousticChordBoundaryRegions } from './boundary-region-decoder';
+import { CHORD_LOW_DEFINITION_MATCH_STRENGTH, type AcousticChordHop } from './chord-observations';
+import {
+  buildAcousticChordBoundaryRegions,
+  type AcousticActivitySpan,
+} from './boundary-region-decoder';
 
 type TimedModelNote = BasicPitchDecodedNote & {
   endMs: number;
@@ -146,19 +149,24 @@ const intervalOverlapMs = (
 
 const aggregateNoteSetEvidence = (
   noteSets: readonly NoteSetEvent[],
-  time: { endMs: number; startMs: number },
+  spans: readonly AcousticActivitySpan[],
 ): {
   evidenceConfidence: number;
   sourceNoteSetIds: string[];
   values: number[];
 } => {
-  const overlapping = noteSets.filter((noteSet) => intervalOverlapMs(noteSet.time, time) > 0);
+  const overlapping = noteSets.filter((noteSet) =>
+    spans.some((span) => intervalOverlapMs(noteSet.time, span) > 0),
+  );
   const values = Array.from({ length: 12 }, () => 0);
   let weightedConfidence = 0;
   let totalWeight = 0;
   for (const noteSet of overlapping) {
     const notes = noteSet.candidates[0]?.notes ?? [];
-    const overlapMs = intervalOverlapMs(noteSet.time, time);
+    const overlapMs = spans.reduce(
+      (total, span) => total + intervalOverlapMs(noteSet.time, span),
+      0,
+    );
     if (overlapMs <= 0 || notes.length === 0) continue;
     const setConfidence = noteSet.candidates[0]?.confidence ?? 0;
     totalWeight += overlapMs;
@@ -185,8 +193,11 @@ const aggregateNoteSetEvidence = (
 };
 
 const AMBIGUOUS_PITCH_CLASS_WEIGHT = 0.12;
-const RELATIVE_DEFINING_MODEL_WEIGHT = 0.35;
+const RELATIVE_DEFINING_MODEL_WEIGHT = 0.2;
 const LOW_RELIABILITY_EXTENSION_PENALTY = 0.3;
+const MODEL_DEFINING_TONE_COMPATIBILITY_WEIGHT = 0.6;
+const MINIMUM_ESSENTIAL_TONE_TO_MODEL_PEAK_RATIO = 0.12;
+const MISSING_ESSENTIAL_TONE_PENALTY_WEIGHT = 0.35;
 
 const normalizeEvidence = (values: readonly number[]): number[] => {
   const total = values.reduce((sum, value) => sum + value, 0);
@@ -258,9 +269,23 @@ const enforceModelToneConsistency = (
         : [];
     }),
   );
+  const definingModelWeight = modelValues.reduce((total, weight, index) => {
+    const pitchClass = PITCH_CLASSES[index];
+    return pitchClass !== undefined && definingModelPitchClasses.has(pitchClass)
+      ? total + weight
+      : total;
+  }, 0);
   return rerankChordCandidates(
     candidates.map((candidate) => {
       const templatePitchClasses = new Set(candidate.pitchClasses);
+      const explainedDefiningModelWeight = modelValues.reduce((total, weight, index) => {
+        const pitchClass = PITCH_CLASSES[index];
+        return pitchClass !== undefined &&
+          definingModelPitchClasses.has(pitchClass) &&
+          templatePitchClasses.has(pitchClass)
+          ? total + weight
+          : total;
+      }, 0);
       const unexplainedModelWeight = modelValues.reduce((total, weight, index) => {
         const pitchClass = PITCH_CLASSES[index];
         const isDefining = weight >= maximumModelWeight * RELATIVE_DEFINING_MODEL_WEIGHT;
@@ -272,6 +297,18 @@ const enforceModelToneConsistency = (
         candidate.quality === 'dominant-7' ||
         candidate.quality === 'major-7' ||
         candidate.quality === 'minor-7';
+      const essentialPitchClasses = isSeventh
+        ? [candidate.pitchClasses[0], candidate.pitchClasses[1], candidate.pitchClasses[3]]
+        : [candidate.pitchClasses[0], candidate.pitchClasses[1]];
+      const essentialToneThreshold =
+        maximumModelWeight * MINIMUM_ESSENTIAL_TONE_TO_MODEL_PEAK_RATIO;
+      const missingEssentialToneShare =
+        essentialPitchClasses.reduce((total, pitchClass) => {
+          if (pitchClass === undefined || essentialToneThreshold <= Number.EPSILON) return total;
+          const pitchClassIndex = PITCH_CLASSES.indexOf(pitchClass);
+          const weight = pitchClassIndex < 0 ? 0 : (modelValues[pitchClassIndex] ?? 0);
+          return total + Math.max(0, essentialToneThreshold - weight) / essentialToneThreshold;
+        }, 0) / Math.max(1, essentialPitchClasses.length);
       const extensionPitchClass = candidate.pitchClasses[3];
       const missingDefiningExtension =
         isSeventh &&
@@ -281,16 +318,41 @@ const enforceModelToneConsistency = (
       const missingExtensionPenalty = missingDefiningExtension
         ? modelEvidenceConfidence / definingModelPitchClasses.size
         : 0;
+      const definingToneCompatibility =
+        definingModelWeight <= Number.EPSILON
+          ? 0
+          : explainedDefiningModelWeight / definingModelWeight;
       return {
         ...candidate,
         score:
-          candidate.score -
+          candidate.score +
+          definingToneCompatibility *
+            modelEvidenceConfidence *
+            MODEL_DEFINING_TONE_COMPATIBILITY_WEIGHT -
           unexplainedModelWeight * modelEvidenceConfidence -
+          missingEssentialToneShare *
+            modelEvidenceConfidence *
+            MISSING_ESSENTIAL_TONE_PENALTY_WEIGHT -
           missingExtensionPenalty,
       };
     }),
     candidates.length,
   );
+};
+
+const combineAcousticCandidateHypotheses = (
+  primary: readonly ChordCandidate[],
+  supplemental: readonly ChordCandidate[],
+): ChordCandidate[] => {
+  const seen = new Set(primary.map(({ symbol }) => symbol));
+  return [
+    ...primary,
+    ...supplemental.filter(({ symbol }) => {
+      if (seen.has(symbol)) return false;
+      seen.add(symbol);
+      return true;
+    }),
+  ];
 };
 
 const capAmbiguousCandidateStrength = (
@@ -301,11 +363,11 @@ const capAmbiguousCandidateStrength = (
     (value) => value >= AMBIGUOUS_PITCH_CLASS_WEIGHT,
   ).length;
   if (definingPitchClassCount >= 3) return [...candidates];
-  let previousStrength = 0.55;
+  let previousStrength = CHORD_LOW_DEFINITION_MATCH_STRENGTH;
   return candidates.map((candidate, index) => {
     const matchStrength = Math.min(
       candidate.confidence,
-      index === 0 ? 0.55 : previousStrength * 0.92,
+      index === 0 ? CHORD_LOW_DEFINITION_MATCH_STRENGTH : previousStrength * 0.92,
     );
     previousStrength = matchStrength;
     return { ...candidate, confidence: confidence(matchStrength), rank: index + 1 };
@@ -407,12 +469,24 @@ export function fuseAcousticHopAndModelChordEvents(
       sourceEvents.length === 1 && regionCountBySourceEvent.get(sourceEvents[0]?.id ?? '') === 1
         ? sourceEvents[0]
         : undefined;
-    const acoustic: AcousticFusionEvidence = oneToOneSource ?? {
-      candidates: region.candidates,
-      observedPitchClasses: observedPitchClasses(region.pitchClassValues),
-    };
+    const acoustic: AcousticFusionEvidence =
+      oneToOneSource === undefined
+        ? {
+            candidates: region.candidates,
+            observedPitchClasses: observedPitchClasses(region.pitchClassValues),
+          }
+        : {
+            candidates: combineAcousticCandidateHypotheses(
+              oneToOneSource.candidates,
+              region.candidates,
+            ),
+            observedPitchClasses: oneToOneSource.observedPitchClasses,
+          };
     if (acoustic.candidates.length === 0) return [];
-    const model = aggregateNoteSetEvidence(noteSets, region);
+    const model = aggregateNoteSetEvidence(
+      noteSets,
+      region.labelEvidenceSpans.length > 0 ? region.labelEvidenceSpans : [region],
+    );
     const fused = fuseObservationEvidence(acoustic, model);
     return [
       {
@@ -437,7 +511,7 @@ export function fuseAcousticHopAndModelChordEvents(
     algorithm: 'boundary-region-harmonic-chroma-plus-basic-pitch-fusion',
     analysisPath: 'acoustic-boundary-region-plus-basic-pitch-sequence',
     profile,
-    provenanceVersion: '1.0.1-stringsight.7',
+    provenanceVersion: '1.0.1-stringsight.8',
     provisionalEvents,
     runId,
   });
@@ -462,7 +536,7 @@ export function fuseAcousticAndModelChordEvents(
     const startMs = acoustic.time.startMs;
     const endMs = acoustic.time.endMs ?? startMs;
     if (endMs <= startMs) return [];
-    const model = aggregateNoteSetEvidence(noteSets, { endMs, startMs });
+    const model = aggregateNoteSetEvidence(noteSets, [{ endMs, startMs }]);
     const fused = fuseObservationEvidence(acoustic, model);
     return [
       {
