@@ -31,7 +31,9 @@ optional synchronized reference and take video, and optional live fretboard/hand
 
 ### Initial supported environment
 
-- Desktop Chrome and Edge
+- Current stable desktop Chrome and Edge on Windows 11
+- macOS remains desirable best-effort portability, but it is unvalidated, carries no current support
+  claim, and does not block the release gate
 - Desktop layout only for the planned release; mobile layouts are not a target
 - Resizable desktop windows, browser zoom, keyboard operation, semantic reflow, and accessibility
   remain required even though phone/tablet composition is not

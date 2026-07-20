@@ -61,6 +61,10 @@ reference and take-video maps, and a transport-owned mapless-preview fallback. N
 technology, license procedure, codec, schema, support claim, or performance budget has been
 accepted.
 
+The owner subsequently narrowed the supported and release-validated environment to Windows 11 on
+current stable Chrome and Edge. macOS remains desirable best-effort portability, but it is untested,
+carries no support claim, and does not block the current spike or release gate.
+
 Next, create a separate disposable spike branch, inventory the exact available hardware/devices,
 collect raw notation/audio/MIDI/video evidence, record unavailable physical coverage honestly, and
 complete the final technology, license, fallback, supported-claim, and measured-budget acceptance

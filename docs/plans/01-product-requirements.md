@@ -320,7 +320,11 @@ the P0 journey misleading or unusable.
 
 ### 9.1 Environment
 
-- Current stable desktop Chrome and Edge on supported Windows and macOS hardware.
+- Current stable desktop Chrome and Edge on Windows 11 are the supported and release-validated
+  target.
+- macOS portability is desirable but currently unvalidated, carries no support claim, and does not
+  block the release gate. Avoid unnecessary Windows-only implementation assumptions so a later Mac
+  validation pass remains practical.
 - HTTPS for permissioned capture outside local development.
 - One foreground six-string guitar. Standard tuning is the evaluated P0 configuration.
 - Direct interface/microphone input or a reasonably quiet room.

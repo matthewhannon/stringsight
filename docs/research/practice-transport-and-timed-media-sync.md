@@ -650,8 +650,9 @@ inside the spike.
 - Environment: cold/warm asset state, 100% and 200% zoom, resize, hidden/background transition,
   context suspension/resume, camera/microphone device loss, permission revocation, output-device
   change where available, and quota pressure.
-- Hardware/browser: owner-approved low/representative/high desktop tiers on current stable Chrome
-  and Edge for Windows/macOS. Record exact versions for every run.
+- Hardware/browser: owner-approved low/representative/high Windows 11 desktop tiers on current
+  stable Chrome and Edge. Record exact versions for every run. macOS is an unvalidated best-effort
+  portability target and is not a required evidence cell or current support claim.
 
 The development machine currently reports Chrome `150.0.7871.125` and Edge `150.0.4078.83`; these
 are discovery values, not the final support matrix or evidence until the spike records repeatable

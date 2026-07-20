@@ -508,10 +508,11 @@ Owner decisions recorded on 2026-07-20 for disposable spike execution:
 1. Evaluation of alphaTab 1.8.4 under MPL-2.0 and its exact source/notice/release obligations is
    authorized without approving production adoption.
 2. The proposed candidate/fallback order is approved.
-3. The staged Windows/macOS desktop hardware, Chrome/Edge, score/media fixture, recording-duration,
-   and simultaneous-workload matrix in the spike specification is approved. Exact available
-   devices are inventoried per run; unavailable physical coverage is recorded and must be obtained
-   or removed from the final supported claim.
+3. The staged Windows 11 desktop hardware, Chrome/Edge, score/media fixture, recording-duration, and
+   simultaneous-workload matrix in the spike specification is approved. Exact available devices are
+   inventoried per run; unavailable Windows hardware coverage is recorded and must be obtained or
+   removed from the final supported claim. macOS portability remains desirable but unvalidated and
+   outside the current support and release gate.
 4. The invariant-based disqualification list above is confirmed.
 
 Post-spike decisions include package/adapter selection, license policy, exact PPQ/hash projections,

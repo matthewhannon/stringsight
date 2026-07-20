@@ -3,6 +3,7 @@
 - **Status:** Approved for disposable execution; owner decisions recorded in section 3
 - **Prepared:** 2026-07-20
 - **Owner approval recorded:** 2026-07-20
+- **Owner support-scope amendment:** 2026-07-20; Windows 11 is the sole current validation target
 - **Execution:** A separate disposable branch/worktree; no spike code is production architecture
 - **Architecture:** `10-practice-system-architecture.md`
 - **Synchronization research:** `../research/practice-transport-and-timed-media-sync.md`
@@ -111,16 +112,17 @@ record into the spike report before package installation or media runs.
    reference-video-audio, and take-video order and fallbacks in section 8. Select the earliest
    candidate that satisfies every invariant and later-accepted measured budget; do not prefer a
    more complex candidate merely because it exposes more APIs.
-3. **Desktop test matrix approved:** cover current stable Chrome and Edge on Windows 11 and macOS
-   where physical hardware is available, using low (4-core/8 GB/integrated graphics),
-   representative (the inventoried development machine and normal interface/camera), and high
-   (8+ cores/16+ GB/modern integrated or discrete graphics) tiers. Exercise the section 5 fixtures,
-   including 8-, 100-, and 500-bar scores; 10-second, 2-minute, 5-minute, and longer drift media;
-   0.5x through 2x speeds; CFR/VFR, keyframe, codec/container variation; and isolated through full
-   simultaneous workloads. Every run records exact hardware, OS, browser, device, and fixture
-   identity. Unavailable physical tiers or operating systems are recorded as missing coverage, not
-   simulated by CPU throttling; initial spike work may proceed, but final acceptance must either
-   obtain the missing evidence or narrow the supported claim explicitly.
+3. **Desktop test matrix approved and amended:** cover current stable Chrome and Edge on Windows 11,
+   using low (4-core/8 GB/integrated graphics), representative (the inventoried development machine
+   and normal interface/camera), and high (8+ cores/16+ GB/modern integrated or discrete graphics)
+   tiers where physical hardware is available. Exercise the section 5 fixtures, including 8-, 100-,
+   and 500-bar scores; 10-second, 2-minute, 5-minute, and longer drift media; 0.5x through 2x speeds;
+   CFR/VFR, keyframe, codec/container variation; and isolated through full simultaneous workloads.
+   Every run records exact hardware, OS, browser, device, and fixture identity. Unavailable physical
+   Windows tiers are recorded as missing coverage, not simulated by CPU throttling; final acceptance
+   must either obtain the missing evidence or narrow the Windows hardware claim explicitly. macOS is
+   best-effort portability only: it is unvalidated, carries no support claim, and does not block the
+   spike or release gate.
 4. **Invariant disqualifications confirmed:** reject competing transport/audio authorities,
    canonical third-party state, a hidden second microphone/evidence path, ambiguous reference/take
    maps, silent identity retargeting, recorder-delivery timestamp overclaims, inaccessible
