@@ -1,14 +1,18 @@
 # StringSight project status
 
-**Updated:** July 19, 2026
+**Updated:** July 20, 2026
 **Project:** OpenAI Build Week
 
 ## Current product
 
-StringSight opens directly into a realistic rack workspace. The rack is the product shell during
-core development; a marketing site and onboarding experience are intentionally deferred.
+StringSight opens into the approved score/tab-centered desktop Practice Workspace at `main`
+`0b23c6e`. The active shell provides componentized Edit, Practice, and Review modes, dual
+score/video canvases with focus modes, real microphone monitoring/recording/replay integration, and
+explicitly labelled placeholders for the future score, document, shared-transport, video, MIDI,
+and assessment services. The former rack/hardware presentation is superseded and archived; its
+valuable audio behavior and evidence integrity remain protected.
 
-The implemented vertical slice includes:
+The protected implemented audio slice includes:
 
 - Device-neutral browser audio-input selection
 - Local PCM capture, input diagnostics, calibrated metering, recording, and replay
@@ -28,11 +32,13 @@ The implemented vertical slice includes:
 - A promoted post-Stop boundary-region decoder that makes one pooled label decision per supported
   acoustic region, can recover a sustained missed live boundary, and prevents model note edges,
   partial attacks, or decay tails from becoming chord fragments
-- A rack chord module with pitch-class meters, alternatives, diagnostics, and lifecycle timeline
+- Reusable pitch-class meters, alternatives, diagnostics, and lifecycle presentation behavior from
+  the historical rack chord module
 - Bounded, non-scrolling six-card note and chord timelines with newest results first, plus private
   evaluation-fixture export with prefilled note or chord labels
 - Procedural development and held-out fixtures with deterministic evaluation
-- A typed, reusable rack component library for future product modules
+- Historical rack accessibility and presentation patterns retained for selective reference, not as
+  the active product shell
 - An ignored private-corpus manifest and batch evaluator for reusable real-guitar recordings
 
 The real-guitar verification process has produced 18 correct top-ranked pitches across 18 reviewed
@@ -44,6 +50,17 @@ Those three reviewed takes now form an ignored local regression corpus. Its batc
 public verification suite remains independent of these private files.
 
 ## Next implementation milestone
+
+Product/UX step #2 was accepted on 2026-07-20. Next, update the proposed Practice System plan and ADR
+0006 for the approved desktop/timed-media direction, define the disposable spike questions and
+invariants, and independently review that provisional architecture. Then run the isolated
+notation/audio/video feasibility spike and accept final technology, license, fallback, and measured
+budgets before production domain implementation.
+
+The executable dependency order is maintained in `BUILD_CHECKLIST.md`. Live computer vision,
+fusion, and GPT interpretation remain deferred until after the complete score/practice/take product.
+
+## Completed audio baseline detail
 
 Item 7's isolated-chord recognition matrix and finalization slice are accepted. A reviewed
 continuous G-to-D take exposed premature finalized lifecycle labels, transition fragments retained
@@ -135,10 +152,11 @@ events, while the power/inversion take emits exactly its ten intended events wit
 chords at top-1. No chord name, transition pair, recording timestamp, or guitar-specific rule is
 encoded in the correction.
 
-The rack now includes a session review module for finalized notes and chords. It shows immutable raw
-predictions beside the corrected projection, timing, match strength, ranked alternatives, and
-algorithm provenance. Replacements and reverts append correction records rather than mutating
-detector output; invalid or orphaned history is reported explicitly.
+The completed audio slice includes review behavior for finalized notes and chords. The historical
+rack presentation showed immutable raw predictions beside the corrected projection, timing, match
+strength, ranked alternatives, and algorithm provenance; the new Practice Workspace must preserve
+that behavior without restoring the rack shell. Replacements and reverts append correction records
+rather than mutating detector output; invalid or orphaned history is reported explicitly.
 
 Complete sessions can be saved, listed, loaded, replayed, and deleted through an injectable local
 repository. The browser implementation validates structured sessions and stores them atomically in
