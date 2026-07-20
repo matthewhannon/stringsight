@@ -276,27 +276,31 @@ export class AudioSessionController {
   }
 
   private readonly handleCaptureUpdate = () => {
-    const previousState = this.snapshot.capture.state;
+    const previousState = this.snapshot.capture.operationState;
     const capture = this.capture.currentSnapshot;
     this.snapshot = { ...this.snapshot, capture };
 
     if (
-      capture.state === 'recording' &&
+      capture.operationState === 'recording' &&
       previousState !== 'paused' &&
       previousState !== 'recording'
     ) {
       this.beginRevision('recording', true);
-    } else if (capture.state === 'replaying' && previousState !== 'replaying') {
+    } else if (capture.operationState === 'replaying' && previousState !== 'replaying') {
       this.beginRevision('replay', this.snapshot.session === null);
-    } else if (capture.state === 'paused') {
+    } else if (capture.operationState === 'paused') {
       this.setSessionStatus('paused');
-    } else if (capture.state === 'recording' && previousState === 'paused') {
+    } else if (capture.operationState === 'recording' && previousState === 'paused') {
       this.setSessionStatus('recording');
-    } else if (capture.state === 'stopping' || capture.state === 'replaying') {
+    } else if (capture.operationState === 'finalizing' || capture.operationState === 'replaying') {
       this.setSessionStatus('processing');
-    } else if (capture.state === 'failed') {
+    } else if (capture.operationState === 'failed') {
       this.setSessionStatus('failed');
-    } else if (capture.state === 'ready-to-replay' && this.revisionMode !== null) {
+    } else if (
+      capture.operationState === 'idle' &&
+      (previousState === 'finalizing' || previousState === 'replaying') &&
+      this.revisionMode !== null
+    ) {
       this.setSessionStatus('processing');
     }
     this.emit();
@@ -434,14 +438,11 @@ export class AudioSessionController {
   }
 
   private captureIsBusy(): boolean {
-    return [
-      'paused',
-      'recording',
-      'replaying',
-      'requesting-permission',
-      'starting',
-      'stopping',
-    ].includes(this.capture.currentSnapshot.state);
+    const capture = this.capture.currentSnapshot;
+    return (
+      capture.connectionState === 'connecting' ||
+      !['idle', 'failed'].includes(capture.operationState)
+    );
   }
 
   private cancelRevision(): void {

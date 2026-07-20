@@ -15,13 +15,17 @@ test('opens directly into the functional realistic rack', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Audio input' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Pitch analysis' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Evaluation bench' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Start microphone' })).toBeVisible();
+  await expect(page.getByRole('button', { exact: true, name: 'Connect microphone' })).toBeVisible();
 });
 
 test('captures and replays audio through a simulated microphone', async ({ page }) => {
   await page.goto('/#capture');
-  await page.getByRole('button', { name: 'Start microphone' }).click();
+  await page.getByRole('button', { exact: true, name: 'Connect microphone' }).click();
   const capturePanel = page.getByLabel('Audio capture controls');
+  await expect(capturePanel.getByText('Microphone connected', { exact: true })).toBeVisible();
+  await expect(capturePanel.getByText(/Microphone connected — not recording/)).toBeVisible();
+  await expect(page.getByLabel('Note analysis diagnostics')).not.toContainText('microphone-1');
+  await page.getByRole('button', { name: 'Record take' }).click();
   await expect(capturePanel.getByText('Recording', { exact: true })).toBeVisible();
   await expect(
     page.getByLabel('Audio diagnostics').getByText(/Hz$/).filter({ hasNotText: '—' }),
@@ -32,21 +36,21 @@ test('captures and replays audio through a simulated microphone', async ({ page 
     .toBeGreaterThan(0);
   await expect(page.getByLabel('Note analysis diagnostics')).toContainText('microphone-1');
   await page.getByRole('button', { name: 'Stop', exact: true }).click();
-  await expect(capturePanel.getByText('Recording ready', { exact: true })).toBeVisible({
+  await expect(capturePanel.getByText(/Microphone connected — not recording/)).toBeVisible({
     timeout: 15_000,
   });
   await expect(page.getByLabel('Capture duration')).not.toHaveText('00:00.0');
 
   await page.getByRole('button', { name: 'Replay analysis' }).click();
   await expect(capturePanel.getByText('Replaying', { exact: true })).toBeVisible();
-  await expect(capturePanel.getByText('Recording ready', { exact: true })).toBeVisible({
+  await expect(capturePanel.getByText(/Microphone connected — not recording/)).toBeVisible({
     timeout: 15_000,
   });
 
-  await page.getByRole('button', { name: 'Start microphone' }).click();
+  await page.getByRole('button', { name: 'Record take' }).click();
   await expect(page.getByLabel('Note analysis diagnostics')).toContainText('microphone-3');
   await page.getByRole('button', { name: 'Stop', exact: true }).click();
-  await expect(capturePanel.getByText('Recording ready', { exact: true })).toBeVisible();
+  await expect(capturePanel.getByText(/Microphone connected — not recording/)).toBeVisible();
 });
 
 test('loads a WAV through the normal replay analysis path', async ({ page }) => {
@@ -101,7 +105,7 @@ test('keeps the rack usable without horizontal overflow on a narrow screen', asy
   await page.goto('/');
 
   await expect(page.getByRole('heading', { name: 'Audio input' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Start microphone' })).toBeVisible();
+  await expect(page.getByRole('button', { exact: true, name: 'Connect microphone' })).toBeVisible();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );

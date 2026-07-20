@@ -230,9 +230,8 @@ h1 {
   background: #f19c8f;
 }
 
-.capture-state--requesting-permission > span,
-.capture-state--starting > span,
-.capture-state--stopping > span {
+.capture-state--connecting > span,
+.capture-state--finalizing > span {
   background: #d6b47a;
   animation: capture-pulse 1.2s ease-in-out infinite;
 }

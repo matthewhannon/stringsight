@@ -133,7 +133,7 @@ describe('BenchmarkPanel', () => {
       startedAtMs: sessionTimestampMs(50),
     };
     const { analysis, capture, polyphonicAnalysis } = controllers(
-      { ...InitialCaptureSnapshot, state: 'ready-to-replay' },
+      { ...InitialCaptureSnapshot, operationState: 'idle' },
       {
         ...InitialAudioAnalysisSnapshot,
         currentEvent: noteEvent,
@@ -192,7 +192,7 @@ describe('BenchmarkPanel', () => {
       startedAtMs: sessionTimestampMs(50),
     };
     const { analysis, capture, polyphonicAnalysis } = controllers(
-      { ...InitialCaptureSnapshot, state: 'ready-to-replay' },
+      { ...InitialCaptureSnapshot, operationState: 'idle' },
       InitialAudioAnalysisSnapshot,
       recording,
       {

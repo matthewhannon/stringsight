@@ -21,13 +21,13 @@ StringSight needs one reliable timestamped PCM stream that can originate from li
 
 ## Component responsibilities
 
-| Component               | Responsibility                                                                                                  |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `MicrophoneCapture`     | Permission, device selection, `AudioContext`, track lifecycle, worklet wiring, session timestamps, backpressure |
-| PCM capture worklet     | Copy render quanta into fixed chunks, compute peak/RMS/clipping counts, transfer PCM                            |
-| Audio transport worker  | Validate ordering, acknowledge chunks, assemble recordings, report buffered duration                            |
-| `RecordingReplaySource` | Re-chunk stored PCM through the same `PcmChunk` subscriber interface                                            |
-| React capture panel     | Explain permission, select a device, show state/diagnostics, waveform, level, and recovery actions              |
+| Component               | Responsibility                                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `MicrophoneCapture`     | Permission, device selection, independent connection/recording state, graph lifecycle, recording timestamps, backpressure |
+| PCM capture worklet     | Emit bounded monitoring summaries; copy and transfer PCM only while recording                                             |
+| Audio transport worker  | Validate ordering, acknowledge chunks, assemble recordings, report buffered duration                                      |
+| `RecordingReplaySource` | Re-chunk stored PCM through the same `PcmChunk` subscriber interface                                                      |
+| React capture panel     | Explain permission, select a device, show state/diagnostics, waveform, level, and recovery actions                        |
 
 The level meter is logarithmic dBFS rather than a linear amplitude percentage. Its waveform is
 auto-scaled for visibility without altering captured PCM. A silent synthetic −24 dBFS meter check
@@ -40,11 +40,20 @@ The main thread coordinates these pieces but does not run per-sample DSP. The wo
 
 1. On page load, report capability support without requesting permission.
 2. A user gesture calls `getUserMedia` with mono audio plus echo cancellation, noise suppression, and automatic gain control requested off.
-3. Create/resume `AudioContext`, record the session/audio clock anchor, and load the capture worklet.
+3. Create/resume `AudioContext` and load the capture worklet. Connection enters monitoring without
+   creating a session, transport worker, analyzer run, or retained PCM history.
 4. Connect `MediaStreamAudioSourceNode` to the worklet. The worklet connects through a zero-gain node so it remains scheduled without audible monitoring or feedback.
-5. Transfer chunks to the transport worker and publish small UI snapshots at a throttled rate.
-6. On stop, flush the worklet, stop tracks, close the context, finalize worker recording assembly, and retain the result in memory for replay.
-7. Replay emits identical chunk contracts with the original relative sample timing and a `replay` source tag.
+5. Monitoring publishes fixed-size meter and waveform summaries only. Starting a take resets the
+   logical frame/sequence counters, creates the transport worker, and begins PCM delivery to the
+   analyzers.
+6. Pause flushes the partial recording chunk and stops logical recording-time advancement while the
+   connected microphone continues bounded monitoring. Resume continues at the next logical frame,
+   excluding the paused wall-clock gap.
+7. Stop flushes and finalizes the transport and analyzers, retains the completed take, and returns
+   the still-connected microphone to monitoring. Disconnect is the explicit operation that stops
+   media tracks and closes the `AudioContext`.
+8. Replay emits identical chunk contracts with the original relative sample timing and a `replay`
+   source tag.
 
 ## PCM contract
 
@@ -85,7 +94,11 @@ Recovery behavior:
 ## Privacy
 
 - No microphone request occurs before explicit user action.
-- Raw PCM remains in the browser and is held in memory for this slice.
+- Raw PCM remains in the browser and is retained only for the current bounded recording. Monitoring
+  does not retain raw PCM or growing event history.
+- Recording is conservatively capped at five minutes. Reaching the cap finalizes the accepted take
+  successfully and surfaces a maximum-duration warning; this slice does not implement long-form
+  streaming storage.
 - Device labels remain local and are not placed in telemetry or exported diagnostics by default.
 - There is no remote endpoint in this item.
 

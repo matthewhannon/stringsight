@@ -37,12 +37,24 @@ function reset(): void {
 }
 
 function acceptChunk(candidate: PcmChunk): void {
-  const chunk = PcmChunkSchema.parse(candidate);
+  const parsed = PcmChunkSchema.parse(candidate);
   if (sampleRate === 0) throw new Error('Transport worker has not been initialized.');
-  if (chunk.sampleRate !== sampleRate) throw new Error('PCM sample rate changed during capture.');
-  if (bufferedFrames + chunk.frameCount > maxRecordingFrames) {
-    throw new Error('Recording exceeded the configured in-memory duration limit.');
+  if (parsed.sampleRate !== sampleRate) throw new Error('PCM sample rate changed during capture.');
+  const remainingFrames = Math.max(0, maxRecordingFrames - bufferedFrames);
+  if (remainingFrames === 0) {
+    post({ bufferedFrames, type: 'limit-reached' });
+    return;
   }
+  const acceptedFrames = Math.min(parsed.frameCount, remainingFrames);
+  const chunk =
+    acceptedFrames === parsed.frameCount
+      ? parsed
+      : PcmChunkSchema.parse({
+          ...parsed,
+          data: parsed.data.slice(0, acceptedFrames),
+          durationMs: (acceptedFrames / parsed.sampleRate) * 1_000,
+          frameCount: acceptedFrames,
+        });
 
   const sequenceDiscontinuity = chunk.sequence !== expectedSequence;
   const frameDiscontinuity =
@@ -60,6 +72,9 @@ function acceptChunk(candidate: PcmChunk): void {
     sequence: chunk.sequence,
     type: 'acknowledged',
   });
+  if (acceptedFrames < parsed.frameCount || bufferedFrames === maxRecordingFrames) {
+    post({ bufferedFrames, type: 'limit-reached' });
+  }
 }
 
 function finalize(): void {
@@ -106,6 +121,7 @@ workerScope.onmessage = (event: MessageEvent<TransportInboundMessage>) => {
     }
     reset();
   } catch (error) {
+    reset();
     post({
       message: error instanceof Error ? error.message : 'Unknown audio transport failure.',
       type: 'failure',

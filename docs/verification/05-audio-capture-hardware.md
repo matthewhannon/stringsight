@@ -11,15 +11,19 @@ later hardware-matrix pass.
 ## Tester instructions
 
 1. Run `npm run dev` and open `http://127.0.0.1:5173/#capture` in current Chrome or Edge.
-2. Confirm the browser has not requested microphone permission before pressing **Start microphone**.
-3. Select the intended interface or microphone, press **Start microphone**, and allow permission when prompted.
-4. Play or strum normally for about ten seconds.
+2. Confirm the browser has not requested microphone permission before pressing **Connect microphone**.
+3. Select the intended interface or microphone, press **Connect microphone**, and allow permission when prompted.
+4. Confirm the UI says **Microphone connected — not recording** and that the meter/waveform respond
+   without creating note or chord events. Press **Record take**, then play or strum for about ten seconds.
 5. Confirm the waveform and input meter move without audible microphone monitoring or feedback.
 6. Confirm the actual sample rate and channel count appear. Record whether echo cancellation, noise suppression, and automatic gain report `Off` or `Not reported`.
 7. Stay quiet for at least two seconds and confirm the silence warning appears, then play again and confirm it clears.
-8. Press **Stop**. Confirm the state becomes **Recording ready**, buffered duration is plausible, and dropped chunks/discontinuities are ideally zero.
-9. Press **Replay analysis**. This intentionally re-feeds PCM through StringSight's local analysis input without playing it through the speakers. Confirm the waveform advances and the state returns to **Recording ready**.
-10. Optional: start another short recording and disconnect the selected USB interface. Confirm the device-ended warning appears and captured audio is preserved.
+8. Press **Stop**. Confirm the take is preserved, buffered duration is plausible, and the microphone
+   returns to **Microphone connected — not recording** with dropped chunks/discontinuities ideally zero.
+9. Press **Replay analysis**. This intentionally re-feeds PCM through StringSight's local analysis input without playing it through the speakers. Confirm the waveform advances and the state returns to connected monitoring.
+10. Press **Disconnect microphone**. Confirm the meter stops while the completed take and Replay
+    control remain available. Optional: reconnect, record another short take, and disconnect the
+    selected USB interface to confirm the device-ended warning preserves captured audio.
 
 Do not deliberately create dangerously loud input to test clipping. If ordinary playing triggers the clipping warning, note the gain setting and whether lowering gain clears it.
 

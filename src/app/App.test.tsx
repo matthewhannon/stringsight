@@ -17,7 +17,7 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /audio input/i })).toBeVisible();
     expect(screen.getByRole('heading', { name: /pitch analysis/i })).toBeVisible();
     expect(screen.getByRole('heading', { name: /evaluation bench/i })).toBeVisible();
-    expect(screen.getByRole('button', { name: /start microphone/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^connect microphone$/i })).toBeVisible();
     expect(screen.queryByText(/rack stack concepts/i)).not.toBeInTheDocument();
   });
 });

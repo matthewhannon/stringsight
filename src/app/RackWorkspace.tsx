@@ -79,25 +79,32 @@ const workspaceModules: readonly WorkspaceModuleDefinition[] = [
     : []),
 ];
 
-const sessionStateLabels: Record<CaptureSnapshot['state'], string> = {
-  failed: 'Needs attention',
-  idle: 'Ready',
-  paused: 'Paused',
-  'ready-to-replay': 'Take ready',
-  recording: 'Recording',
-  replaying: 'Replaying',
-  'requesting-permission': 'Awaiting permission',
-  starting: 'Starting',
-  stopping: 'Finalizing',
-  unsupported: 'Unsupported browser',
+const sessionStateLabel = (snapshot: CaptureSnapshot): string => {
+  if (snapshot.operationState === 'recording') return 'Recording';
+  if (snapshot.operationState === 'paused') return 'Paused';
+  if (snapshot.operationState === 'finalizing') return 'Finalizing';
+  if (snapshot.operationState === 'replaying') return 'Replaying';
+  if (snapshot.operationState === 'failed') return 'Recording needs attention';
+  if (snapshot.connectionState === 'monitoring') return 'Connected · not recording';
+  if (snapshot.connectionState === 'connecting') return 'Connecting microphone';
+  if (snapshot.connectionState === 'failed') return 'Microphone needs attention';
+  if (snapshot.connectionState === 'unsupported') return 'Unsupported browser';
+  return snapshot.bufferedDurationMs > 0 ? 'Take ready · microphone disconnected' : 'Disconnected';
 };
 
-const sessionStatusTone = (state: CaptureSnapshot['state']): RackStatusTone => {
-  if (state === 'recording' || state === 'replaying') return 'active';
-  if (state === 'paused') return 'warning';
-  if (state === 'failed' || state === 'unsupported') return 'danger';
-  if (state === 'requesting-permission' || state === 'starting' || state === 'stopping') {
+const sessionStatusTone = (snapshot: CaptureSnapshot): RackStatusTone => {
+  if (snapshot.operationState === 'recording' || snapshot.operationState === 'replaying') {
+    return 'active';
+  }
+  if (snapshot.operationState === 'paused' || snapshot.operationState === 'finalizing') {
     return 'warning';
+  }
+  if (
+    snapshot.operationState === 'failed' ||
+    snapshot.connectionState === 'failed' ||
+    snapshot.connectionState === 'unsupported'
+  ) {
+    return 'danger';
   }
   return 'idle';
 };
@@ -139,8 +146,8 @@ function SessionModule() {
       description="Current browser session and processing boundary."
       moduleId="session"
       size="compact"
-      status={sessionStateLabels[snapshot.capture.state]}
-      statusTone={sessionStatusTone(snapshot.capture.state)}
+      status={sessionStateLabel(snapshot.capture)}
+      statusTone={sessionStatusTone(snapshot.capture)}
       title="Session control"
       unit="SS · 00"
     >

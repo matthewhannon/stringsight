@@ -123,7 +123,7 @@ export function BenchmarkPanel({
   );
 
   const recording = captureController.currentRecording;
-  const ready = captureSnapshot.state === 'ready-to-replay' && recording !== null;
+  const ready = captureSnapshot.operationState === 'idle' && recording !== null;
   const allReviewed =
     benchmarkMode === 'notes'
       ? finalizedEvents.length > 0 &&

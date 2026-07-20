@@ -36,7 +36,7 @@ class MutableCaptureSource {
 
   clearRecording(): void {
     this.currentRecording = null;
-    this.set({ ...InitialCaptureSnapshot, state: 'idle' });
+    this.set({ ...InitialCaptureSnapshot, operationState: 'idle' });
   }
 
   loadRecording(recording: CapturedRecording): void {
@@ -44,7 +44,7 @@ class MutableCaptureSource {
     this.set({
       ...InitialCaptureSnapshot,
       bufferedDurationMs: recording.durationMs,
-      state: 'ready-to-replay',
+      operationState: 'idle',
     });
   }
 
@@ -138,7 +138,13 @@ describe('AudioSessionController', () => {
     const listener = vi.fn();
     const unsubscribe = controller.subscribe(listener);
 
-    capture.set({ ...InitialCaptureSnapshot, state: 'recording' });
+    capture.set({
+      ...InitialCaptureSnapshot,
+      connectionState: 'monitoring',
+      operationState: 'idle',
+    });
+    expect(controller.currentSnapshot.session).toBeNull();
+    capture.set({ ...capture.currentSnapshot, operationState: 'recording' });
     expect(controller.currentSnapshot.session).toMatchObject({
       id: 'session-1',
       status: 'recording',
@@ -166,12 +172,12 @@ describe('AudioSessionController', () => {
     expect(controller.currentSnapshot.keyInterpretations).toEqual([]);
     expect(controller.currentSnapshot.scaleInterpretations).toEqual([]);
 
-    capture.set({ ...capture.currentSnapshot, state: 'paused' });
+    capture.set({ ...capture.currentSnapshot, operationState: 'paused' });
     expect(controller.currentSnapshot.session?.status).toBe('paused');
-    capture.set({ ...capture.currentSnapshot, state: 'recording' });
+    capture.set({ ...capture.currentSnapshot, operationState: 'recording' });
     expect(controller.currentSnapshot.session?.status).toBe('recording');
-    capture.set({ ...capture.currentSnapshot, state: 'stopping' });
-    capture.set({ ...capture.currentSnapshot, state: 'ready-to-replay' });
+    capture.set({ ...capture.currentSnapshot, operationState: 'finalizing' });
+    capture.set({ ...capture.currentSnapshot, operationState: 'idle' });
     expect(controller.currentSnapshot.session?.status).toBe('processing');
 
     analysis.set({ ...analysis.currentSnapshot, runComplete: true });
@@ -182,7 +188,7 @@ describe('AudioSessionController', () => {
     expect(controller.currentSnapshot.scaleInterpretations[0]?.scale.name).toBe('C major');
     const committedIds = controller.currentSnapshot.session?.events.audio.map(({ id }) => id);
 
-    capture.set({ ...capture.currentSnapshot, state: 'replaying' });
+    capture.set({ ...capture.currentSnapshot, operationState: 'replaying' });
     expect(controller.currentSnapshot.pendingRevision).toBe(true);
     expect(controller.currentSnapshot.session?.events.audio.map(({ id }) => id)).toEqual(
       committedIds,
@@ -208,7 +214,7 @@ describe('AudioSessionController', () => {
       chordEvents: replayEvents,
       currentChord: replayEvents.at(-1) ?? null,
     });
-    capture.set({ ...capture.currentSnapshot, state: 'ready-to-replay' });
+    capture.set({ ...capture.currentSnapshot, operationState: 'idle' });
     analysis.set({ ...analysis.currentSnapshot, runComplete: true });
     expect(controller.currentSnapshot.session?.events.audio.map(({ id }) => id)).toEqual(
       committedIds,
@@ -242,12 +248,14 @@ describe('AudioSessionController', () => {
       now: () => new Date('2026-07-18T20:00:00.000Z'),
     });
 
-    capture.set({ ...InitialCaptureSnapshot, state: 'replaying' });
+    capture.set({ ...InitialCaptureSnapshot, operationState: 'replaying' });
     expect(controller.currentSnapshot.session).toMatchObject({
       id: 'imported-session',
       status: 'processing',
     });
-    capture.set({ ...capture.currentSnapshot, state: 'failed' });
+    capture.set({ ...capture.currentSnapshot, operationState: 'failed' });
+    expect(controller.currentSnapshot.session?.status).toBe('failed');
+    capture.set({ ...capture.currentSnapshot, operationState: 'idle' });
     expect(controller.currentSnapshot.session?.status).toBe('failed');
     controller.dispose();
   });
@@ -276,7 +284,7 @@ describe('AudioSessionController', () => {
       schemaVersion: CONTRACT_SCHEMA_VERSION,
       startedAtMs: 0,
     });
-    capture.set({ ...InitialCaptureSnapshot, state: 'recording' });
+    capture.set({ ...InitialCaptureSnapshot, operationState: 'recording' });
     analysis.set({ ...InitialAudioAnalysisSnapshot, runComplete: false, runId: 'run-1' });
     const events = cMajorEvents('run-1');
     polyphonic.set({

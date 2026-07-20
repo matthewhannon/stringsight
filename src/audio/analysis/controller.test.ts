@@ -92,7 +92,10 @@ describe('AudioAnalysisController', () => {
     const capture = new MicrophoneCapture();
     let chunkListener: ((chunk: PcmChunk) => void) | null = null;
     let stateListener: (() => void) | null = null;
-    let captureSnapshot: CaptureSnapshot = { ...InitialCaptureSnapshot, state: 'idle' };
+    let captureSnapshot: CaptureSnapshot = {
+      ...InitialCaptureSnapshot,
+      operationState: 'idle',
+    };
     Object.defineProperty(capture, 'currentSnapshot', { get: () => captureSnapshot });
     const unsubscribeChunks = vi.fn();
     const unsubscribeState = vi.fn();
@@ -180,10 +183,10 @@ describe('AudioAnalysisController', () => {
       runId: 'replay-2',
     });
 
-    captureSnapshot = { ...captureSnapshot, state: 'stopping' };
+    captureSnapshot = { ...captureSnapshot, operationState: 'finalizing' };
     const notifyState = stateListener as unknown as () => void;
     notifyState();
-    captureSnapshot = { ...captureSnapshot, state: 'ready-to-replay' };
+    captureSnapshot = { ...captureSnapshot, operationState: 'idle' };
     notifyState();
     expect(worker.messages.some((message) => messageType(message) === 'finish')).toBe(true);
 

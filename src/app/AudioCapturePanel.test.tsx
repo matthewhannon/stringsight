@@ -59,15 +59,18 @@ describe('AudioCapturePanel', () => {
         requestedDeviceId: null,
         sampleRate: 48_000,
       },
-      state: 'idle',
+      connectionState: 'disconnected',
+      operationState: 'idle',
     });
     vi.spyOn(capture, 'listInputDevices').mockResolvedValue([
       mediaDevice('input-1', 'Guitar interface'),
       mediaDevice('input-2', 'Webcam microphone'),
     ]);
-    const start = vi.spyOn(capture, 'start').mockResolvedValue();
+    const connect = vi.spyOn(capture, 'connect').mockResolvedValue();
 
     render(<AudioCapturePanel capture={capture} />);
+    expect(screen.getByText('Microphone disconnected')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Record take' })).toBeDisabled();
     expect(screen.getByText('48,000 Hz')).toBeInTheDocument();
     expect(screen.getByText('On')).toBeInTheDocument();
     expect(screen.getByText('Off')).toBeInTheDocument();
@@ -76,8 +79,8 @@ describe('AudioCapturePanel', () => {
       expect(screen.getByRole('option', { name: 'Guitar interface' })).toBeVisible(),
     );
     await user.selectOptions(screen.getByLabelText('Input device'), 'input-2');
-    await user.click(screen.getByRole('button', { name: 'Start microphone' }));
-    expect(start).toHaveBeenCalledWith('input-2');
+    await user.click(screen.getByRole('button', { name: 'Connect microphone' }));
+    expect(connect).toHaveBeenCalledWith('input-2');
   });
 
   it('renders actionable clipping and capture errors', () => {
@@ -94,23 +97,49 @@ describe('AudioCapturePanel', () => {
         subsystem: 'audio-capture',
         userAction: 'select-device',
       }),
-      state: 'recording',
+      connectionState: 'monitoring',
+      operationState: 'recording',
       warning: 'clipping',
     });
     vi.spyOn(capture, 'listInputDevices').mockResolvedValue([]);
 
     render(<AudioCapturePanel capture={capture} />);
+    expect(screen.getByText('Recording', { exact: true })).toBeVisible();
     expect(screen.getByText(/input is clipping/i)).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('The microphone is busy');
-    expect(screen.getByRole('button', { name: 'Start microphone' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Connect microphone' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Stop' })).toBeEnabled();
+  });
+
+  it('clearly separates connected monitoring from recording and disconnect', async () => {
+    const user = userEvent.setup();
+    const capture = captureWithSnapshot({
+      ...InitialCaptureSnapshot,
+      connectionState: 'monitoring',
+      operationState: 'idle',
+    });
+    vi.spyOn(capture, 'listInputDevices').mockResolvedValue([]);
+    const startRecording = vi.spyOn(capture, 'startRecording').mockResolvedValue();
+    const disconnect = vi.spyOn(capture, 'disconnect').mockResolvedValue();
+
+    render(<AudioCapturePanel capture={capture} />);
+
+    expect(screen.getByText('Microphone connected', { exact: true })).toBeVisible();
+    expect(screen.getByText(/Microphone connected — not recording/)).toBeVisible();
+    expect(screen.getByText(/Privacy: microphone audio stays in this browser/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Connect microphone' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Record take' }));
+    expect(startRecording).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole('button', { name: 'Disconnect microphone' }));
+    expect(disconnect).toHaveBeenCalledOnce();
   });
 
   it('exposes pause, resume, and stop controls for an active session', async () => {
     const user = userEvent.setup();
     const recordingCapture = captureWithSnapshot({
       ...InitialCaptureSnapshot,
-      state: 'recording',
+      connectionState: 'monitoring',
+      operationState: 'recording',
     });
     vi.spyOn(recordingCapture, 'listInputDevices').mockResolvedValue([]);
     const pause = vi.spyOn(recordingCapture, 'pause').mockResolvedValue();
@@ -121,7 +150,11 @@ describe('AudioCapturePanel', () => {
     expect(screen.getByRole('button', { name: 'Stop' })).toBeEnabled();
     recordingView.unmount();
 
-    const pausedCapture = captureWithSnapshot({ ...InitialCaptureSnapshot, state: 'paused' });
+    const pausedCapture = captureWithSnapshot({
+      ...InitialCaptureSnapshot,
+      connectionState: 'monitoring',
+      operationState: 'paused',
+    });
     vi.spyOn(pausedCapture, 'listInputDevices').mockResolvedValue([]);
     const resume = vi.spyOn(pausedCapture, 'resume').mockResolvedValue();
     const stop = vi.spyOn(pausedCapture, 'stop').mockResolvedValue(
@@ -144,7 +177,7 @@ describe('AudioCapturePanel', () => {
     expect(resume).toHaveBeenCalledOnce();
     await user.click(screen.getByRole('button', { name: 'Stop' }));
     expect(stop).toHaveBeenCalledOnce();
-    expect(screen.getByRole('button', { name: 'Start microphone' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Connect microphone' })).toBeDisabled();
   });
 
   it('runs a known-level software meter check without opening the microphone', async () => {
@@ -162,10 +195,11 @@ describe('AudioCapturePanel', () => {
         sampleRate: 48_000,
       },
       inputChannelMode: 'averaged',
-      state: 'idle',
+      connectionState: 'monitoring',
+      operationState: 'idle',
     });
     vi.spyOn(capture, 'listInputDevices').mockResolvedValue([]);
-    const start = vi.spyOn(capture, 'start').mockResolvedValue();
+    const startRecording = vi.spyOn(capture, 'startRecording').mockResolvedValue();
 
     render(<AudioCapturePanel capture={capture} />);
     await user.click(screen.getByRole('button', { name: 'Test meter (−24 dBFS)' }));
@@ -176,14 +210,17 @@ describe('AudioCapturePanel', () => {
     expect(screen.getByText('Channel handling').nextElementSibling).toHaveTextContent(
       'Averaged to mono',
     );
-    expect(start).not.toHaveBeenCalled();
+    expect(startRecording).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: 'Return to microphone' }));
     expect(screen.queryByText(/Software meter check/)).not.toBeInTheDocument();
   });
 
   it('gives device-neutral guidance when multiple inputs are available', async () => {
-    const capture = captureWithSnapshot({ ...InitialCaptureSnapshot, state: 'idle' });
+    const capture = captureWithSnapshot({
+      ...InitialCaptureSnapshot,
+      connectionState: 'disconnected',
+    });
     vi.spyOn(capture, 'listInputDevices').mockResolvedValue([
       mediaDevice('interface-1', 'USB Interface Input 1'),
       mediaDevice('interface-2', 'USB Interface Input 2'),
@@ -197,11 +234,11 @@ describe('AudioCapturePanel', () => {
 
   it('loads a WAV and analyzes it through recording replay without opening a microphone', async () => {
     const user = userEvent.setup();
-    const capture = captureWithSnapshot({ ...InitialCaptureSnapshot, state: 'idle' });
+    const capture = captureWithSnapshot({ ...InitialCaptureSnapshot });
     vi.spyOn(capture, 'listInputDevices').mockResolvedValue([]);
     const loadRecording = vi.spyOn(capture, 'loadRecording');
     const replay = vi.spyOn(capture, 'replay').mockResolvedValue();
-    const start = vi.spyOn(capture, 'start').mockResolvedValue();
+    const connect = vi.spyOn(capture, 'connect').mockResolvedValue();
     const bytes = encodeMonoPcm16Wav(
       CapturedRecordingSchema.parse({
         channelCount: 1,
@@ -237,7 +274,7 @@ describe('AudioCapturePanel', () => {
       sampleRate: 1_000,
     });
     expect(replay).toHaveBeenCalledOnce();
-    expect(start).not.toHaveBeenCalled();
+    expect(connect).not.toHaveBeenCalled();
     expect(await screen.findByText(/Loaded and analyzed open-strings.wav/)).toBeVisible();
   });
 });

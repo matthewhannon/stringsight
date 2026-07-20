@@ -54,7 +54,7 @@ export class AudioAnalysisController {
   private readonly unsubscribeCaptureState: () => void;
   private readonly workerFactory: WorkerFactory;
   private inFlightChunks = 0;
-  private previousCaptureState: string;
+  private previousOperationState: string;
   private runCounter = 0;
   private snapshot: AudioAnalysisSnapshot = InitialAudioAnalysisSnapshot;
   private worker: Worker | null = null;
@@ -66,7 +66,7 @@ export class AudioAnalysisController {
     this.capture = capture;
     this.maxInFlightChunks = options.maxInFlightChunks ?? 8;
     this.workerFactory = options.workerFactory ?? defaultWorkerFactory;
-    this.previousCaptureState = capture.currentSnapshot.state;
+    this.previousOperationState = capture.currentSnapshot.operationState;
     this.unsubscribeCaptureChunks = capture.subscribeToChunks(this.handleChunk);
     this.unsubscribeCaptureState = capture.subscribe(this.handleCaptureState);
   }
@@ -103,17 +103,17 @@ export class AudioAnalysisController {
   }
 
   private readonly handleCaptureState = () => {
-    const nextState = this.capture.currentSnapshot.state;
+    const nextState = this.capture.currentSnapshot.operationState;
     if (
-      nextState === 'ready-to-replay' &&
-      (this.previousCaptureState === 'stopping' || this.previousCaptureState === 'replaying')
+      nextState === 'idle' &&
+      (this.previousOperationState === 'finalizing' || this.previousOperationState === 'replaying')
     ) {
       this.worker?.postMessage({
         protocolVersion: WORKER_PROTOCOL_VERSION,
         type: 'finish',
       } satisfies AnalysisWorkerInbound);
     }
-    this.previousCaptureState = nextState;
+    this.previousOperationState = nextState;
   };
 
   private readonly handleChunk = (chunk: PcmChunk) => {

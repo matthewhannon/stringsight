@@ -59,12 +59,17 @@ class FakeTrack extends EventTarget {
 }
 
 class FakeAudioContext {
+  static instances: FakeAudioContext[] = [];
   audioWorklet = { addModule: vi.fn(async () => Promise.resolve()) };
   baseLatency = 0.01;
   currentTime = 1;
   destination = new FakeAudioNode();
   sampleRate = 48_000;
   state: AudioContextState = 'running';
+
+  constructor() {
+    FakeAudioContext.instances.push(this);
+  }
 
   close(): Promise<void> {
     this.state = 'closed';
@@ -97,13 +102,15 @@ class FakeAudioWorkletNode extends FakeAudioNode {
   port = {
     onmessage: null as PortMessageHandler,
     postMessage: (message: unknown) => {
-      if (
-        typeof message === 'object' &&
-        message !== null &&
-        'type' in message &&
-        message.type === 'flush'
-      ) {
-        queueMicrotask(() => this.emit({ type: 'flushed' }));
+      if (typeof message !== 'object' || message === null || !('type' in message)) return;
+      if (message.type === 'start-recording') {
+        queueMicrotask(() => this.emit({ type: 'recording-started' }));
+      } else if (message.type === 'pause-recording') {
+        queueMicrotask(() => this.emit({ type: 'recording-paused' }));
+      } else if (message.type === 'resume-recording') {
+        queueMicrotask(() => this.emit({ type: 'recording-resumed' }));
+      } else if (message.type === 'stop-recording') {
+        queueMicrotask(() => this.emit({ type: 'recording-stopped' }));
       }
     },
   };
@@ -123,6 +130,7 @@ class FakeWorker {
   static instances: FakeWorker[] = [];
   chunks: PcmChunk[] = [];
   onerror: ((event: Event) => void) | null = null;
+  onmessageerror: ((event: MessageEvent) => void) | null = null;
   onmessage: ((event: MessageEvent<TransportOutboundMessage>) => void) | null = null;
   recordedAt = '';
   sampleRate = 48_000;
@@ -182,7 +190,9 @@ class FakeWorker {
           type: 'finalized',
         }),
       );
+      return;
     }
+    this.chunks = [];
   }
 
   emit(message: TransportOutboundMessage): void {
@@ -227,6 +237,7 @@ const flushMicrotasks = async (): Promise<void> => {
 };
 
 beforeEach(() => {
+  FakeAudioContext.instances = [];
   FakeAudioWorkletNode.instances = [];
   FakeWorker.instances = [];
   FakeWorker.acknowledgeChunks = true;
@@ -473,7 +484,8 @@ describe('microphone capture orchestration', () => {
     capture.loadRecording(recording);
     expect(capture.currentSnapshot).toMatchObject({
       bufferedDurationMs: 3,
-      state: 'ready-to-replay',
+      connectionState: 'disconnected',
+      operationState: 'idle',
     });
     await capture.replay();
     expect(chunks).toHaveLength(1);
@@ -484,7 +496,7 @@ describe('microphone capture orchestration', () => {
     expect(capture.currentRecording).toBeNull();
     expect(capture.currentSnapshot).toMatchObject({
       bufferedDurationMs: 0,
-      state: 'idle',
+      operationState: 'idle',
     });
   });
 
@@ -498,8 +510,9 @@ describe('microphone capture orchestration', () => {
     expect((await capture.listInputDevices()).map((device) => device.deviceId)).toEqual([
       'fake-input',
     ]);
-    await capture.start('fake-input');
+    await capture.connect('fake-input');
     expect(capture.currentSnapshot).toMatchObject({
+      connectionState: 'monitoring',
       device: {
         autoGainControl: false,
         channelCount: 1,
@@ -508,8 +521,25 @@ describe('microphone capture orchestration', () => {
         requestedDeviceId: 'fake-input',
         sampleRate: 48_000,
       },
-      state: 'recording',
+      operationState: 'idle',
     });
+    expect(FakeWorker.instances).toHaveLength(0);
+    FakeAudioWorkletNode.instances[0]?.emit({
+      clippingSamples: 0,
+      frameCount: 2_048,
+      inputChannelCount: 1,
+      inputChannelMode: 'mono',
+      peak: 0.2,
+      rms: 0.1,
+      sampleRate: 48_000,
+      type: 'monitor-summary',
+      waveform: new Float32Array(64),
+    });
+    expect(chunks).toHaveLength(0);
+    expect(capture.currentSnapshot.waveform).toHaveLength(64);
+    await capture.startRecording();
+    expect(FakeWorker.instances).toHaveLength(1);
+    expect(capture.currentSnapshot.operationState).toBe('recording');
     const requestedConstraints = getUserMedia.mock.calls[0]?.[0];
     expect(requestedConstraints?.video).toBe(false);
     expect(requestedConstraints?.audio).toMatchObject({
@@ -529,8 +559,19 @@ describe('microphone capture orchestration', () => {
       rms: 0.51,
       sampleRate: 48_000,
       sequence: 0,
-      startSampleFrame: 48_000,
+      startSampleFrame: 0,
       type: 'chunk',
+    });
+    FakeAudioWorkletNode.instances[0]?.emit({
+      clippingSamples: 1,
+      frameCount: 4,
+      inputChannelCount: 2,
+      inputChannelMode: 'averaged',
+      peak: 1,
+      rms: 0.51,
+      sampleRate: 48_000,
+      type: 'monitor-summary',
+      waveform: new Float32Array(64),
     });
     await flushMicrotasks();
     expect(capture.currentSnapshot).toMatchObject({
@@ -540,23 +581,26 @@ describe('microphone capture orchestration', () => {
       peak: 1,
       warning: 'clipping',
     });
-    expect(chunks[0]).toMatchObject({ source: 'microphone', startSampleFrame: 48_000 });
+    expect(chunks[0]).toMatchObject({ source: 'microphone', startMs: 0, startSampleFrame: 0 });
 
     const recording = await capture.stop();
     expect(recording.frameCount).toBe(4);
     expect(Array.from(recording.data)).toEqual([expect.closeTo(0.1), 1, expect.closeTo(-0.2), 0]);
-    expect(capture.currentSnapshot.state).toBe('ready-to-replay');
+    expect(capture.currentSnapshot).toMatchObject({
+      connectionState: 'monitoring',
+      operationState: 'idle',
+    });
     await capture.replay();
     expect(chunks.at(-1)).toMatchObject({ source: 'replay', sequence: 0 });
-    expect(capture.currentSnapshot.state).toBe('ready-to-replay');
-    expect(snapshots.some((snapshot) => snapshot.state === 'recording')).toBe(true);
+    expect(capture.currentSnapshot.operationState).toBe('idle');
+    expect(snapshots.some((snapshot) => snapshot.operationState === 'recording')).toBe(true);
     await capture.dispose();
   });
 
   it('maps denied permission into a recoverable application error', async () => {
     getUserMedia.mockRejectedValueOnce(new DOMException('Denied', 'NotAllowedError'));
     const capture = new MicrophoneCapture();
-    await capture.start();
+    await capture.connect();
     expect(capture.currentSnapshot).toMatchObject({
       error: {
         category: 'permission',
@@ -564,28 +608,32 @@ describe('microphone capture orchestration', () => {
         retryable: true,
         userAction: 'grant-permission',
       },
-      state: 'failed',
+      connectionState: 'failed',
     });
   });
 
   it('pauses, resumes, and safely finalizes a paused recording', async () => {
     const capture = new MicrophoneCapture();
-    await capture.start();
+    await capture.connect();
+    await capture.startRecording();
 
     expect(() => capture.clearRecording()).toThrow('Stop the current audio operation');
 
     await capture.pause();
-    expect(capture.currentSnapshot.state).toBe('paused');
+    expect(capture.currentSnapshot.operationState).toBe('paused');
     await expect(capture.pause()).rejects.toThrow('Only an active recording');
 
     await capture.resume();
-    expect(capture.currentSnapshot.state).toBe('recording');
+    expect(capture.currentSnapshot.operationState).toBe('recording');
     await expect(capture.resume()).rejects.toThrow('Only a paused recording');
 
     await capture.pause();
     const recording = await capture.stop();
     expect(recording.frameCount).toBe(0);
-    expect(capture.currentSnapshot.state).toBe('ready-to-replay');
+    expect(capture.currentSnapshot).toMatchObject({
+      connectionState: 'monitoring',
+      operationState: 'idle',
+    });
     await capture.dispose();
   });
 
@@ -596,7 +644,7 @@ describe('microphone capture orchestration', () => {
   ] as const)('maps %s into its recovery category', async (name, code, userAction) => {
     getUserMedia.mockRejectedValueOnce(new DOMException('Capture failed', name));
     const capture = new MicrophoneCapture();
-    await capture.start();
+    await capture.connect();
     expect(capture.currentSnapshot.error).toMatchObject({ code, userAction });
   });
 
@@ -609,10 +657,41 @@ describe('microphone capture orchestration', () => {
     capture.stopReplay();
   });
 
+  it('enforces connection and operation preconditions without reopening the device', async () => {
+    const capture = new MicrophoneCapture();
+    await expect(capture.startRecording()).rejects.toThrow('Connect the microphone');
+    await capture.connect();
+    await capture.connect();
+    expect(getUserMedia).toHaveBeenCalledOnce();
+
+    await capture.startRecording();
+    await expect(capture.startRecording()).rejects.toThrow('Stop the current audio operation');
+    expect(() => capture.loadRecording(createCalibrationReferenceRecording())).toThrow(
+      'Stop the current audio operation',
+    );
+    const recording = await capture.stop();
+    await expect(capture.stop()).resolves.toBe(recording);
+    await capture.disconnect();
+    await capture.disconnect();
+    expect(capture.currentRecording).toBe(recording);
+  });
+
+  it('closes a monitoring connection after an invalid worklet message', async () => {
+    const capture = new MicrophoneCapture();
+    await capture.connect();
+    FakeAudioWorkletNode.instances[0]?.emit({ unexpected: true });
+    await flushMicrotasks();
+
+    expect(fakeTrack.stopped).toBe(true);
+    expect(FakeAudioContext.instances[0]?.state).toBe('closed');
+    expect(capture.currentSnapshot.connectionState).toBe('failed');
+  });
+
   it('makes backpressure loss and invalid worklet messages visible', async () => {
     FakeWorker.acknowledgeChunks = false;
     const capture = new MicrophoneCapture({ maxInFlightChunks: 1 });
-    await capture.start();
+    await capture.connect();
+    await capture.startRecording();
     const worklet = FakeAudioWorkletNode.instances[0];
     const message = {
       clippingSamples: 0,
@@ -622,7 +701,7 @@ describe('microphone capture orchestration', () => {
       rms: 0.16,
       sampleRate: 48_000,
       sequence: 0,
-      startSampleFrame: 48_000,
+      startSampleFrame: 0,
       type: 'chunk',
     } as const;
     worklet?.emit(message);
@@ -630,16 +709,17 @@ describe('microphone capture orchestration', () => {
       ...message,
       data: message.data.slice(),
       sequence: 1,
-      startSampleFrame: 48_002,
+      startSampleFrame: 2,
     });
     expect(capture.currentSnapshot.droppedChunks).toBe(1);
     worklet?.emit({ unexpected: true });
-    expect(capture.currentSnapshot).toMatchObject({ state: 'failed' });
+    expect(capture.currentSnapshot).toMatchObject({ operationState: 'failed' });
   });
 
   it('detects sequence discontinuity and finalizes when the input device ends', async () => {
     const capture = new MicrophoneCapture();
-    await capture.start();
+    await capture.connect();
+    await capture.startRecording();
     FakeAudioWorkletNode.instances[0]?.emit({
       clippingSamples: 0,
       data: new Float32Array([0, 0]),
@@ -648,8 +728,19 @@ describe('microphone capture orchestration', () => {
       rms: 0,
       sampleRate: 48_000,
       sequence: 2,
-      startSampleFrame: 48_010,
+      startSampleFrame: 10,
       type: 'chunk',
+    });
+    FakeAudioWorkletNode.instances[0]?.emit({
+      clippingSamples: 0,
+      frameCount: 2,
+      inputChannelCount: 1,
+      inputChannelMode: 'mono',
+      peak: 0,
+      rms: 0,
+      sampleRate: 48_000,
+      type: 'monitor-summary',
+      waveform: new Float32Array(64),
     });
     expect(capture.currentSnapshot).toMatchObject({
       discontinuityCount: 1,
@@ -658,21 +749,124 @@ describe('microphone capture orchestration', () => {
     fakeTrack.dispatchEvent(new Event('ended'));
     await flushMicrotasks();
     await flushMicrotasks();
-    expect(capture.currentSnapshot.state).toBe('ready-to-replay');
+    expect(capture.currentSnapshot).toMatchObject({
+      connectionState: 'disconnected',
+      operationState: 'idle',
+    });
   });
 
   it('surfaces transport-worker failures during capture', async () => {
     const capture = new MicrophoneCapture();
-    await capture.start();
-    FakeWorker.instances[0]?.emit({ message: 'Worker failed.', type: 'failure' });
-    expect(capture.currentSnapshot).toMatchObject({ state: 'failed' });
+    await capture.connect();
+    await capture.startRecording();
+    const worker = FakeWorker.instances[0];
+    FakeAudioWorkletNode.instances[0]?.emit({
+      clippingSamples: 0,
+      data: new Float32Array([0.1, -0.1]),
+      frameCount: 2,
+      peak: 0.1,
+      rms: 0.1,
+      sampleRate: 48_000,
+      sequence: 0,
+      startSampleFrame: 0,
+      type: 'chunk',
+    });
+    worker?.emit({ message: 'Worker failed.', type: 'failure' });
+    expect(capture.currentSnapshot).toMatchObject({
+      connectionState: 'monitoring',
+      operationState: 'failed',
+    });
+    expect(worker?.terminated).toBe(true);
+    expect(worker?.chunks).toEqual([]);
+  });
+
+  it('auto-finalizes the accepted take at the configured duration limit', async () => {
+    const capture = new MicrophoneCapture({ maxRecordingSeconds: 0.001 });
+    await capture.connect();
+    await capture.startRecording();
+    FakeAudioWorkletNode.instances[0]?.emit({
+      clippingSamples: 0,
+      data: new Float32Array(48).fill(0.1),
+      frameCount: 48,
+      peak: 0.1,
+      rms: 0.1,
+      sampleRate: 48_000,
+      sequence: 0,
+      startSampleFrame: 0,
+      type: 'chunk',
+    });
+    FakeAudioWorkletNode.instances[0]?.emit({ type: 'recording-limit-reached' });
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(capture.currentRecording).toMatchObject({ durationMs: 1, frameCount: 48 });
+    expect(capture.currentSnapshot).toMatchObject({
+      connectionState: 'monitoring',
+      operationState: 'idle',
+      warning: 'maximum-duration-reached',
+    });
+  });
+
+  it('honors a defensive duration-limit signal from the transport worker', async () => {
+    const capture = new MicrophoneCapture();
+    await capture.connect();
+    await capture.startRecording();
+    FakeAudioWorkletNode.instances[0]?.emit({
+      clippingSamples: 0,
+      data: new Float32Array([0.1, 0.1]),
+      frameCount: 2,
+      peak: 0.1,
+      rms: 0.1,
+      sampleRate: 48_000,
+      sequence: 0,
+      startSampleFrame: 0,
+      type: 'chunk',
+    });
+    FakeWorker.instances[0]?.emit({ bufferedFrames: 2, type: 'limit-reached' });
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(capture.currentSnapshot).toMatchObject({
+      operationState: 'idle',
+      warning: 'maximum-duration-reached',
+    });
+    expect(capture.currentRecording?.frameCount).toBe(2);
+  });
+
+  it('disconnects the graph while preserving a completed recording', async () => {
+    const capture = new MicrophoneCapture();
+    await capture.connect();
+    await capture.startRecording();
+    FakeAudioWorkletNode.instances[0]?.emit({
+      clippingSamples: 0,
+      data: new Float32Array([0.25, -0.25]),
+      frameCount: 2,
+      peak: 0.25,
+      rms: 0.25,
+      sampleRate: 48_000,
+      sequence: 0,
+      startSampleFrame: 0,
+      type: 'chunk',
+    });
+    const recording = await capture.stop();
+    expect(fakeTrack.stopped).toBe(false);
+
+    await capture.disconnect();
+
+    expect(fakeTrack.stopped).toBe(true);
+    expect(FakeAudioContext.instances[0]?.state).toBe('closed');
+    expect(capture.currentRecording).toBe(recording);
+    expect(capture.currentSnapshot).toMatchObject({
+      connectionState: 'disconnected',
+      operationState: 'idle',
+    });
   });
 
   it('reports unsupported environments without requesting permission', async () => {
     vi.stubGlobal('AudioContext', undefined);
     const capture = new MicrophoneCapture();
-    expect(capture.currentSnapshot.state).toBe('unsupported');
-    await capture.start();
+    expect(capture.currentSnapshot.connectionState).toBe('unsupported');
+    await capture.connect();
     expect(getUserMedia).not.toHaveBeenCalled();
   });
 });

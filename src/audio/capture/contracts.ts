@@ -9,6 +9,8 @@ import {
 
 export const PCM_CHUNK_SCHEMA_VERSION = CONTRACT_SCHEMA_VERSION;
 export const DEFAULT_CHUNK_FRAMES = 2_048;
+export const DEFAULT_MAX_RECORDING_SECONDS = 5 * 60;
+export const MONITOR_WAVEFORM_SAMPLES = 64;
 export const SILENCE_RMS_THRESHOLD = 0.003;
 export const CLIPPING_THRESHOLD = 0.995;
 
@@ -54,6 +56,7 @@ export type CapturedRecording = z.infer<typeof CapturedRecordingSchema>;
 
 export const WorkletChunkMessageSchema = z.object({
   clippingSamples: z.number().int().nonnegative(),
+  contextStartSampleFrame: z.number().int().nonnegative().optional(),
   data: z.instanceof(Float32Array),
   frameCount: z.number().int().positive(),
   inputChannelMode: z.enum(['mono', 'averaged']).default('mono'),
@@ -66,16 +69,38 @@ export const WorkletChunkMessageSchema = z.object({
   type: z.literal('chunk'),
 });
 
-export const WorkletFlushedMessageSchema = z.object({
-  type: z.literal('flushed'),
+export const WorkletMonitorSummaryMessageSchema = z.object({
+  clippingSamples: z.number().int().nonnegative(),
+  frameCount: z.number().int().positive(),
+  inputChannelMode: z.enum(['mono', 'averaged']).default('mono'),
+  inputChannelCount: z.number().int().positive().default(1),
+  peak: z.number().min(0).max(1),
+  rms: z.number().min(0).max(1),
+  sampleRate: z.number().int().positive(),
+  type: z.literal('monitor-summary'),
+  waveform: z
+    .instanceof(Float32Array)
+    .refine((samples) => samples.length === MONITOR_WAVEFORM_SAMPLES),
 });
 
 export const WorkletOutboundMessageSchema = z.discriminatedUnion('type', [
   WorkletChunkMessageSchema,
-  WorkletFlushedMessageSchema,
+  WorkletMonitorSummaryMessageSchema,
+  z.object({ type: z.literal('recording-started') }),
+  z.object({ type: z.literal('recording-paused') }),
+  z.object({ type: z.literal('recording-resumed') }),
+  z.object({ type: z.literal('recording-stopped') }),
+  z.object({ type: z.literal('recording-limit-reached') }),
 ]);
 
 export type WorkletChunkMessage = z.infer<typeof WorkletChunkMessageSchema>;
+export type WorkletMonitorSummaryMessage = z.infer<typeof WorkletMonitorSummaryMessageSchema>;
+
+export type WorkletInboundMessage =
+  | { maxRecordingFrames: number; type: 'start-recording' }
+  | { type: 'pause-recording' }
+  | { type: 'resume-recording' }
+  | { type: 'stop-recording' };
 
 export type TransportInboundMessage =
   | {
@@ -98,19 +123,14 @@ export type TransportOutboundMessage =
       type: 'acknowledged';
     }
   | { recording: CapturedRecording; type: 'finalized' }
+  | { bufferedFrames: number; type: 'limit-reached' }
   | { message: string; type: 'failure' };
 
-export type CaptureState =
-  | 'idle'
-  | 'requesting-permission'
-  | 'starting'
-  | 'recording'
-  | 'paused'
-  | 'stopping'
-  | 'ready-to-replay'
-  | 'replaying'
-  | 'unsupported'
-  | 'failed';
+export type MicrophoneConnectionState =
+  'unsupported' | 'disconnected' | 'connecting' | 'monitoring' | 'failed';
+
+export type CaptureOperationState =
+  'idle' | 'recording' | 'paused' | 'finalizing' | 'replaying' | 'failed';
 
 export type CaptureDeviceDiagnostics = {
   autoGainControl: boolean | null;
@@ -126,6 +146,7 @@ export type CaptureDeviceDiagnostics = {
 export type CaptureSnapshot = {
   bufferedDurationMs: number;
   clippingSamples: number;
+  connectionState: MicrophoneConnectionState;
   device: CaptureDeviceDiagnostics | null;
   discontinuityCount: number;
   droppedChunks: number;
@@ -135,16 +156,17 @@ export type CaptureSnapshot = {
   peak: number;
   rms: number;
   silenceDurationMs: number;
-  state: CaptureState;
   transportLatencyMs: number;
   maxTransportLatencyMs: number;
-  warning: 'clipping' | 'silence' | 'device-ended' | null;
+  operationState: CaptureOperationState;
+  warning: 'clipping' | 'silence' | 'device-ended' | 'maximum-duration-reached' | null;
   waveform: readonly number[];
 };
 
 export const InitialCaptureSnapshot: CaptureSnapshot = {
   bufferedDurationMs: 0,
   clippingSamples: 0,
+  connectionState: 'disconnected',
   device: null,
   discontinuityCount: 0,
   droppedChunks: 0,
@@ -154,9 +176,9 @@ export const InitialCaptureSnapshot: CaptureSnapshot = {
   peak: 0,
   rms: 0,
   silenceDurationMs: 0,
-  state: 'idle',
   transportLatencyMs: 0,
   maxTransportLatencyMs: 0,
+  operationState: 'idle',
   warning: null,
   waveform: [],
 };

@@ -22,22 +22,28 @@ type AudioCapturePanelProps = {
   embedded?: boolean;
 };
 
-const stateLabels: Record<CaptureSnapshot['state'], string> = {
-  failed: 'Needs attention',
-  idle: 'Ready',
+const connectionLabels: Record<CaptureSnapshot['connectionState'], string> = {
+  connecting: 'Connecting microphone',
+  disconnected: 'Microphone disconnected',
+  failed: 'Microphone needs attention',
+  monitoring: 'Microphone connected',
+  unsupported: 'Browser unsupported',
+};
+
+const operationLabels: Record<CaptureSnapshot['operationState'], string> = {
+  failed: 'Recording needs attention',
+  finalizing: 'Finalizing recording',
+  idle: 'Not recording',
   paused: 'Paused',
-  'ready-to-replay': 'Recording ready',
   recording: 'Recording',
   replaying: 'Replaying',
-  'requesting-permission': 'Waiting for permission',
-  starting: 'Starting audio',
-  stopping: 'Finalizing recording',
-  unsupported: 'Browser unsupported',
 };
 
 const warningMessages: Record<NonNullable<CaptureSnapshot['warning']>, string> = {
   clipping: 'The input is clipping. Lower your interface or microphone gain.',
   'device-ended': 'The microphone disconnected. Your captured audio is being preserved.',
+  'maximum-duration-reached':
+    'Maximum recording duration reached. The accepted take was finalized successfully.',
   silence: 'No clear input is reaching StringSight. Check the selected device and its gain.',
 };
 
@@ -119,11 +125,19 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
     return () => window.clearTimeout(timeout);
   }, [refreshDevices]);
 
-  const isBusy =
-    ['paused', 'recording', 'replaying', 'requesting-permission', 'starting', 'stopping'].includes(
-      snapshot.state,
-    ) || isImporting;
-  const canStart = !isBusy && snapshot.state !== 'unsupported';
+  const operationBusy = !['idle', 'failed'].includes(snapshot.operationState);
+  const isBusy = operationBusy || snapshot.connectionState === 'connecting' || isImporting;
+  const canConnect = !isBusy && ['disconnected', 'failed'].includes(snapshot.connectionState);
+  const canRecord =
+    !isImporting &&
+    snapshot.connectionState === 'monitoring' &&
+    ['idle', 'failed'].includes(snapshot.operationState);
+  const statusKey =
+    snapshot.operationState === 'idle' ? snapshot.connectionState : snapshot.operationState;
+  const statusLabel =
+    snapshot.operationState === 'idle'
+      ? connectionLabels[snapshot.connectionState]
+      : operationLabels[snapshot.operationState];
   const displaySignal = calibrationSignal ?? snapshot;
   const peakDbfs = amplitudeToDbfs(displaySignal.peak);
   const meterPercent = dbfsToMeterPercent(peakDbfs);
@@ -195,8 +209,9 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
           </div>
           <p>
             Your microphone audio stays in this browser. StringSight requests access only when you
-            press start, disables voice processing where the device allows it, and never plays the
-            input through your speakers.
+            press Connect microphone, disables voice processing where the device allows it, and
+            never plays the input through your speakers. Disconnect explicitly releases the media
+            track and audio context.
           </p>
         </div>
       )}
@@ -206,14 +221,21 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
       >
         <div className="capture-primary">
           <div className="capture-status-row">
-            <span className={`capture-state capture-state--${snapshot.state}`}>
+            <span className={`capture-state capture-state--${statusKey}`}>
               <span aria-hidden="true" />
-              {stateLabels[snapshot.state]}
+              {statusLabel}
             </span>
             <time aria-label="Capture duration">{formatDuration(snapshot.elapsedMs)}</time>
           </div>
 
           <Waveform values={displaySignal.waveform} />
+
+          {snapshot.connectionState === 'monitoring' && snapshot.operationState === 'idle' && (
+            <p className="capture-calibration" role="status">
+              Microphone connected — not recording. Only bounded input-meter and waveform summaries
+              are retained until you record a take.
+            </p>
+          )}
 
           {calibrationSignal !== null && (
             <p className="capture-calibration" role="status">
@@ -292,19 +314,29 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
           <div className="capture-controls">
             <button
               className="button button--primary"
-              disabled={!canStart}
+              disabled={!canConnect}
               onClick={() => {
                 setCalibrationSignal(null);
                 setCalibrationMeasurement(null);
-                void controller.start(selectedDeviceId || undefined).then(refreshDevices);
+                void controller.connect(selectedDeviceId || undefined).then(refreshDevices);
               }}
               type="button"
             >
-              Start microphone
+              Connect microphone
+            </button>
+            <button
+              className="button button--primary"
+              disabled={!canRecord}
+              onClick={() => void controller.startRecording()}
+              type="button"
+            >
+              Record take
             </button>
             <button
               className="button"
-              disabled={snapshot.state !== 'recording' && snapshot.state !== 'paused'}
+              disabled={
+                snapshot.operationState !== 'recording' && snapshot.operationState !== 'paused'
+              }
               onClick={() => void controller.stop()}
               type="button"
             >
@@ -312,27 +344,42 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
             </button>
             <button
               className="button"
-              disabled={snapshot.state !== 'recording' && snapshot.state !== 'paused'}
+              disabled={
+                snapshot.operationState !== 'recording' && snapshot.operationState !== 'paused'
+              }
               onClick={() =>
-                void (snapshot.state === 'paused' ? controller.resume() : controller.pause())
+                void (snapshot.operationState === 'paused'
+                  ? controller.resume()
+                  : controller.pause())
               }
               type="button"
             >
-              {snapshot.state === 'paused' ? 'Resume' : 'Pause'}
+              {snapshot.operationState === 'paused' ? 'Resume' : 'Pause'}
             </button>
             <button
               className="button"
-              disabled={snapshot.state !== 'ready-to-replay'}
+              disabled={snapshot.operationState !== 'idle' || controller.currentRecording === null}
               onClick={() => void controller.replay()}
               type="button"
             >
               Replay analysis
             </button>
-            {snapshot.state === 'replaying' && (
+            {snapshot.operationState === 'replaying' && (
               <button className="button" onClick={() => controller.stopReplay()} type="button">
                 Stop replay
               </button>
             )}
+            <button
+              className="button"
+              disabled={
+                snapshot.connectionState !== 'monitoring' ||
+                snapshot.operationState === 'finalizing'
+              }
+              onClick={() => void controller.disconnect()}
+              type="button"
+            >
+              Disconnect microphone
+            </button>
             <button
               className="button"
               disabled={isBusy}
@@ -376,15 +423,18 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
             </button>
             <button
               className="text-button meter-check-button"
-              disabled={
-                snapshot.state !== 'ready-to-replay' || controller.currentRecording === null
-              }
+              disabled={snapshot.operationState !== 'idle' || controller.currentRecording === null}
               onClick={measureLastCapture}
               type="button"
             >
               Measure reference capture
             </button>
           </div>
+          <p className="capture-reference-help">
+            Privacy: microphone audio stays in this browser. Monitoring keeps only the latest
+            bounded meter and waveform summary; Disconnect microphone releases the media track and
+            audio context.
+          </p>
           <p className="capture-reference-help">
             Optional end-to-end check: play the reference WAV through your normal input chain, avoid
             gain-changing effects, record the returned signal here, then measure the capture. The
@@ -395,7 +445,7 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
         <aside className="capture-diagnostics" aria-label="Audio diagnostics">
           <label htmlFor="audio-input">Input device</label>
           <select
-            disabled={isBusy}
+            disabled={isBusy || snapshot.connectionState === 'monitoring'}
             id="audio-input"
             onChange={(event) => setSelectedDeviceId(event.target.value)}
             value={selectedDeviceId}
@@ -407,7 +457,12 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
               </option>
             ))}
           </select>
-          <button className="text-button" disabled={isBusy} onClick={refreshDevices} type="button">
+          <button
+            className="text-button"
+            disabled={isBusy || snapshot.connectionState === 'monitoring'}
+            onClick={refreshDevices}
+            type="button"
+          >
             Refresh devices
           </button>
 

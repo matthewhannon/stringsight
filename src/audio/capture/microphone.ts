@@ -1,15 +1,9 @@
 import captureWorkletUrl from '../worklets/pcm-capture.worklet.ts?worker&url';
-import {
-  createAppError,
-  createSessionClock,
-  mapAudioContextTime,
-  sessionTimestampMs,
-  type AppError,
-  type AudioClockAnchor,
-  type SessionClock,
-} from '../../shared';
+import { createAppError, sessionTimestampMs, type AppError } from '../../shared';
 import {
   DEFAULT_CHUNK_FRAMES,
+  DEFAULT_MAX_RECORDING_SECONDS,
+  MONITOR_WAVEFORM_SAMPLES,
   CapturedRecordingSchema,
   InitialCaptureSnapshot,
   PCM_CHUNK_SCHEMA_VERSION,
@@ -21,6 +15,8 @@ import {
   type TransportInboundMessage,
   type TransportOutboundMessage,
   type WorkletChunkMessage,
+  type WorkletInboundMessage,
+  type WorkletMonitorSummaryMessage,
 } from './contracts';
 import { replayRecording } from './replay';
 import { downsampleWaveform } from './signal';
@@ -33,6 +29,7 @@ export type MicrophoneCaptureOptions = {
 
 type SnapshotListener = (snapshot: CaptureSnapshot) => void;
 type ChunkListener = (chunk: PcmChunk) => void;
+type WorkletConfirmation = 'recording-started' | 'recording-paused' | 'recording-resumed';
 
 const getMediaDevices = (): MediaDevices | undefined =>
   typeof navigator === 'undefined' ? undefined : Reflect.get(navigator, 'mediaDevices');
@@ -75,7 +72,7 @@ function captureError(error: unknown, occurredAtMs: number): AppError {
         ? 'No matching microphone is available. Connect or select another input and retry.'
         : deviceBusy
           ? 'The microphone could not be opened. Close other audio apps or select another input.'
-          : 'StringSight could not start audio capture. You can retry without losing other work.',
+          : 'StringSight could not complete the audio operation. You can retry without losing other work.',
     occurredAtMs: sessionTimestampMs(Math.max(0, occurredAtMs)),
     retryable: true,
     severity: 'error',
@@ -90,7 +87,6 @@ export class MicrophoneCapture {
   private readonly maxInFlightChunks: number;
   private readonly maxRecordingSeconds: number;
   private readonly snapshotListeners = new Set<SnapshotListener>();
-  private audioAnchor: AudioClockAnchor | null = null;
   private audioContext: AudioContext | null = null;
   private expectedSequence = 0;
   private expectedStartFrame: number | null = null;
@@ -99,10 +95,14 @@ export class MicrophoneCapture {
   private gainNode: GainNode | null = null;
   private inFlightChunks = 0;
   private mediaStream: MediaStream | null = null;
+  private pendingControl: {
+    reject: (reason?: unknown) => void;
+    resolve: () => void;
+    type: WorkletConfirmation;
+  } | null = null;
   private pendingDiscontinuity = false;
   private recording: CapturedRecording | null = null;
   private replayController: AbortController | null = null;
-  private sessionClock: SessionClock | null = null;
   private snapshot: CaptureSnapshot;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private stopPromise: Promise<CapturedRecording> | null = null;
@@ -112,10 +112,10 @@ export class MicrophoneCapture {
   constructor(options: MicrophoneCaptureOptions = {}) {
     this.chunkFrames = options.chunkFrames ?? DEFAULT_CHUNK_FRAMES;
     this.maxInFlightChunks = options.maxInFlightChunks ?? 8;
-    this.maxRecordingSeconds = options.maxRecordingSeconds ?? 30 * 60;
+    this.maxRecordingSeconds = options.maxRecordingSeconds ?? DEFAULT_MAX_RECORDING_SECONDS;
     this.snapshot = {
       ...InitialCaptureSnapshot,
-      state: browserSupportsCapture() ? 'idle' : 'unsupported',
+      connectionState: browserSupportsCapture() ? 'disconnected' : 'unsupported',
     };
   }
 
@@ -144,21 +144,14 @@ export class MicrophoneCapture {
     return devices.filter((device) => device.kind === 'audioinput');
   }
 
-  async start(deviceId?: string): Promise<void> {
+  async connect(deviceId?: string): Promise<void> {
     if (!browserSupportsCapture()) {
-      this.update({ state: 'unsupported' });
+      this.update({ connectionState: 'unsupported' });
       return;
     }
-    if (
-      this.snapshot.state === 'recording' ||
-      this.snapshot.state === 'paused' ||
-      this.snapshot.state === 'starting'
-    ) {
-      return;
-    }
-
-    this.resetSessionState();
-    this.update({ error: null, state: 'requesting-permission', warning: null });
+    if (this.snapshot.connectionState === 'monitoring') return;
+    if (this.snapshot.connectionState === 'connecting') return;
+    this.update({ connectionState: 'connecting', error: null, warning: null });
     try {
       const audioConstraints: MediaTrackConstraints = {
         autoGainControl: false,
@@ -171,19 +164,15 @@ export class MicrophoneCapture {
       }
       const mediaDevices = getMediaDevices();
       if (mediaDevices === undefined) throw new Error('Media devices are unavailable.');
-      this.mediaStream = await mediaDevices.getUserMedia({
-        audio: audioConstraints,
-        video: false,
-      });
-      this.update({ state: 'starting' });
-      this.sessionClock = createSessionClock();
+      this.mediaStream = await mediaDevices.getUserMedia({ audio: audioConstraints, video: false });
       this.audioContext = new AudioContext({ latencyHint: 'interactive' });
       await this.audioContext.audioWorklet.addModule(captureWorkletUrl);
       if (this.audioContext.state === 'suspended') await this.audioContext.resume();
 
       const track = this.mediaStream.getAudioTracks()[0];
-      if (track === undefined)
+      if (track === undefined) {
         throw new DOMException('No audio track was returned.', 'NotFoundError');
+      }
       const settings = track.getSettings();
       this.update({
         device: {
@@ -199,22 +188,16 @@ export class MicrophoneCapture {
       });
       track.addEventListener('ended', this.handleTrackEnded, { once: true });
 
-      this.audioAnchor = {
-        audioContextSeconds: this.audioContext.currentTime,
-        sessionTimestampMs: this.sessionClock.now(),
-      };
-      await this.initializeTransport(
-        this.audioContext.sampleRate,
-        this.audioAnchor.sessionTimestampMs,
-        new Date().toISOString(),
-      );
       this.workletNode = new AudioWorkletNode(this.audioContext, 'stringsight-pcm-capture', {
         channelCountMode: 'max',
         channelInterpretation: 'discrete',
         numberOfInputs: 1,
         numberOfOutputs: 1,
         outputChannelCount: [1],
-        processorOptions: { chunkFrames: this.chunkFrames },
+        processorOptions: {
+          chunkFrames: this.chunkFrames,
+          monitorWaveformSamples: MONITOR_WAVEFORM_SAMPLES,
+        },
       });
       this.workletNode.port.onmessage = this.handleWorkletMessage;
       this.sourceNode = this.audioContext.createMediaStreamSource(this.mediaStream);
@@ -224,94 +207,146 @@ export class MicrophoneCapture {
         .connect(this.workletNode)
         .connect(this.gainNode)
         .connect(this.audioContext.destination);
-      this.update({ state: 'recording' });
+      this.update({ connectionState: 'monitoring' });
     } catch (error) {
       await this.cleanupAudioGraph();
-      const occurredAtMs = this.sessionClock?.now() ?? sessionTimestampMs(0);
-      this.update({ error: captureError(error, occurredAtMs), state: 'failed' });
+      this.update({
+        connectionState: 'failed',
+        error: captureError(error, this.snapshot.elapsedMs),
+      });
+    }
+  }
+
+  async startRecording(): Promise<void> {
+    if (this.snapshot.connectionState !== 'monitoring' || this.workletNode === null) {
+      throw new Error('Connect the microphone before recording.');
+    }
+    if (!['idle', 'failed'].includes(this.snapshot.operationState)) {
+      throw new Error('Stop the current audio operation before recording another take.');
+    }
+    this.resetRecordingState();
+    try {
+      const sampleRate = this.audioContext?.sampleRate;
+      if (sampleRate === undefined) throw new Error('The microphone audio context is unavailable.');
+      await this.initializeTransport(sampleRate, 0, new Date().toISOString());
+      await this.sendWorkletControl(
+        {
+          maxRecordingFrames: Math.ceil(sampleRate * this.maxRecordingSeconds),
+          type: 'start-recording',
+        },
+        'recording-started',
+      );
+      this.update({ error: null, operationState: 'recording', warning: null });
+    } catch (error) {
+      this.failTransport(
+        error instanceof Error ? error : new Error('The recording transport could not start.'),
+      );
     }
   }
 
   stop(): Promise<CapturedRecording> {
     if (this.stopPromise !== null) return this.stopPromise;
-    if (this.workletNode === null) {
+    if (!['recording', 'paused'].includes(this.snapshot.operationState)) {
       if (this.recording !== null) return Promise.resolve(this.recording);
       return Promise.reject(new Error('No active recording can be stopped.'));
     }
-
-    this.update({ state: 'stopping' });
     this.stopPromise = new Promise<CapturedRecording>((resolve, reject) => {
       this.finalizationResolve = resolve;
       this.finalizationReject = reject;
     });
-    void this.flushWorklet();
+    this.update({ operationState: 'finalizing' });
+    try {
+      this.workletNode?.port.postMessage({
+        type: 'stop-recording',
+      } satisfies WorkletInboundMessage);
+    } catch (error) {
+      this.failTransport(error instanceof Error ? error : new Error('Audio finalization failed.'));
+    }
     return this.stopPromise;
   }
 
   async pause(): Promise<void> {
-    if (this.snapshot.state !== 'recording' || this.audioContext === null) {
+    if (this.snapshot.operationState !== 'recording') {
       throw new Error('Only an active recording can be paused.');
     }
-    await this.audioContext.suspend();
-    if (this.isState('recording')) this.update({ state: 'paused' });
+    await this.sendWorkletControl({ type: 'pause-recording' }, 'recording-paused');
+    this.update({ operationState: 'paused' });
   }
 
   async resume(): Promise<void> {
-    if (this.snapshot.state !== 'paused' || this.audioContext === null) {
+    if (this.snapshot.operationState !== 'paused') {
       throw new Error('Only a paused recording can be resumed.');
     }
-    await this.audioContext.resume();
-    if (this.isState('paused')) this.update({ state: 'recording' });
+    await this.sendWorkletControl({ type: 'resume-recording' }, 'recording-resumed');
+    this.update({ operationState: 'recording' });
+  }
+
+  async disconnect(): Promise<void> {
+    try {
+      if (
+        this.snapshot.operationState === 'recording' ||
+        this.snapshot.operationState === 'paused'
+      ) {
+        await this.stop();
+      } else if (this.snapshot.operationState === 'finalizing' && this.stopPromise !== null) {
+        await this.stopPromise;
+      } else if (this.snapshot.operationState === 'replaying') {
+        this.stopReplay();
+      }
+    } catch {
+      // Transport failures are already represented in the snapshot; disconnect must still release hardware.
+    } finally {
+      this.releaseTransportWorker();
+      await this.cleanupAudioGraph();
+      this.update({
+        connectionState: browserSupportsCapture() ? 'disconnected' : 'unsupported',
+        device: null,
+        inputChannelMode: null,
+        operationState: 'idle',
+        peak: 0,
+        rms: 0,
+        silenceDurationMs: 0,
+        waveform: [],
+      });
+    }
   }
 
   loadRecording(recording: CapturedRecording): void {
-    if (
-      this.snapshot.state === 'recording' ||
-      this.snapshot.state === 'paused' ||
-      this.snapshot.state === 'replaying' ||
-      this.snapshot.state === 'requesting-permission' ||
-      this.snapshot.state === 'starting' ||
-      this.snapshot.state === 'stopping'
-    ) {
+    if (!['idle', 'failed'].includes(this.snapshot.operationState)) {
       throw new Error('Stop the current audio operation before loading a recording.');
     }
     const parsed = CapturedRecordingSchema.parse(recording);
-    this.resetSessionState();
+    this.resetRecordingState();
     this.recording = parsed;
     this.update({
       bufferedDurationMs: parsed.durationMs,
-      elapsedMs: 0,
       error: null,
-      state: 'ready-to-replay',
+      operationState: 'idle',
       warning: null,
     });
   }
 
   clearRecording(): void {
-    if (
-      this.snapshot.state === 'recording' ||
-      this.snapshot.state === 'paused' ||
-      this.snapshot.state === 'replaying' ||
-      this.snapshot.state === 'requesting-permission' ||
-      this.snapshot.state === 'starting' ||
-      this.snapshot.state === 'stopping'
-    ) {
+    if (!['idle', 'failed'].includes(this.snapshot.operationState)) {
       throw new Error('Stop the current audio operation before clearing its recording.');
     }
-    this.resetSessionState();
-    this.update({ state: browserSupportsCapture() ? 'idle' : 'unsupported' });
+    this.resetRecordingState();
+    this.update({ operationState: 'idle' });
   }
 
   async replay(): Promise<void> {
     if (this.recording === null) throw new Error('No recording is available for replay.');
+    if (!['idle', 'failed'].includes(this.snapshot.operationState)) {
+      throw new Error('Stop the current audio operation before replaying a recording.');
+    }
     const recording = this.recording;
     this.replayController?.abort();
     this.replayController = new AbortController();
     this.update({
       elapsedMs: 0,
+      operationState: 'replaying',
       peak: 0,
       rms: 0,
-      state: 'replaying',
       warning: null,
       waveform: [],
     });
@@ -323,16 +358,16 @@ export class MicrophoneCapture {
             elapsedMs: chunk.startMs - recording.startedAtMs + chunk.durationMs,
             peak: chunk.diagnostics.peak,
             rms: chunk.diagnostics.rms,
-            waveform: downsampleWaveform(chunk.data),
+            waveform: downsampleWaveform(chunk.data, MONITOR_WAVEFORM_SAMPLES),
           });
         },
         realtime: true,
         signal: this.replayController.signal,
       });
-      this.update({ state: 'ready-to-replay' });
+      this.update({ operationState: 'idle' });
     } catch (error) {
       if (!(error instanceof DOMException && error.name === 'AbortError')) throw error;
-      this.update({ state: 'ready-to-replay' });
+      this.update({ operationState: 'idle' });
     } finally {
       this.replayController = null;
     }
@@ -344,66 +379,138 @@ export class MicrophoneCapture {
 
   async dispose(): Promise<void> {
     this.stopReplay();
-    this.transportWorker?.postMessage({ type: 'reset' } satisfies TransportInboundMessage);
-    this.transportWorker?.terminate();
-    this.transportWorker = null;
+    this.pendingControl?.reject(new Error('Microphone capture was disposed.'));
+    this.pendingControl = null;
+    this.releaseTransportWorker();
     await this.cleanupAudioGraph();
     this.snapshotListeners.clear();
     this.chunkListeners.clear();
   }
 
   private readonly handleTrackEnded = () => {
-    this.update({ warning: 'device-ended' });
-    if (this.snapshot.state === 'recording' || this.snapshot.state === 'paused') void this.stop();
+    void this.handleDeviceEnded();
   };
 
-  private async flushWorklet(): Promise<void> {
+  private async handleDeviceEnded(): Promise<void> {
+    this.update({ warning: 'device-ended' });
     try {
-      if (this.audioContext?.state === 'suspended') await this.audioContext.resume();
-      this.workletNode?.port.postMessage({ type: 'flush' });
-    } catch (error) {
-      this.failTransport(error instanceof Error ? error : new Error('Audio finalization failed.'));
+      if (
+        this.snapshot.operationState === 'recording' ||
+        this.snapshot.operationState === 'paused'
+      ) {
+        await this.stop();
+      } else if (this.snapshot.operationState === 'finalizing' && this.stopPromise !== null) {
+        await this.stopPromise;
+      }
+    } finally {
+      await this.cleanupAudioGraph();
+      this.update({ connectionState: 'disconnected', device: null, inputChannelMode: null });
     }
   }
 
-  private isState(state: CaptureSnapshot['state']): boolean {
-    return this.snapshot.state === state;
+  private sendWorkletControl(
+    message: WorkletInboundMessage,
+    expected: WorkletConfirmation,
+  ): Promise<void> {
+    if (this.workletNode === null)
+      return Promise.reject(new Error('The audio worklet is unavailable.'));
+    if (this.pendingControl !== null) {
+      return Promise.reject(new Error('Another audio worklet control is still pending.'));
+    }
+    return new Promise<void>((resolve, reject) => {
+      this.pendingControl = { reject, resolve, type: expected };
+      try {
+        this.workletNode?.port.postMessage(message);
+      } catch (error) {
+        this.pendingControl = null;
+        reject(error instanceof Error ? error : new Error('The audio worklet control failed.'));
+      }
+    });
   }
 
   private readonly handleWorkletMessage = (event: MessageEvent<unknown>) => {
     const parsed = WorkletOutboundMessageSchema.safeParse(event.data);
     if (!parsed.success) {
-      this.failTransport(new Error('The audio worklet emitted an invalid message.'));
+      const error = new Error('The audio worklet emitted an invalid message.');
+      if (
+        this.snapshot.operationState === 'recording' ||
+        this.snapshot.operationState === 'finalizing'
+      ) {
+        this.failTransport(error);
+      } else {
+        void this.failConnection(error);
+      }
       return;
     }
     const message = parsed.data;
-    if (message.type === 'flushed') {
-      void this.cleanupAudioGraph();
+    if (
+      message.type === 'recording-started' ||
+      message.type === 'recording-paused' ||
+      message.type === 'recording-resumed'
+    ) {
+      if (this.pendingControl?.type === message.type) {
+        this.pendingControl.resolve();
+        this.pendingControl = null;
+      }
+      return;
+    }
+    if (message.type === 'recording-stopped') {
       this.transportWorker?.postMessage({ type: 'finish' } satisfies TransportInboundMessage);
+      return;
+    }
+    if (message.type === 'recording-limit-reached') {
+      this.finalizeAtDurationLimit();
+      return;
+    }
+    if (message.type === 'monitor-summary') {
+      this.handleMonitorSummary(message);
       return;
     }
     this.handlePcmChunk(message);
   };
 
+  private handleMonitorSummary(message: WorkletMonitorSummaryMessage): void {
+    const durationMs = (message.frameCount / message.sampleRate) * 1_000;
+    const silent = message.rms < SILENCE_RMS_THRESHOLD;
+    const silenceDurationMs = silent ? this.snapshot.silenceDurationMs + durationMs : 0;
+    const preserveLimitWarning = this.snapshot.warning === 'maximum-duration-reached';
+    this.update({
+      inputChannelMode: message.inputChannelMode,
+      peak: message.peak,
+      rms: message.rms,
+      silenceDurationMs,
+      warning: preserveLimitWarning
+        ? 'maximum-duration-reached'
+        : message.clippingSamples > 0
+          ? 'clipping'
+          : silenceDurationMs >= 2_000
+            ? 'silence'
+            : null,
+      waveform: Array.from(message.waveform),
+    });
+  }
+
   private handlePcmChunk(message: WorkletChunkMessage): void {
-    if (this.audioAnchor === null) return;
     const sequenceDiscontinuity = message.sequence !== this.expectedSequence;
     const frameDiscontinuity =
       this.expectedStartFrame !== null && message.startSampleFrame !== this.expectedStartFrame;
     const discontinuity = this.pendingDiscontinuity || sequenceDiscontinuity || frameDiscontinuity;
     this.expectedSequence = message.sequence + 1;
     this.expectedStartFrame = message.startSampleFrame + message.frameCount;
-    const startMs = mapAudioContextTime(
-      message.startSampleFrame / message.sampleRate,
-      this.audioAnchor,
-    );
+    const startMs = sessionTimestampMs((message.startSampleFrame / message.sampleRate) * 1_000);
     const durationMs = (message.frameCount / message.sampleRate) * 1_000;
+    const contextStartSampleFrame =
+      message.contextStartSampleFrame ??
+      Math.max(
+        0,
+        Math.round((this.audioContext?.currentTime ?? 0) * message.sampleRate) - message.frameCount,
+      );
+    const contextEndSeconds = (contextStartSampleFrame + message.frameCount) / message.sampleRate;
     const transportLatencyMs = Math.max(
       0,
-      (this.sessionClock?.now() ?? startMs) - (startMs + durationMs),
+      ((this.audioContext?.currentTime ?? contextEndSeconds) - contextEndSeconds) * 1_000,
     );
     const silent = message.rms < SILENCE_RMS_THRESHOLD;
-    const silenceDurationMs = silent ? this.snapshot.silenceDurationMs + durationMs : 0;
     const chunk: PcmChunk = {
       channelCount: 1,
       data: message.data,
@@ -424,20 +531,12 @@ export class MicrophoneCapture {
       startSampleFrame: message.startSampleFrame,
     };
     for (const listener of this.chunkListeners) listener(chunk);
-    const waveform = downsampleWaveform(message.data);
     this.update({
       clippingSamples: this.snapshot.clippingSamples + message.clippingSamples,
       discontinuityCount: this.snapshot.discontinuityCount + (discontinuity ? 1 : 0),
-      elapsedMs: startMs - this.audioAnchor.sessionTimestampMs + durationMs,
-      inputChannelMode: message.inputChannelMode,
-      peak: message.peak,
-      rms: message.rms,
-      silenceDurationMs,
+      elapsedMs: startMs + durationMs,
       transportLatencyMs,
       maxTransportLatencyMs: Math.max(this.snapshot.maxTransportLatencyMs, transportLatencyMs),
-      warning:
-        message.clippingSamples > 0 ? 'clipping' : silenceDurationMs >= 2_000 ? 'silence' : null,
-      waveform,
     });
 
     if (this.inFlightChunks >= this.maxInFlightChunks) {
@@ -457,26 +556,39 @@ export class MicrophoneCapture {
     startedAtMs: number,
     recordedAt: string,
   ): Promise<void> {
-    this.transportWorker?.terminate();
-    this.transportWorker = new Worker(
-      new URL('../../workers/audio-transport.worker.ts', import.meta.url),
-      { name: 'stringsight-audio-transport', type: 'module' },
-    );
+    this.releaseTransportWorker();
+    const worker = new Worker(new URL('../../workers/audio-transport.worker.ts', import.meta.url), {
+      name: 'stringsight-audio-transport',
+      type: 'module',
+    });
+    this.transportWorker = worker;
     await new Promise<void>((resolve, reject) => {
-      if (this.transportWorker === null) {
-        reject(new Error('Audio transport worker was not created.'));
-        return;
-      }
-      this.transportWorker.onerror = () =>
-        reject(new Error('Audio transport worker failed to load.'));
-      this.transportWorker.onmessage = (event: MessageEvent<TransportOutboundMessage>) => {
-        if (event.data.type === 'ready') {
+      let initialized = false;
+      const failInitialization = (error: Error) => {
+        if (this.transportWorker === worker) this.releaseTransportWorker();
+        reject(error);
+      };
+      worker.onerror = () =>
+        failInitialization(new Error('Audio transport worker failed to load.'));
+      worker.onmessageerror = () =>
+        failInitialization(new Error('Audio transport worker returned unreadable data.'));
+      worker.onmessage = (event: MessageEvent<TransportOutboundMessage>) => {
+        if (!initialized && event.data.type === 'ready') {
+          initialized = true;
+          worker.onerror = () =>
+            this.failTransport(new Error('The audio transport worker failed.'));
+          worker.onmessageerror = () =>
+            this.failTransport(new Error('The audio transport worker returned unreadable data.'));
           resolve();
+          return;
+        }
+        if (!initialized && event.data.type === 'failure') {
+          failInitialization(new Error(event.data.message));
           return;
         }
         this.handleTransportMessage(event.data);
       };
-      this.transportWorker.postMessage({
+      worker.postMessage({
         maxRecordingFrames: Math.ceil(sampleRate * this.maxRecordingSeconds),
         recordedAt,
         sampleRate,
@@ -487,6 +599,7 @@ export class MicrophoneCapture {
   }
 
   private handleTransportMessage(message: TransportOutboundMessage): void {
+    if (message.type === 'ready') return;
     if (message.type === 'acknowledged') {
       this.inFlightChunks = Math.max(0, this.inFlightChunks - 1);
       const sampleRate = this.audioContext?.sampleRate ?? this.snapshot.device?.sampleRate ?? 0;
@@ -496,32 +609,73 @@ export class MicrophoneCapture {
       });
       return;
     }
+    if (message.type === 'limit-reached') {
+      this.finalizeAtDurationLimit();
+      return;
+    }
     if (message.type === 'finalized') {
       this.recording = message.recording;
-      this.update({
-        bufferedDurationMs: message.recording.durationMs,
-        state: 'ready-to-replay',
-      });
+      this.update({ bufferedDurationMs: message.recording.durationMs, operationState: 'idle' });
       this.finalizationResolve?.(message.recording);
       this.finalizationResolve = null;
       this.finalizationReject = null;
       this.stopPromise = null;
-      this.transportWorker?.terminate();
-      this.transportWorker = null;
+      this.releaseTransportWorker();
       return;
     }
-    if (message.type === 'failure') this.failTransport(new Error(message.message));
+    this.failTransport(new Error(message.message));
+  }
+
+  private finalizeAtDurationLimit(): void {
+    if (this.snapshot.operationState === 'finalizing') return;
+    this.stopPromise ??= new Promise<CapturedRecording>((resolve, reject) => {
+      this.finalizationResolve = resolve;
+      this.finalizationReject = reject;
+    });
+    void this.stopPromise.catch(() => undefined);
+    this.update({ operationState: 'finalizing', warning: 'maximum-duration-reached' });
+    this.transportWorker?.postMessage({ type: 'finish' } satisfies TransportInboundMessage);
   }
 
   private failTransport(error: Error): void {
-    const occurredAtMs = this.sessionClock?.now() ?? sessionTimestampMs(0);
-    const appError = captureError(error, occurredAtMs);
-    this.update({ error: appError, state: 'failed' });
+    this.pendingControl?.reject(error);
+    this.pendingControl = null;
+    try {
+      this.workletNode?.port.postMessage({
+        type: 'stop-recording',
+      } satisfies WorkletInboundMessage);
+    } catch {
+      // Worker release below is mandatory even if the worklet port has already failed.
+    }
+    this.releaseTransportWorker();
+    this.inFlightChunks = 0;
+    this.pendingDiscontinuity = false;
+    this.update({ error: captureError(error, this.snapshot.elapsedMs), operationState: 'failed' });
     this.finalizationReject?.(error);
     this.finalizationResolve = null;
     this.finalizationReject = null;
     this.stopPromise = null;
-    void this.cleanupAudioGraph();
+  }
+
+  private async failConnection(error: Error): Promise<void> {
+    await this.cleanupAudioGraph();
+    this.update({
+      connectionState: 'failed',
+      error: captureError(error, this.snapshot.elapsedMs),
+    });
+  }
+
+  private releaseTransportWorker(): void {
+    const worker = this.transportWorker;
+    this.transportWorker = null;
+    if (worker === null) return;
+    try {
+      worker.postMessage({ type: 'reset' } satisfies TransportInboundMessage);
+    } catch {
+      // A terminal worker may reject messages; termination still releases its retained chunks.
+    } finally {
+      worker.terminate();
+    }
   }
 
   private async cleanupAudioGraph(): Promise<void> {
@@ -539,17 +693,25 @@ export class MicrophoneCapture {
     this.audioContext = null;
   }
 
-  private resetSessionState(): void {
+  private resetRecordingState(): void {
     this.recording = null;
-    this.audioAnchor = null;
     this.expectedSequence = 0;
     this.expectedStartFrame = null;
     this.inFlightChunks = 0;
     this.pendingDiscontinuity = false;
     this.stopPromise = null;
     this.snapshot = {
-      ...InitialCaptureSnapshot,
-      state: this.snapshot.state,
+      ...this.snapshot,
+      bufferedDurationMs: 0,
+      clippingSamples: 0,
+      discontinuityCount: 0,
+      droppedChunks: 0,
+      elapsedMs: 0,
+      error: null,
+      maxTransportLatencyMs: 0,
+      operationState: 'idle',
+      transportLatencyMs: 0,
+      warning: null,
     };
   }
 
