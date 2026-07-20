@@ -1,4 +1,5 @@
 import { RackDetailKey, RackSourceSelector, type RackSourceOption } from '../../ui/rack';
+import { AudioInputAnalysisMonitor } from './AudioInputAnalysisMonitor';
 import type { AudioInputDetail } from './AudioInputDisplay';
 
 type AudioSourceRailProps = {
@@ -52,6 +53,8 @@ export function AudioSourceRail({
         <span aria-hidden="true" />
         <strong>Audio stays in this browser</strong>
       </div>
+
+      <AudioInputAnalysisMonitor />
     </aside>
   );
 }

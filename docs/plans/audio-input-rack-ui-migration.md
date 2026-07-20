@@ -74,6 +74,10 @@ device error. Source selection alone never powers on a disconnected input.
   fixed-height main display. The input level meter remains visible below in every view.
 - DEVICE shows real settings and transport diagnostics. PRIVACY explains local monitoring,
   recording/import retention, and explicit hardware release.
+- The source rail includes one concise, diagonally divided analysis screen. Its green upper field
+  shows the current single-note result and its amber lower field shows the current chord result.
+  Both subscribe to the existing display controllers; the Audio Input module does not own or rerun
+  analysis. WAIT, LIVE, and FINAL labels preserve state without relying on color.
 - The source selector uses a button-backed listbox with Enter/Space, arrows, Home/End, Escape,
   selection announcement, blur dismissal, and focus return.
 - Rocker and Record expose stable names and `aria-pressed`; disabled/busy states are semantic.

@@ -248,6 +248,7 @@ describe('AudioCapturePanel', () => {
     vi.spyOn(capture, 'listInputDevices').mockResolvedValue([]);
     render(<AudioCapturePanel capture={capture} />);
 
+    expect(screen.getByRole('region', { name: 'Live note and chord analysis' })).toBeVisible();
     expect(screen.queryByText(/Test meter/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Download.*reference/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Measure reference/)).not.toBeInTheDocument();
