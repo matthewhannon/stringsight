@@ -1,17 +1,18 @@
+// Archived legacy mockup entry.
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import './styles/global.css';
-import { App } from './app/App';
+import { PracticeWorkspace } from './app/PracticeWorkspace';
 
 const rootElement = document.querySelector<HTMLDivElement>('#root');
 
 if (rootElement === null) {
-  throw new Error('StringSight could not find its root element.');
+  throw new Error('StringSight could not find its mockup root element.');
 }
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <PracticeWorkspace />
   </StrictMode>,
 );

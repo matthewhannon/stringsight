@@ -1,0 +1,34 @@
+// Archived legacy mockup build helper.
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+async function packageMockup(variant, inputName, outputName) {
+  const distRoot = path.join(projectRoot, 'dist-mockup', variant);
+  const outputPath = path.join(projectRoot, 'mockups', outputName);
+  const builtHtml = await readFile(path.join(distRoot, inputName), 'utf8');
+  const cssMatch = builtHtml.match(/<link[^>]+href="([^\"]+\.css)"[^>]*>/);
+  const scriptMatch = builtHtml.match(/<script[^>]+src="([^\"]+\.js)"[^>]*><\/script>/);
+
+  if (cssMatch?.[1] === undefined || scriptMatch?.[1] === undefined) {
+    throw new Error(`Could not find built assets for ${inputName}.`);
+  }
+
+  const assetPath = (assetUrl) => path.join(distRoot, assetUrl.replace(/^\//, ''));
+  const css = await readFile(assetPath(cssMatch[1]), 'utf8');
+  const javascript = await readFile(assetPath(scriptMatch[1]), 'utf8');
+  const embeddedScript = `<script>\n${javascript.replaceAll('</script>', '<\\/script>')}\n</script>`;
+  const standaloneHtml = builtHtml
+    .replace(cssMatch[0], () => `<style>\n${css.replaceAll('</style>', '<\\/style>')}\n</style>`)
+    .replace(scriptMatch[0], '')
+    .replace('</body>', () => `${embeddedScript}\n</body>`);
+
+  await mkdir(path.dirname(outputPath), { recursive: true });
+  await writeFile(outputPath, standaloneHtml, 'utf8');
+  console.log(outputPath);
+}
+
+await packageMockup('v1', 'mockup-entry.html', 'stringsight-marked-score.html');
+await packageMockup('v2', 'mockup-v2-entry.html', 'stringsight-marked-score-v2.html');
+await packageMockup('v3', 'mockup-v3-entry.html', 'stringsight-marked-score-v3.html');

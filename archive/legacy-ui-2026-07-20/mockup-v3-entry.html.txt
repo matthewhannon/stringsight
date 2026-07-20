@@ -1,0 +1,15 @@
+<!-- Archived legacy V3 mockup entry. -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="StringSight V3 — live evidence, synchronized video, and tab-centered guitar practice." />
+    <meta name="theme-color" content="#ece9df" />
+    <title>StringSight V3 — Live Evidence Workspace</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/mockup-v3-main.tsx"></script>
+  </body>
+</html>

@@ -1,3 +1,4 @@
+/* Archived legacy rack theme. */
 @import './tokens.css';
 
 .rack-workspace {

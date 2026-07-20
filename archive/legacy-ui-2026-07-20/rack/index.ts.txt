@@ -1,3 +1,4 @@
+// Archived legacy rack exports.
 export { Rack, type RackProps } from './Rack';
 export {
   RackButton,

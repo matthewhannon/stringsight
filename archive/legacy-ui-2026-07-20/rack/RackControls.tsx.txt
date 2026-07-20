@@ -1,3 +1,4 @@
+// Archived legacy rack controls.
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 export type RackStatusTone = 'active' | 'idle' | 'warning' | 'danger';

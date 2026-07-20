@@ -1,3 +1,4 @@
+// Archived legacy rack workspace.
 import { useCallback, useSyncExternalStore, type ComponentType } from 'react';
 
 import { MONOPHONIC_ANALYZER_VERSION } from '../audio/analysis';

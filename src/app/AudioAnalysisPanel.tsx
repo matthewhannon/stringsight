@@ -6,7 +6,7 @@ import {
   type AudioAnalysisSnapshot,
 } from '../audio/analysis';
 import { defaultDisplayedAudioAnalysis } from './audioCaptureController';
-import { rackEmbeddedClassNames } from '../ui/rack';
+import { toolEmbeddedClassNames } from '../ui/toolSurfaceClasses';
 
 type AudioAnalysisPanelProps = {
   analysis?: Pick<AudioAnalysisController, 'currentSnapshot' | 'subscribe'> & {
@@ -87,7 +87,7 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
     <section
       aria-label={embedded ? 'Pitch analysis results' : undefined}
       aria-labelledby={embedded ? undefined : 'analysis-title'}
-      className={`analysis-section ${embedded ? rackEmbeddedClassNames.section : ''}`.trim()}
+      className={`analysis-section ${embedded ? toolEmbeddedClassNames.section : ''}`.trim()}
       id="notes"
     >
       {!embedded && (
@@ -103,7 +103,7 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
       )}
 
       <div
-        className={`analysis-console ${embedded ? rackEmbeddedClassNames.clippedSurface : ''}`.trim()}
+        className={`analysis-console ${embedded ? toolEmbeddedClassNames.clippedSurface : ''}`.trim()}
       >
         <div className="current-note" aria-live="polite">
           <span className={`analysis-state analysis-state--${snapshot.state}`}>
@@ -190,7 +190,7 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
       </div>
 
       <div
-        className={`note-timeline ${embedded ? rackEmbeddedClassNames.surface : ''}`.trim()}
+        className={`note-timeline ${embedded ? toolEmbeddedClassNames.surface : ''}`.trim()}
         aria-labelledby="timeline-title"
       >
         <div>

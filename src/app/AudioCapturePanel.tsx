@@ -15,7 +15,7 @@ import {
   type CaptureSnapshot,
 } from '../audio/capture';
 import { defaultMicrophoneCapture } from './audioCaptureController';
-import { rackEmbeddedClassNames } from '../ui/rack';
+import { toolEmbeddedClassNames } from '../ui/toolSurfaceClasses';
 
 type AudioCapturePanelProps = {
   capture?: MicrophoneCapture;
@@ -198,7 +198,7 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
     <section
       aria-label={embedded ? 'Audio capture controls' : undefined}
       aria-labelledby={embedded ? undefined : 'capture-title'}
-      className={`capture-section ${embedded ? rackEmbeddedClassNames.section : ''}`.trim()}
+      className={`capture-section ${embedded ? toolEmbeddedClassNames.section : ''}`.trim()}
       id="capture"
     >
       {!embedded && (
@@ -217,7 +217,7 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
       )}
 
       <div
-        className={`capture-console ${embedded ? rackEmbeddedClassNames.clippedSurface : ''}`.trim()}
+        className={`capture-console ${embedded ? toolEmbeddedClassNames.clippedSurface : ''}`.trim()}
       >
         <div className="capture-primary">
           <div className="capture-status-row">

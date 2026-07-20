@@ -1,0 +1,214 @@
+// Archived legacy marked-passage presentation.
+import { useState, type CSSProperties } from 'react';
+
+import './PracticeWorkspaceV2.css';
+
+type WorkspaceMode = 'focus' | 'review';
+
+const measures = [
+  { number: 12, chord: 'Em', frets: ['0', '2', '2', '0', '0', '0'] },
+  { number: 13, chord: 'Cmaj7', frets: ['x', '3', '2', '0', '0', '0'] },
+  { number: 14, chord: 'G', frets: ['3', '2', '0', '0', '0', '3'] },
+  { number: 15, chord: 'D/F♯', frets: ['2', '0', '0', '2', '3', '2'] },
+  { number: 16, chord: 'Em', frets: ['0', '2', '2', '0', '0', '0'] },
+];
+
+const waveform = [28, 44, 35, 65, 82, 41, 72, 52, 88, 61, 39, 76, 93, 48, 63, 84, 55, 37, 71, 89, 46, 67, 78, 31, 58, 92, 73, 43, 81, 64, 36, 69, 86, 52, 74, 41, 66, 95, 57, 32, 79, 62, 47, 83, 54, 71, 38, 87];
+
+function Mark() {
+  return <span className="ss2-mark" aria-hidden="true">//////</span>;
+}
+
+function MiniMeter({ active = true }: { active?: boolean }) {
+  return (
+    <span className={`ss2-mini-meter ${active ? 'is-active' : ''}`} aria-label={active ? 'Healthy input level' : 'No input'}>
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((bar) => <i key={bar} />)}
+    </span>
+  );
+}
+
+function PracticeMeasure({ measure, current }: { measure: (typeof measures)[number]; current: boolean }) {
+  return (
+    <article className={`ss2-measure ${current ? 'is-current' : ''}`} aria-label={`Measure ${String(measure.number)}, ${measure.chord}`}>
+      <header><span>M{measure.number}</span><strong>{measure.chord}</strong></header>
+      <div className="ss2-staff" aria-hidden="true">
+        <i style={{ '--x': '14%', '--y': '58%' } as CSSProperties} />
+        <i style={{ '--x': '36%', '--y': '39%' } as CSSProperties} />
+        <i style={{ '--x': '57%', '--y': '20%' } as CSSProperties} />
+        <i style={{ '--x': '78%', '--y': '48%' } as CSSProperties} />
+      </div>
+      <div className="ss2-tab" aria-label={`Tab: ${measure.frets.join(', ')}`}>
+        {measure.frets.map((fret, index) => <span key={`${String(measure.number)}-${String(index)}`}>{fret}</span>)}
+      </div>
+    </article>
+  );
+}
+
+function Waveform({ review = false }: { review?: boolean }) {
+  return (
+    <div className={`ss2-waveform ${review ? 'is-review' : ''}`} aria-label={review ? 'Take waveform aligned to measures 12 through 16' : 'Live reference waveform'}>
+      {waveform.map((height, index) => (
+        <i
+          className={review && index > 26 && index < 35 ? 'has-issue' : ''}
+          key={`${String(height)}-${String(index)}`}
+          style={{ '--h': `${String(height)}%` } as CSSProperties}
+        />
+      ))}
+    </div>
+  );
+}
+
+export function PracticeWorkspaceV2() {
+  const [mode, setMode] = useState<WorkspaceMode>('focus');
+  const [playing, setPlaying] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [monitoring, setMonitoring] = useState(true);
+  const [looping, setLooping] = useState(true);
+  const [metronome, setMetronome] = useState(true);
+  const [videoOpen, setVideoOpen] = useState(true);
+  const [videoSource, setVideoSource] = useState<'reference' | 'take'>('reference');
+  const [tempo, setTempo] = useState(84);
+  const [speed, setSpeed] = useState(80);
+  const [videoWidth, setVideoWidth] = useState(38);
+
+  return (
+    <main className="ss2-app" aria-label="StringSight V2 practice workspace">
+      <header className="ss2-topbar">
+        <a className="ss2-brand" href="#practice"><Mark /><span>STRING/SIGHT</span><b>V2</b></a>
+        <div className="ss2-document"><strong>Neon Afterglow</strong><span><i /> Saved locally · 10:48</span></div>
+        <div className="ss2-mode-switch" role="group" aria-label="Workspace mode">
+          <button type="button" aria-pressed={mode === 'focus'} onClick={() => setMode('focus')}>Practice</button>
+          <button type="button" aria-pressed={mode === 'review'} onClick={() => setMode('review')}>Review take <span>03</span></button>
+        </div>
+        <div className="ss2-top-actions">
+          <span className="ss2-private">● PRIVATE · LOCAL ONLY</span>
+          <button type="button">Export</button>
+        </div>
+      </header>
+
+      <aside className="ss2-library" aria-label="Setlist">
+        <header><span>SETLIST</span><button type="button" aria-label="Add score">＋</button></header>
+        <nav aria-label="Practice documents">
+          <button className="is-active" type="button"><b>01</b><span><strong>Neon Afterglow</strong><small>Bridge · range 12—16</small></span><i /></button>
+          <button type="button"><b>02</b><span><strong>Blackbird</strong><small>Fingerstyle study</small></span></button>
+          <button type="button"><b>03</b><span><strong>Little Wing</strong><small>3 saved ranges</small></span></button>
+          <button type="button"><b>04</b><span><strong>Study in E</strong><small>Draft tablature</small></span></button>
+        </nav>
+        <section className="ss2-saved-ranges">
+          <header><span>SAVED RANGES</span><b>3</b></header>
+          <button type="button"><span>Intro changes</span><small>M01—M08</small></button>
+          <button className="is-active" type="button"><span>Bridge · phrase 02</span><small>M12—M16</small></button>
+          <button type="button"><span>Outro bend</span><small>M28—M30</small></button>
+        </section>
+        <div className="ss2-library-buttons"><button type="button">↑ Import score</button><button type="button">＋ New tab</button></div>
+        <footer><span>THIS WEEK</span><strong>1h 42m</strong><small>5 focused sessions · +18%</small></footer>
+      </aside>
+
+      <section className="ss2-main" id="practice" aria-labelledby="ss2-range-heading">
+        <header className="ss2-range-header">
+          <div className="ss2-range-number"><span>ACTIVE PASSAGE</span><h1 id="ss2-range-heading">12<span>—</span>16</h1></div>
+          <div className="ss2-range-copy"><strong>Bridge · phrase 02</strong><p>E minor <i /> 5 measures <i /> 0:38 at {tempo} BPM</p></div>
+          <div className="ss2-range-tools">
+            <button className={looping ? 'is-active' : ''} type="button" aria-pressed={looping} onClick={() => setLooping((value) => !value)}>↻ {looping ? 'LOOP ON' : 'LOOP OFF'}</button>
+            <button type="button">✎ NOTE</button>
+          </div>
+        </header>
+
+        {mode === 'focus' ? (
+          <div className={`ss2-practice-stage ${videoOpen ? 'has-video' : ''}`} style={{ '--video-width': `${String(videoWidth)}%` } as CSSProperties}>
+            <div className="ss2-score-zone">
+              <div className="ss2-score-context">
+                <div><span>CAPO</span><strong>2</strong></div><div><span>TUNING</span><strong>E A D G B E</strong></div><div><span>REFERENCE</span><strong>Neon_Afterglow.wav</strong></div>
+                <button type="button" onClick={() => setVideoOpen((value) => !value)}>{videoOpen ? 'Hide video' : 'Open video beside score'}</button>
+              </div>
+              <div className="ss2-loop-bracket"><span>LOOP · M12—M16</span></div>
+              <div className="ss2-measure-row">
+                {measures.map((measure) => <PracticeMeasure current={measure.number === 13} key={measure.number} measure={measure} />)}
+              </div>
+              <div className="ss2-score-lanes">
+                <div className="ss2-lane-label"><span>PLAYHEAD</span><strong>M13 · beat 2</strong></div>
+                <div className="ss2-lane-content"><Waveform /><i className="ss2-lane-playhead" /></div>
+                <div className="ss2-lane-label"><span>LIVE MATCH</span><strong>On time</strong></div>
+                <div className="ss2-match-lane"><i /><i /><i className="is-current" /><i /><i /></div>
+              </div>
+              <footer className="ss2-coaching"><span>COACHING NOTE</span><p>Let the open strings ring. Keep the pulse steady through M14 → M15.</p><button type="button">Next phrase →</button></footer>
+            </div>
+
+            {videoOpen && (
+              <aside className="ss2-video-panel" aria-label="Synchronized practice video">
+                <header><div><span>REFERENCE VIDEO</span><strong>Studio performance</strong></div><div><i /> SYNC LOCKED</div></header>
+                <div className="ss2-video-frame">
+                  <div className="ss2-video-light" />
+                  <div className="ss2-video-guitar"><i /><i /><i /><i /><i /><i /></div>
+                  <span>00:48 / 03:48</span>
+                  <button type="button" aria-label="Play video">{playing ? 'Ⅱ' : '▶'}</button>
+                </div>
+                <div className="ss2-video-controls">
+                  <div role="group" aria-label="Video source"><button type="button" aria-pressed={videoSource === 'reference'} onClick={() => setVideoSource('reference')}>Reference</button><button type="button" aria-pressed={videoSource === 'take'} onClick={() => setVideoSource('take')}>My take</button></div>
+                  <button type="button">Pop out ↗</button>
+                </div>
+                <label>Panel size<input type="range" min="28" max="52" value={videoWidth} onChange={(event) => setVideoWidth(Number(event.target.value))} /></label>
+                <div className="ss2-sync-line"><span>Anchor M12 · beat 1</span><strong>± 0 ms</strong><button type="button">Edit anchor</button></div>
+              </aside>
+            )}
+          </div>
+        ) : (
+          <div className="ss2-review-workspace">
+            <header><div><span>TAKE 03 · TODAY 10:42</span><h2>Bridge review</h2></div><div className="ss2-review-score"><strong>88%</strong><span>PASSAGE MATCH</span></div></header>
+            <div className="ss2-review-alignment">
+              <div className="ss2-review-measures">{measures.map((measure) => <span className={measure.number === 15 ? 'has-issue' : ''} key={measure.number}>M{measure.number}<small>{measure.chord}</small></span>)}</div>
+              <Waveform review />
+              <div className="ss2-assessment-lane"><span className="is-good">ON TIME</span><span className="is-good">ON TIME</span><span className="is-good">ON TIME</span><span className="has-issue">86 MS LATE</span><span className="is-good">RECOVERED</span></div>
+            </div>
+            <div className="ss2-review-grid">
+              <section><span>WEAKEST TRANSITION</span><h3>M14 → M15</h3><p>The D/F♯ arrives 86 ms late in two of three repetitions.</p><button type="button" onClick={() => setMode('focus')}>Practice this change</button></section>
+              <section><span>NOTE ACCURACY</span><h3>19 / 21</h3><p>Low F♯ was uncertain. Original detector evidence is preserved.</p><button type="button">Inspect evidence</button></section>
+              <section><span>COMPARE</span><h3>Ref ↔ Take 03</h3><p>Both sources follow the same range and transport.</p><label>Blend<input type="range" defaultValue="54" /></label></section>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <aside className="ss2-inspector" aria-label="Persistent live practice status">
+        <section className="ss2-live-card">
+          <header><span>LIVE INPUT</span><b><i /> MONITORING</b></header>
+          <div className="ss2-live-note"><strong>E<small>3</small></strong><span>+4¢<small>SHARP</small></span></div>
+          <div className="ss2-tuner"><i /><b /></div>
+          <div className="ss2-chord-candidate"><span>CHORD CANDIDATE</span><strong>Em</strong><b>78%</b></div>
+          <p><span>MEDIUM CONFIDENCE</span> provisional · E G B detected</p>
+          <button type="button">Evidence & alternatives →</button>
+        </section>
+
+        <section className="ss2-input-card">
+          <header><span>INPUT PREFLIGHT</span><b className="is-ready">READY</b></header>
+          <div className="ss2-device"><span>IN 1</span><div><strong>Scarlett 2i2 USB</strong><small>Connected · 48 kHz</small></div></div>
+          <MiniMeter active={monitoring} />
+          <div className="ss2-level-copy"><span>−18 dB · healthy</span><span>NO CLIPPING</span></div>
+          <button type="button" aria-pressed={monitoring} onClick={() => setMonitoring((value) => !value)}>{monitoring ? 'Stop monitoring' : 'Start monitoring'}</button>
+        </section>
+
+        <section className="ss2-side-video">
+          <header><span>VIDEO</span><b>{videoOpen ? 'OPEN BESIDE SCORE' : 'HIDDEN'}</b></header>
+          <div><span>▰</span><p><strong>{videoSource === 'reference' ? 'Studio performance' : 'Take 03 camera'}</strong><small>Sync locked · anchor M12</small></p></div>
+          <button type="button" onClick={() => setVideoOpen(true)}>Show in workspace</button>
+        </section>
+
+        <section className="ss2-latest-take">
+          <header><span>LATEST TAKE</span><b>03</b></header>
+          <div><strong>00:38.2</strong><span>Today · 10:42</span></div>
+          <p><i /> Saved locally with evidence</p>
+          <button type="button" onClick={() => setMode('review')}>Open aligned review</button>
+        </section>
+      </aside>
+
+      <footer className="ss2-transport" aria-label="Practice transport and live input">
+        <div className="ss2-transport-input"><div><span>INPUT · SCARLETT 2i2</span><strong><i /> CONNECTED</strong></div><MiniMeter active={monitoring} /><p>LIVE <strong>E3</strong><span>+4¢</span><b>Em · 78%</b></p></div>
+        <div className="ss2-tempo"><span>TEMPO</span><button type="button" onClick={() => setTempo((value) => Math.max(40, value - 2))}>−</button><strong>{tempo}</strong><button type="button" onClick={() => setTempo((value) => Math.min(180, value + 2))}>＋</button><small>BPM</small></div>
+        <div className="ss2-play-controls"><button type="button" aria-label="Previous measure">|◀</button><button className="ss2-play" type="button" aria-label={playing ? 'Pause' : 'Play'} onClick={() => setPlaying((value) => !value)}>{playing ? 'Ⅱ' : '▶'}</button><button type="button" aria-label="Next measure">▶|</button></div>
+        <div className="ss2-timeline"><div><span>00:24.8</span><strong>M13 · BEAT 2</strong><span>00:38.2</span></div><div className={playing ? 'is-playing' : ''}><i /><b /><span /></div><footer><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span></footer></div>
+        <div className="ss2-practice-toggles"><button className={metronome ? 'is-on' : ''} type="button" aria-pressed={metronome} onClick={() => setMetronome((value) => !value)}><span>♩</span>METRO</button><button className="is-on" type="button"><span>2</span>COUNT IN</button><button type="button" onClick={() => setSpeed((value) => value === 80 ? 100 : 80)}><span>{speed}%</span>SPEED</button></div>
+        <div className="ss2-record"><button className={recording ? 'is-recording' : ''} type="button" aria-label={recording ? 'Stop recording' : 'Record a take'} onClick={() => setRecording((value) => !value)}><i /></button><span>{recording ? 'RECORDING · 00:08' : 'RECORD TAKE'}</span><small>{recording ? 'Input healthy' : 'Preflight ready'}</small></div>
+      </footer>
+    </main>
+  );
+}

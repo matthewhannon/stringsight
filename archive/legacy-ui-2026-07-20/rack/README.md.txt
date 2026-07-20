@@ -1,4 +1,4 @@
-# StringSight rack library
+# StringSight rack library (archived)
 
 This folder is the reusable visual shell for StringSight tools. Product modules own their domain
 state and behavior; the rack library owns chassis, spacing, typography, hardware details, and common

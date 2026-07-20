@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="StringSight — a calm, tab-centered guitar practice workspace with synchronized video and live input feedback."
+    />
+    <meta name="theme-color" content="#171918" />
+    <title>StringSight — Practice</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+        --shell: #171918;
+        --shell-raised: #1d201f;
+        --shell-soft: #242725;
+        --line: #343835;
+        --line-soft: #292c2a;
+        --text: #f3f2ed;
+        --muted: #a2a6a2;
+        --quiet: #727772;
+        --paper: #f3f0e7;
+        --paper-2: #ebe7dc;
+        --paper-ink: #252723;
+        --paper-muted: #6f726b;
+        --sage: #78b49a;
+        --sage-deep: #426e5b;
+        --sage-wash: #dce9e1;
+        --amber: #d7a45c;
+        --record: #dc6c64;
+        --mono: "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
+        --score-width: 58%;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--shell); }
+      body { min-width: 1120px; min-height: 720px; color: var(--text); }
+      button, input { font: inherit; }
+      button { color: inherit; }
+      button:focus-visible, input:focus-visible { outline: 3px solid #b8dccb; outline-offset: 2px; }
+
+      .app {
+        display: grid;
+        grid-template:
+          "top top top" 62px
+          "library workspace workspace" minmax(0, 1fr)
+          "library hud hud" 70px
+          "library transport transport" 122px / 208px minmax(0, 1fr) 0;
+        width: 100vw;
+        height: 100vh;
+        background: var(--shell);
+        transition: grid-template-columns 180ms ease;
+      }
+
+      .app.library-closed { grid-template-columns: 0 minmax(0, 1fr) 0; }
+
+      .topbar {
+        grid-area: top;
+        z-index: 20;
+        display: grid;
+        grid-template-columns: minmax(320px, 1fr) auto minmax(320px, 1fr);
+        align-items: center;
+        gap: 18px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--line-soft);
+        background: #141615;
+      }
+
+      .brand-row, .brand, .document, .top-actions, .mode-switch, .local-state,
+      .panel-title, .panel-actions, .view-options, .score-view, .range-meta,
+      .video-source, .video-status, .hud-block, .heard-reading, .pitch-reading,
+      .hud-details, .hud-actions, .transport-buttons, .tempo-control,
+      .practice-options, .time-state, .timeline-labels, .take-source,
+      .score-legend, .review-summary, .inspector-choice { display: flex; align-items: center; }
+
+      .brand-row { min-width: 0; gap: 18px; }
+      .brand { gap: 9px; flex: 0 0 auto; font-size: 13px; font-weight: 760; letter-spacing: -0.02em; }
+      .brand-mark { position: relative; width: 28px; height: 28px; border: 1px solid #4e5751; border-radius: 8px; }
+      .brand-mark::before { content: ""; position: absolute; inset: 6px 5px; background: repeating-linear-gradient(to bottom, var(--sage) 0 1px, transparent 1px 4px); }
+      .brand-mark::after { content: ""; position: absolute; width: 5px; height: 5px; left: 13px; top: 8px; border-radius: 50%; background: #f1f0e9; box-shadow: -6px 4px 0 #f1f0e9, 2px 8px 0 #f1f0e9; }
+      .document { min-width: 0; gap: 9px; padding-left: 17px; border-left: 1px solid var(--line); }
+      .document strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 620; }
+      .document span { flex: 0 0 auto; color: var(--quiet); font-size: 10px; }
+
+      .mode-switch { justify-self: center; gap: 3px; padding: 4px; border-radius: 9px; background: #202321; }
+      .mode-switch button { min-width: 88px; height: 31px; padding: 0 14px; border: 0; border-radius: 6px; background: transparent; color: #8d928e; cursor: pointer; font-size: 11px; font-weight: 650; }
+      .mode-switch button.active { background: #f0efe9; color: #20231f; box-shadow: 0 1px 4px #0004; }
+
+      .top-actions { justify-self: end; gap: 9px; }
+      .local-state { gap: 7px; padding: 0 8px; color: #929792; font-size: 10px; }
+      .local-state i { width: 7px; height: 7px; border-radius: 50%; background: var(--sage); }
+      .icon-button, .save-button { height: 32px; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; }
+      .icon-button { width: 32px; padding: 0; background: var(--shell-raised); color: #a6aaa6; }
+      .save-button { padding: 0 13px; background: #2a2e2b; color: #e7e7e1; font-size: 10px; font-weight: 650; }
+
+      .library {
+        grid-area: library;
+        z-index: 10;
+        min-width: 0;
+        overflow: hidden;
+        border-right: 1px solid var(--line-soft);
+        background: #1a1c1b;
+      }
+
+      .library-inner { display: flex; flex-direction: column; width: 208px; height: 100%; }
+      .library-header { display: flex; align-items: center; justify-content: space-between; height: 50px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--line-soft); }
+      .library-header span, .section-label { color: #858a85; font-size: 9px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+      .library-header button { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #8a8f8a; cursor: pointer; }
+      .setlist-name { padding: 16px 16px 8px; color: #d5d6d1; font-size: 11px; font-weight: 650; }
+      .song-list { margin: 0; padding: 0 8px; list-style: none; }
+      .song { display: grid; grid-template-columns: 27px 1fr auto; align-items: center; width: 100%; min-height: 51px; padding: 7px 8px; border: 0; border-radius: 7px; background: transparent; color: #a5a9a5; text-align: left; cursor: pointer; }
+      .song:hover { background: #222523; }
+      .song.active { background: #2a2e2b; color: #f0f0ea; }
+      .song .index { color: #686d69; font-family: var(--mono); font-size: 8px; }
+      .song strong { display: block; font-size: 11px; font-weight: 620; }
+      .song small { display: block; margin-top: 3px; color: #777c78; font-size: 8px; }
+      .song i { width: 6px; height: 6px; border-radius: 50%; background: var(--record); opacity: 0; }
+      .song.active i { opacity: 1; }
+      .library-actions { display: grid; gap: 6px; margin-top: 12px; padding: 12px 16px; border-top: 1px solid var(--line-soft); }
+      .library-actions button { height: 32px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: #aeb2ae; cursor: pointer; text-align: left; padding: 0 10px; font-size: 9px; }
+      .practice-streak { margin-top: auto; padding: 15px 16px 18px; border-top: 1px solid var(--line-soft); }
+      .practice-streak strong { display: block; margin: 7px 0 3px; color: #ecece6; font-size: 18px; font-weight: 560; }
+      .practice-streak p { margin: 0; color: #747975; font-size: 9px; line-height: 1.45; }
+
+      .workspace { grid-area: workspace; min-width: 0; min-height: 0; padding: 12px 12px 0; overflow: hidden; }
+      .workspace-shell { display: grid; grid-template-rows: 49px minmax(0, 1fr); width: 100%; height: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background: #202321; }
+      .workspace-toolbar { display: grid; grid-template-columns: minmax(230px, 1fr) auto minmax(230px, 1fr); align-items: center; gap: 12px; padding: 0 12px 0 15px; border-bottom: 1px solid var(--line); background: #202321; }
+      .range-meta { gap: 12px; min-width: 0; }
+      .range-meta strong { font-size: 12px; font-weight: 650; }
+      .range-meta span { color: #858a85; font-size: 9px; }
+      .range-pill { padding: 5px 8px; border-radius: 5px; background: #31443b; color: #b9d8c9 !important; font-family: var(--mono); font-size: 8px !important; }
+      .view-options { justify-self: center; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 7px; }
+      .view-options button { height: 27px; padding: 0 11px; border: 0; border-radius: 4px; background: transparent; color: #868b87; cursor: pointer; font-size: 9px; font-weight: 650; }
+      .view-options button.active { background: #373b38; color: #f1f1eb; }
+      .score-view { justify-self: end; gap: 5px; }
+      .score-view button { height: 28px; padding: 0 9px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: #8f9490; cursor: pointer; font-size: 9px; }
+      .score-view button.active { border-color: #547563; color: #c7ded3; background: #28362f; }
+
+      .split-stage { display: grid; grid-template-columns: minmax(500px, var(--score-width)) 10px minmax(360px, 1fr); min-width: 0; min-height: 0; padding: 10px; }
+      .app.layout-tab .split-stage { grid-template-columns: 1fr; }
+      .app.layout-video .split-stage { grid-template-columns: 10px 0 minmax(700px, 1fr); }
+      .app.layout-tab .splitter, .app.layout-tab .video-panel { display: none; }
+      .app.layout-video .score-panel { visibility: hidden; min-width: 0; }
+      .app.mode-edit .split-stage { grid-template-columns: minmax(600px, 1fr) 10px 310px; }
+
+      .score-panel { position: relative; min-width: 0; min-height: 0; overflow: auto; border-radius: 8px; background: #d8d5cc; scrollbar-color: #a9a69d transparent; }
+      .score-page { width: calc(100% - 24px); min-width: 690px; max-width: 1040px; min-height: calc(100% - 24px); margin: 12px auto; padding: 24px 26px 22px; background: var(--paper); color: var(--paper-ink); box-shadow: 0 5px 16px #15171324; }
+      .score-title { display: flex; align-items: flex-end; justify-content: space-between; padding-bottom: 16px; border-bottom: 1px solid #d5d1c7; }
+      .score-title small { display: block; margin-bottom: 4px; color: var(--paper-muted); font-family: var(--mono); font-size: 8px; letter-spacing: 0.08em; }
+      .score-title h1 { margin: 0; font-family: Georgia, serif; font-size: 24px; font-weight: 520; letter-spacing: -0.03em; }
+      .score-title .music-meta { text-align: right; color: #62665f; font-size: 10px; line-height: 1.5; }
+      .score-legend { gap: 14px; padding: 11px 0 13px; color: #70746e; font-size: 8px; }
+      .score-legend i { width: 10px; height: 7px; border: 1px solid #77a28e; background: var(--sage-wash); }
+      .score-legend .playhead-key { width: 2px; height: 10px; border: 0; background: var(--sage-deep); }
+
+      .system { position: relative; display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); margin-bottom: 24px; border: 1px solid #bfc0b9; }
+      .system.selected { border: 2px solid #6d9b85; background: #edf2ed; box-shadow: 0 0 0 3px #6d9b8517; }
+      .system.selected::before { content: "PRACTICE RANGE · M12—15"; position: absolute; top: -18px; left: -2px; color: #50745f; font-family: var(--mono); font-size: 7px; font-weight: 700; letter-spacing: 0.07em; }
+      .measure { position: relative; min-width: 0; border-right: 1px solid #b7b9b2; }
+      .measure:last-child { border-right: 0; }
+      .measure-header { display: flex; justify-content: space-between; align-items: center; height: 24px; padding: 0 7px; color: #74776f; font-family: var(--mono); font-size: 7px; }
+      .measure-header strong { color: #40433e; font-family: Georgia, serif; font-size: 11px; font-style: italic; font-weight: 600; }
+
+      .notation { position: relative; height: 78px; border-top: 1px solid #8f918b; border-bottom: 1px solid #8f918b; background: repeating-linear-gradient(to bottom, transparent 0 13px, #6d706a 13px 14px); background-size: 100% 70px; }
+      .notation-note { position: absolute; top: var(--top); left: var(--left); width: 9px; height: 7px; border-radius: 50%; background: #292b28; transform: rotate(-14deg); }
+      .notation-note::after { content: ""; position: absolute; right: 0; bottom: 3px; width: 1px; height: 23px; background: #292b28; transform: rotate(14deg); transform-origin: bottom; }
+      .notation-note.half { background: var(--paper); border: 1px solid #292b28; }
+
+      .tab-label { position: absolute; top: 88px; left: 4px; z-index: 3; color: #363935; font-family: var(--mono); font-size: 8px; font-weight: 700; }
+      .tablature { position: relative; height: 132px; padding: 13px 0 7px; background: repeating-linear-gradient(to bottom, transparent 0 17px, #777a74 17px 18px); background-size: 100% 18px; }
+      .fret { position: absolute; top: calc(13px + var(--string) * 18px - 4px); left: var(--left); z-index: 2; min-width: 13px; padding: 0 2px; background: #edf2ed; color: #292b28; font-family: var(--mono); font-size: 9px; text-align: center; }
+      .fret.tech::after { content: attr(data-tech); position: absolute; left: 12px; top: -12px; color: #5b665f; font-size: 7px; font-style: italic; }
+      .rhythm-stem { position: absolute; bottom: 7px; left: var(--left); width: 1px; height: 19px; background: #555851; }
+      .rhythm-stem::after { content: ""; position: absolute; top: 0; left: 0; width: 8px; height: 1px; background: #555851; transform: rotate(20deg); transform-origin: left; }
+      .score-playhead { position: absolute; z-index: 5; top: 0; bottom: 0; left: 34%; width: 2px; background: var(--sage-deep); box-shadow: 0 0 0 1px #fff8; }
+      .score-playhead::before { content: ""; position: absolute; top: -1px; left: -4px; width: 10px; height: 7px; border-radius: 0 0 4px 4px; background: var(--sage-deep); }
+      .playing .score-playhead, .playing .timeline-cursor { animation: sweep 8s linear infinite; }
+      @keyframes sweep { from { left: 34%; } to { left: 96%; } }
+
+      .splitter { position: relative; cursor: col-resize; }
+      .splitter::after { content: ""; position: absolute; top: 50%; left: 3px; width: 4px; height: 40px; border-radius: 5px; background: #4b504c; transform: translateY(-50%); }
+      .splitter:hover::after, .splitter.dragging::after { background: var(--sage); }
+
+      .video-panel, .edit-inspector { min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #111312; }
+      .video-panel { display: grid; grid-template-rows: 45px minmax(0, 1fr) 42px; }
+      .video-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px 0 13px; border-bottom: 1px solid var(--line-soft); }
+      .panel-title { min-width: 0; gap: 8px; }
+      .panel-title h2 { margin: 0; font-size: 11px; font-weight: 650; }
+      .panel-title span { color: #777c78; font-size: 8px; }
+      .video-source { gap: 2px; padding: 3px; border-radius: 6px; background: #1c1f1d; }
+      .video-source button { height: 24px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; color: #7d827e; cursor: pointer; font-size: 8px; font-weight: 650; }
+      .video-source button.active { background: #343936; color: #efefe9; }
+      .video-body { display: grid; place-items: center; min-height: 0; padding: 12px; background: #090a09; }
+      .video-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #000; box-shadow: 0 0 0 1px #2c302d; }
+      .video-frame img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; transition: 160ms ease; }
+      .video-frame.fill img { object-fit: cover; }
+      .video-frame.take img { filter: saturate(.72) brightness(.78) contrast(1.05) hue-rotate(150deg); transform: scaleX(-1); }
+      .video-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, #0004, transparent 25%, transparent 66%, #000b); pointer-events: none; }
+      .video-status { position: absolute; top: 10px; left: 10px; gap: 7px; padding: 6px 8px; border-radius: 5px; background: #0d0f0dca; color: #dfe3de; font-size: 8px; }
+      .video-status i { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); }
+      .sync-state { position: absolute; top: 10px; right: 10px; padding: 6px 8px; border-radius: 5px; background: #0d0f0dca; color: #a9c8b8; font-family: var(--mono); font-size: 7px; }
+      .video-cue { position: absolute; left: 51%; bottom: 23%; max-width: 165px; padding: 8px 10px; border-left: 3px solid var(--amber); border-radius: 4px; background: #11130fd6; color: #efefe8; font-size: 9px; line-height: 1.35; }
+      .video-cue small { display: block; margin-top: 3px; color: #a6aaa5; font-family: var(--mono); font-size: 7px; }
+      .video-bottom { position: absolute; right: 12px; bottom: 10px; left: 12px; display: flex; align-items: flex-end; justify-content: space-between; }
+      .video-bottom strong { font-size: 9px; font-weight: 600; }
+      .video-bottom time { font-family: var(--mono); font-size: 15px; }
+      .video-footer { display: flex; align-items: center; justify-content: space-between; padding: 0 11px 0 13px; border-top: 1px solid var(--line-soft); color: #898e89; font-size: 8px; }
+      .video-footer button { height: 25px; padding: 0 8px; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: #a2a7a2; cursor: pointer; font-size: 8px; }
+
+      .edit-inspector { display: none; padding: 15px; }
+      .app.mode-edit .video-panel { display: none; }
+      .app.mode-edit .edit-inspector { display: block; }
+      .edit-inspector h2 { margin: 0 0 5px; font-size: 14px; }
+      .edit-inspector > p { margin: 0 0 17px; color: #838883; font-size: 9px; line-height: 1.5; }
+      .inspector-section { margin-bottom: 12px; padding: 13px; border-radius: 7px; background: #202321; }
+      .inspector-section > span { color: #777c78; font-size: 8px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+      .inspector-choice { justify-content: space-between; min-height: 35px; margin-top: 8px; border-top: 1px solid var(--line); color: #d1d3cf; font-size: 9px; }
+      .inspector-choice button { border: 0; background: transparent; color: #9fc5b3; cursor: pointer; font-size: 9px; }
+
+      .input-hud { grid-area: hud; z-index: 8; display: grid; grid-template-columns: 245px minmax(320px, 1fr) 205px auto; align-items: stretch; margin: 8px 12px 0; border-radius: 9px; background: #232624; box-shadow: inset 0 0 0 1px var(--line); }
+      .hud-block { min-width: 0; gap: 13px; padding: 0 16px; border-right: 1px solid var(--line); }
+      .hud-label { display: grid; gap: 3px; }
+      .hud-label span { color: #7f847f; font-size: 8px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+      .hud-label strong { color: #ecece6; font-size: 10px; font-weight: 620; white-space: nowrap; }
+      .level-meter { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; width: 90px; height: 9px; }
+      .level-meter i { border-radius: 2px; background: #414642; }
+      .level-meter i.on { background: var(--sage); }
+      .level-meter i.warm { background: var(--amber); }
+      .heard-reading { min-width: 0; gap: 12px; }
+      .heard-reading > strong { font-family: Georgia, serif; font-size: 22px; font-weight: 520; white-space: nowrap; }
+      .lifecycle { display: grid; gap: 3px; min-width: 0; }
+      .lifecycle span { color: #cbd0cc; font-size: 9px; white-space: nowrap; }
+      .lifecycle small { color: #8d928d; font-size: 8px; white-space: nowrap; }
+      .pitch-reading { gap: 12px; }
+      .pitch-reading strong { font-family: var(--mono); font-size: 19px; font-weight: 500; }
+      .pitch-track { position: relative; width: 72px; height: 1px; background: #535853; }
+      .pitch-track::before { content: ""; position: absolute; left: 50%; top: -4px; width: 1px; height: 9px; background: #777d78; }
+      .pitch-track i { position: absolute; left: 56%; top: -5px; width: 2px; height: 11px; background: var(--sage); }
+      .hud-actions { justify-content: flex-end; gap: 7px; padding: 0 12px; }
+      .hud-actions button { height: 30px; padding: 0 10px; border: 1px solid #464b47; border-radius: 6px; background: transparent; color: #b1b5b1; cursor: pointer; font-size: 8px; font-weight: 650; }
+
+      .hud-details { position: absolute; right: 12px; bottom: 192px; z-index: 30; display: none; align-items: stretch; width: 520px; padding: 12px; border: 1px solid #4b504c; border-radius: 9px; background: #242725; box-shadow: 0 16px 40px #0007; }
+      .hud-details.open { display: flex; }
+      .detail-column { flex: 1; padding: 2px 13px; border-right: 1px solid var(--line); }
+      .detail-column:last-child { border-right: 0; }
+      .detail-column span { display: block; margin-bottom: 8px; color: #7f847f; font-size: 8px; font-weight: 700; text-transform: uppercase; }
+      .detail-column strong { font-size: 11px; font-weight: 600; }
+      .detail-column p { margin: 5px 0 0; color: #9da19d; font-size: 8px; line-height: 1.5; }
+
+      .transport { grid-area: transport; z-index: 9; display: grid; grid-template-columns: 225px minmax(0, 1fr) 225px; min-width: 0; border-top: 1px solid var(--line-soft); background: #141615; }
+      .transport-buttons { gap: 8px; padding: 0 17px; border-right: 1px solid var(--line-soft); }
+      .transport-buttons button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #999e99; cursor: pointer; font-size: 10px; }
+      .transport-buttons .play { width: 50px; height: 50px; border-radius: 50%; background: #f0efe8; color: #20231f; font-size: 15px; }
+      .transport-buttons .record { border: 1px solid #4e3836; }
+      .transport-buttons .record i { width: 11px; height: 11px; border-radius: 50%; background: var(--record); }
+      .transport-buttons .record.active { border-color: var(--record); background: #382422; }
+      .transport-buttons .record.active i { border-radius: 2px; }
+      .transport-center { min-width: 0; padding: 12px 17px 10px; }
+      .transport-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+      .time-state { gap: 13px; }
+      .time-state strong { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+      .time-state span { color: #858a85; font-size: 8px; }
+      .practice-options { gap: 6px; }
+      .practice-options button { height: 27px; padding: 0 9px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: #8b908b; cursor: pointer; font-size: 8px; font-weight: 650; }
+      .practice-options button.active { border-color: #506d5e; background: #27352e; color: #b9d5c7; }
+
+      .shared-timeline { position: relative; display: grid; grid-template-columns: repeat(20, 1fr); height: 42px; overflow: visible; border: 1px solid var(--line); border-radius: 6px; background: #1c1f1d; }
+      .beat { position: relative; border-right: 1px solid #2c302d; }
+      .beat:nth-child(4n + 1)::before { content: attr(data-measure); position: absolute; top: 6px; left: 5px; color: #777c78; font-family: var(--mono); font-size: 7px; }
+      .loop-range { position: absolute; inset: 3px 20% 3px 0; border: 1px solid #658b76; border-radius: 4px; background: #54786417; }
+      .reference-wave, .take-wave { position: absolute; right: 20%; left: 0; height: 6px; opacity: .65; background: repeating-linear-gradient(90deg, #78a890 0 2px, transparent 2px 5px); clip-path: polygon(0 55%, 3% 15%, 7% 76%, 11% 30%, 15% 85%, 20% 20%, 25% 65%, 31% 5%, 37% 72%, 43% 30%, 49% 90%, 55% 20%, 61% 60%, 68% 5%, 75% 78%, 82% 28%, 90% 80%, 100% 45%, 100% 100%, 0 100%); }
+      .reference-wave { bottom: 7px; }
+      .take-wave { display: none; bottom: 15px; background: repeating-linear-gradient(90deg, #c69b62 0 2px, transparent 2px 5px); }
+      .app.mode-review .take-wave { display: block; }
+      .timeline-cursor { position: absolute; top: -5px; bottom: -5px; left: 34%; z-index: 5; width: 2px; background: var(--sage); }
+      .timeline-cursor::before { content: ""; position: absolute; top: -1px; left: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--sage); }
+      .review-marker { position: absolute; z-index: 7; top: 4px; left: var(--left); display: grid; place-items: center; width: 14px; height: 14px; padding: 0; border: 0; border-radius: 50%; background: var(--amber); color: #21170d; cursor: pointer; font-family: var(--mono); font-size: 7px; font-weight: 800; }
+      .review-summary { display: none; gap: 7px; color: #c7b28e; font-size: 8px; }
+      .review-summary i { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
+      .app.mode-review .review-summary { display: flex; }
+
+      .tempo-control { justify-content: space-between; padding: 0 18px; border-left: 1px solid var(--line-soft); }
+      .tempo-value span { display: block; color: #7d827d; font-size: 8px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+      .tempo-value strong { display: block; margin-top: 4px; font-family: var(--mono); font-size: 22px; font-weight: 500; }
+      .tempo-value small { color: #858a85; font-size: 8px; }
+      .tempo-buttons { display: grid; grid-template-columns: repeat(2, 31px); gap: 5px; }
+      .tempo-buttons button { height: 31px; border: 1px solid var(--line); border-radius: 6px; background: #1c1f1d; color: #a2a7a2; cursor: pointer; }
+
+      .mode-note { display: none; position: absolute; top: 76px; right: 24px; z-index: 25; padding: 9px 12px; border-radius: 6px; background: #253129; color: #bfd4c8; font-size: 9px; box-shadow: 0 8px 24px #0005; }
+      .mode-note.show { display: block; }
+      .advanced-button { position: absolute; right: 22px; top: 76px; z-index: 15; height: 28px; padding: 0 10px; border: 1px solid #4d534e; border-radius: 6px; background: #202321; color: #a3a8a3; cursor: pointer; font-size: 8px; }
+      .advanced-button.active { border-color: #688975; color: #c4dbcf; }
+      .advanced-drawer { position: absolute; top: 110px; right: 22px; bottom: 202px; z-index: 14; display: none; width: 330px; padding: 15px; overflow: auto; border: 1px solid #4b504c; border-radius: 8px; background: #1e211f; box-shadow: 0 18px 50px #0008; }
+      .advanced-drawer.open { display: block; }
+      .advanced-drawer h3 { margin: 0 0 4px; font-size: 13px; }
+      .advanced-drawer > p { margin: 0 0 15px; color: #838883; font-size: 8px; line-height: 1.5; }
+      .candidate { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+      .candidate strong { font-size: 10px; }
+      .candidate b { color: #b8d3c5; font-family: var(--mono); font-size: 9px; }
+      .candidate small { grid-column: 1 / -1; color: #808580; font-size: 8px; }
+      .midi-mini { display: grid; grid-template-rows: repeat(6, 25px); margin-top: 13px; border: 1px solid var(--line); background: repeating-linear-gradient(to right, transparent 0 24%, #383c39 24% 25%); }
+      .midi-mini div { position: relative; border-bottom: 1px solid #353936; }
+      .midi-mini i { position: absolute; top: 6px; left: var(--left); width: var(--width); height: 12px; border-radius: 3px; background: #7ca58f; }
+
+      @media (max-height: 780px) {
+        .app { grid-template-rows: 58px minmax(0, 1fr) 64px 112px; }
+        .score-page { padding-top: 18px; }
+        .notation { height: 68px; }
+        .tablature { height: 120px; }
+        .tab-label { top: 78px; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app mode-practice" id="app" aria-label="StringSight guitar practice workspace">
+      <header class="topbar">
+        <div class="brand-row">
+          <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>StringSight</span></div>
+          <div class="document"><strong>Neon River — lead study</strong><span>Saved locally</span></div>
+        </div>
+        <nav class="mode-switch" aria-label="Workspace mode">
+          <button type="button" data-mode="edit">Edit</button>
+          <button class="active" type="button" data-mode="practice">Practice</button>
+          <button type="button" data-mode="review">Review</button>
+        </nav>
+        <div class="top-actions">
+          <div class="local-state"><i></i><span>Private on this device</span></div>
+          <button class="icon-button" id="libraryTopButton" type="button" aria-label="Toggle setlist">☰</button>
+          <button class="save-button" type="button">Save</button>
+        </div>
+      </header>
+
+      <aside class="library" aria-label="Setlist">
+        <div class="library-inner">
+          <header class="library-header"><span>Setlist</span><button id="libraryButton" type="button" aria-label="Collapse setlist">‹</button></header>
+          <div class="setlist-name">Monday practice</div>
+          <ul class="song-list">
+            <li><button class="song active" type="button"><span class="index">01</span><span><strong>Neon River</strong><small>Lead study · 5 takes</small></span><i></i></button></li>
+            <li><button class="song" type="button"><span class="index">02</span><span><strong>Warm Static</strong><small>Verse rhythm · 2 takes</small></span><i></i></button></li>
+            <li><button class="song" type="button"><span class="index">03</span><span><strong>Slow Bloom</strong><small>Solo · no takes</small></span><i></i></button></li>
+            <li><button class="song" type="button"><span class="index">04</span><span><strong>Glass Roads</strong><small>Bridge · 3 takes</small></span><i></i></button></li>
+          </ul>
+          <div class="library-actions"><button type="button">＋ Import score or tab</button><button type="button">＋ New guitar part</button></div>
+          <div class="practice-streak"><span class="section-label">This session</span><strong>24 min</strong><p>Measures 12–15 repeated 9 times</p></div>
+        </div>
+      </aside>
+
+      <section class="workspace" aria-label="Practice score and video">
+        <div class="workspace-shell">
+          <header class="workspace-toolbar">
+            <div class="range-meta"><strong>Lead guitar</strong><span class="range-pill">M12—15 SELECTED</span><span>Em · 4/4</span></div>
+            <div class="view-options" role="group" aria-label="Practice layout">
+              <button class="active" type="button" data-layout="split">Tab + Video</button>
+              <button type="button" data-layout="tab">Tab Focus</button>
+              <button type="button" data-layout="video">Video Focus</button>
+            </div>
+            <div class="score-view" role="group" aria-label="Score view">
+              <button class="active" type="button">Tab + notation</button>
+              <button type="button">Tab only</button>
+              <button type="button">Fit range</button>
+            </div>
+          </header>
+
+          <div class="split-stage" id="splitStage">
+            <section class="score-panel" aria-labelledby="scoreHeading">
+              <article class="score-page">
+                <header class="score-title">
+                  <div><small>LEAD GUITAR · PHRASE 02</small><h1 id="scoreHeading">Neon River</h1></div>
+                  <div class="music-meta">Moderato · ♩ = 86<br />Standard tuning</div>
+                </header>
+                <div class="score-legend"><i></i><span>Selected practice range</span><i class="playhead-key"></i><span>Shared playhead</span></div>
+
+                <div class="system selected" aria-label="Selected measures 12 through 15">
+                  <div class="score-playhead" aria-hidden="true"></div>
+                  <section class="measure">
+                    <header class="measure-header"><span>12</span><strong>Em7</strong></header>
+                    <div class="notation">
+                      <i class="notation-note" style="--left:12%;--top:43px"></i><i class="notation-note" style="--left:34%;--top:29px"></i><i class="notation-note" style="--left:56%;--top:21px"></i><i class="notation-note" style="--left:78%;--top:15px"></i>
+                    </div>
+                    <span class="tab-label">TAB</span>
+                    <div class="tablature">
+                      <b class="fret" style="--string:4;--left:10%">2</b><b class="fret" style="--string:3;--left:32%">2</b><b class="fret" style="--string:2;--left:54%">0</b><b class="fret" style="--string:1;--left:76%">0</b>
+                      <i class="rhythm-stem" style="--left:14%"></i><i class="rhythm-stem" style="--left:36%"></i><i class="rhythm-stem" style="--left:58%"></i><i class="rhythm-stem" style="--left:80%"></i>
+                    </div>
+                  </section>
+                  <section class="measure">
+                    <header class="measure-header"><span>13</span><strong>Cmaj7</strong></header>
+                    <div class="notation">
+                      <i class="notation-note" style="--left:12%;--top:35px"></i><i class="notation-note" style="--left:31%;--top:27px"></i><i class="notation-note" style="--left:53%;--top:21px"></i><i class="notation-note half" style="--left:76%;--top:14px"></i>
+                    </div>
+                    <span class="tab-label">TAB</span>
+                    <div class="tablature">
+                      <b class="fret tech" data-tech="h" style="--string:3;--left:10%">2</b><b class="fret" style="--string:3;--left:29%">5</b><b class="fret" style="--string:2;--left:51%">4</b><b class="fret" style="--string:1;--left:74%">5</b>
+                      <i class="rhythm-stem" style="--left:14%"></i><i class="rhythm-stem" style="--left:33%"></i><i class="rhythm-stem" style="--left:55%"></i><i class="rhythm-stem" style="--left:78%"></i>
+                    </div>
+                  </section>
+                  <section class="measure">
+                    <header class="measure-header"><span>14</span><strong>G6</strong></header>
+                    <div class="notation">
+                      <i class="notation-note" style="--left:13%;--top:42px"></i><i class="notation-note" style="--left:34%;--top:32px"></i><i class="notation-note" style="--left:57%;--top:20px"></i><i class="notation-note" style="--left:78%;--top:9px"></i>
+                    </div>
+                    <span class="tab-label">TAB</span>
+                    <div class="tablature">
+                      <b class="fret" style="--string:4;--left:11%">5</b><b class="fret tech" data-tech="/" style="--string:3;--left:32%">5</b><b class="fret" style="--string:2;--left:55%">7</b><b class="fret" style="--string:0;--left:76%">7</b>
+                      <i class="rhythm-stem" style="--left:15%"></i><i class="rhythm-stem" style="--left:36%"></i><i class="rhythm-stem" style="--left:59%"></i><i class="rhythm-stem" style="--left:80%"></i>
+                    </div>
+                  </section>
+                  <section class="measure">
+                    <header class="measure-header"><span>15</span><strong>D/F♯</strong></header>
+                    <div class="notation">
+                      <i class="notation-note" style="--left:13%;--top:47px"></i><i class="notation-note" style="--left:35%;--top:35px"></i><i class="notation-note" style="--left:56%;--top:25px"></i><i class="notation-note half" style="--left:78%;--top:18px"></i>
+                    </div>
+                    <span class="tab-label">TAB</span>
+                    <div class="tablature">
+                      <b class="fret" style="--string:5;--left:11%">2</b><b class="fret" style="--string:3;--left:33%">4</b><b class="fret tech" data-tech="p" style="--string:2;--left:54%">2</b><b class="fret" style="--string:1;--left:76%">3</b>
+                      <i class="rhythm-stem" style="--left:15%"></i><i class="rhythm-stem" style="--left:37%"></i><i class="rhythm-stem" style="--left:58%"></i><i class="rhythm-stem" style="--left:80%"></i>
+                    </div>
+                  </section>
+                </div>
+
+                <div class="system" aria-label="Measures 16 through 19">
+                  <section class="measure"><header class="measure-header"><span>16</span><strong>Em</strong></header><div class="notation"><i class="notation-note" style="--left:18%;--top:42px"></i><i class="notation-note" style="--left:55%;--top:28px"></i></div><span class="tab-label">TAB</span><div class="tablature"><b class="fret" style="--string:5;--left:16%">0</b><b class="fret" style="--string:4;--left:53%">2</b></div></section>
+                  <section class="measure"><header class="measure-header"><span>17</span><strong>Em</strong></header><div class="notation"><i class="notation-note" style="--left:22%;--top:34px"></i><i class="notation-note" style="--left:66%;--top:20px"></i></div><span class="tab-label">TAB</span><div class="tablature"><b class="fret" style="--string:3;--left:20%">2</b><b class="fret" style="--string:2;--left:64%">0</b></div></section>
+                  <section class="measure"><header class="measure-header"><span>18</span><strong>Am7</strong></header><div class="notation"><i class="notation-note" style="--left:17%;--top:38px"></i><i class="notation-note" style="--left:60%;--top:24px"></i></div><span class="tab-label">TAB</span><div class="tablature"><b class="fret" style="--string:4;--left:15%">0</b><b class="fret" style="--string:2;--left:58%">2</b></div></section>
+                  <section class="measure"><header class="measure-header"><span>19</span><strong>B7</strong></header><div class="notation"><i class="notation-note" style="--left:15%;--top:45px"></i><i class="notation-note" style="--left:58%;--top:18px"></i></div><span class="tab-label">TAB</span><div class="tablature"><b class="fret" style="--string:4;--left:13%">2</b><b class="fret" style="--string:1;--left:56%">0</b></div></section>
+                </div>
+              </article>
+            </section>
+
+            <div class="splitter" id="splitter" role="separator" tabindex="0" aria-label="Resize tab and video panels" aria-orientation="vertical"></div>
+
+            <section class="video-panel" aria-labelledby="videoHeading">
+              <header class="video-header">
+                <div class="panel-title"><h2 id="videoHeading">Reference video</h2><span>Lesson performance</span></div>
+                <div class="video-source" role="group" aria-label="Video source"><button class="active" type="button" data-source="reference">Reference</button><button type="button" data-source="take">My Take 04</button></div>
+              </header>
+              <div class="video-body">
+                <div class="video-frame" id="videoFrame">
+                  <img src="../public/mockups/dual-canvas-reference.png" alt="Guitarist demonstrating the selected phrase" />
+                  <div class="video-overlay"></div>
+                  <div class="video-status"><i></i><span id="videoStatusText">Reference performance</span></div>
+                  <div class="sync-state">SYNCED TO BAR 13.3</div>
+                  <div class="video-cue">Watch the index-finger anchor<small>Marker 1 · measure 13</small></div>
+                  <div class="video-bottom"><strong id="videoBottomText">Position shift</strong><time>00:31.840</time></div>
+                </div>
+              </div>
+              <footer class="video-footer"><span>Original 16:10 · shown without cropping</span><button id="fitButton" type="button">Fill frame</button></footer>
+            </section>
+
+            <aside class="edit-inspector" aria-label="Tab editing inspector">
+              <h2>Edit selection</h2><p>Editing tools replace video while the score stays wide.</p>
+              <section class="inspector-section"><span>Rhythm</span><div class="inspector-choice"><strong>1/8 note</strong><button type="button">Change</button></div><div class="inspector-choice"><strong>Let ring</strong><button type="button">Off</button></div></section>
+              <section class="inspector-section"><span>Technique</span><div class="inspector-choice"><strong>Hammer-on</strong><button type="button">Apply</button></div><div class="inspector-choice"><strong>Slide</strong><button type="button">Apply</button></div><div class="inspector-choice"><strong>Vibrato</strong><button type="button">Apply</button></div></section>
+              <section class="inspector-section"><span>Position</span><div class="inspector-choice"><strong>String 3 · fret 5</strong><button type="button">Move</button></div></section>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="input-hud" aria-label="Live guitar input">
+        <div class="hud-block"><div class="hud-label"><span>Input</span><strong>Scarlett 2i2 · Connected</strong></div><div class="level-meter" aria-label="Healthy input level"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="warm"></i><i></i><i></i></div></div>
+        <div class="hud-block"><div class="hud-label"><span>Heard</span><strong>Live observation</strong></div><div class="heard-reading"><strong>E minor <small>(likely)</small></strong><div class="lifecycle"><span>Provisional · high confidence</span><small>Close to the selected passage</small></div></div></div>
+        <div class="hud-block"><div class="hud-label"><span>Pitch</span><strong>Centered</strong></div><div class="pitch-reading"><strong>+3¢</strong><div class="pitch-track"><i></i></div></div></div>
+        <div class="hud-actions"><button id="detailsButton" type="button">Analysis details</button><button id="inputButton" type="button">Input settings</button></div>
+      </section>
+
+      <aside class="hud-details" id="hudDetails" aria-label="Analysis details">
+        <div class="detail-column"><span>Detected notes</span><strong>E · G · B · D</strong><p>Short-lived live evidence from the last 1.2 seconds.</p></div>
+        <div class="detail-column"><span>Other candidates</span><strong>Em7 · 64%</strong><p>Em · 58% · insufficient evidence for extensions.</p></div>
+        <div class="detail-column"><span>Lifecycle</span><strong>Provisional</strong><p>Original detector evidence will be preserved with the take.</p></div>
+      </aside>
+
+      <footer class="transport" aria-label="Practice transport">
+        <div class="transport-buttons"><button type="button" aria-label="Previous measure">|◀</button><button class="play" id="playButton" type="button" aria-label="Play">▶</button><button type="button" aria-label="Next measure">▶|</button><button class="record" id="recordButton" type="button" aria-label="Record take"><i></i></button></div>
+        <div class="transport-center">
+          <div class="transport-top">
+            <div class="time-state"><strong id="timeReadout">00:31.840</strong><span>Measure 13 · beat 3</span><div class="review-summary"><i></i><span>3 moments to review</span></div></div>
+            <div class="practice-options"><button class="active" id="loopButton" type="button">Loop range</button><button class="active" id="metroButton" type="button">Metronome</button><button id="countButton" type="button">Count-in: 1 bar</button></div>
+          </div>
+          <div class="shared-timeline" aria-label="Synchronized score, audio, and video timeline">
+            <span class="beat" data-measure="12"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span><span class="beat" data-measure="13"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span><span class="beat" data-measure="14"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span><span class="beat" data-measure="15"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span><span class="beat" data-measure="16"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span>
+            <div class="loop-range"></div><div class="reference-wave"></div><div class="take-wave"></div><div class="timeline-cursor"></div>
+            <button class="review-marker" type="button" style="--left:31%" data-position="31" aria-label="Review marker 1">1</button><button class="review-marker" type="button" style="--left:57%" data-position="57" aria-label="Review marker 2">2</button><button class="review-marker" type="button" style="--left:71%" data-position="71" aria-label="Review marker 3">3</button>
+          </div>
+        </div>
+        <div class="tempo-control"><div class="tempo-value"><span>Practice tempo</span><strong><b id="tempoValue">86</b> <small>BPM</small></strong></div><div class="tempo-buttons"><button id="tempoDown" type="button" aria-label="Decrease tempo">−</button><button id="tempoUp" type="button" aria-label="Increase tempo">+</button></div></div>
+      </footer>
+
+      <button class="advanced-button" id="advancedButton" type="button">Advanced analysis</button>
+      <aside class="advanced-drawer" id="advancedDrawer" aria-label="Advanced analysis">
+        <h3>Advanced analysis</h3><p>MIDI, ranked candidates, and sync diagnostics stay available without defining the default practice view.</p>
+        <div class="candidate"><strong>E minor</strong><b>72%</b><small>Root, minor third, and fifth observed.</small></div><div class="candidate"><strong>E minor 7</strong><b>64%</b><small>D observed briefly; extension remains uncertain.</small></div><div class="candidate"><strong>G6 / E</strong><b>31%</b><small>Partial overlap; not enough stable evidence.</small></div>
+        <span class="section-label">MIDI interpretation</span>
+        <div class="midi-mini"><div><i style="--left:12%;--width:18%"></i></div><div><i style="--left:32%;--width:21%"></i></div><div><i style="--left:8%;--width:15%"></i><i style="--left:59%;--width:19%"></i></div><div><i style="--left:22%;--width:23%"></i></div><div><i style="--left:4%;--width:16%"></i></div><div><i style="--left:68%;--width:24%"></i></div></div>
+      </aside>
+      <div class="mode-note" id="modeNote"></div>
+    </main>
+
+    <script>
+      const app = document.getElementById('app');
+      const playButton = document.getElementById('playButton');
+      const recordButton = document.getElementById('recordButton');
+      const videoFrame = document.getElementById('videoFrame');
+      const splitter = document.getElementById('splitter');
+      const splitStage = document.getElementById('splitStage');
+      const modeNote = document.getElementById('modeNote');
+      let tempo = 86;
+
+      function setPlaying(value) {
+        app.classList.toggle('playing', value);
+        playButton.textContent = value ? 'Ⅱ' : '▶';
+        playButton.setAttribute('aria-label', value ? 'Pause' : 'Play');
+      }
+
+      playButton.addEventListener('click', () => setPlaying(!app.classList.contains('playing')));
+      recordButton.addEventListener('click', () => {
+        const recording = recordButton.classList.toggle('active');
+        recordButton.setAttribute('aria-label', recording ? 'Stop recording' : 'Record take');
+        if (recording) setPlaying(true);
+      });
+
+      function showModeNote(text) {
+        modeNote.textContent = text;
+        modeNote.classList.add('show');
+        clearTimeout(showModeNote.timer);
+        showModeNote.timer = setTimeout(() => modeNote.classList.remove('show'), 1800);
+      }
+
+      document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
+        document.querySelectorAll('[data-mode]').forEach(item => item.classList.toggle('active', item === button));
+        app.classList.remove('mode-edit', 'mode-practice', 'mode-review');
+        app.classList.remove('layout-tab', 'layout-video');
+        document.querySelectorAll('[data-layout]').forEach(item => item.classList.toggle('active', item.dataset.layout === 'split'));
+        app.classList.add(`mode-${button.dataset.mode}`);
+        if (button.dataset.mode === 'edit') showModeNote('Editing tools are open beside the tab.');
+        if (button.dataset.mode === 'practice') showModeNote('Practice range and live input are ready.');
+        if (button.dataset.mode === 'review') showModeNote('Reference and Take 04 are aligned for review.');
+      }));
+
+      document.querySelectorAll('[data-layout]').forEach(button => button.addEventListener('click', () => {
+        document.querySelectorAll('[data-layout]').forEach(item => item.classList.toggle('active', item === button));
+        app.classList.remove('layout-tab', 'layout-video');
+        if (button.dataset.layout !== 'split') app.classList.add(`layout-${button.dataset.layout}`);
+      }));
+
+      document.querySelectorAll('.score-view button').forEach(button => button.addEventListener('click', () => {
+        document.querySelectorAll('.score-view button').forEach(item => item.classList.toggle('active', item === button));
+      }));
+
+      document.querySelectorAll('[data-source]').forEach(button => button.addEventListener('click', () => {
+        document.querySelectorAll('[data-source]').forEach(item => item.classList.toggle('active', item === button));
+        const take = button.dataset.source === 'take';
+        videoFrame.classList.toggle('take', take);
+        document.getElementById('videoStatusText').textContent = take ? 'Your performance · Take 04' : 'Reference performance';
+        document.getElementById('videoBottomText').textContent = take ? 'Compare wrist angle' : 'Position shift';
+      }));
+
+      document.getElementById('fitButton').addEventListener('click', event => {
+        const fill = videoFrame.classList.toggle('fill');
+        event.currentTarget.textContent = fill ? 'Fit video' : 'Fill frame';
+        document.querySelector('.video-footer span').textContent = fill ? 'Fill mode · edges may be cropped' : 'Original 16:10 · shown without cropping';
+      });
+
+      function toggleLibrary() { app.classList.toggle('library-closed'); }
+      document.getElementById('libraryButton').addEventListener('click', toggleLibrary);
+      document.getElementById('libraryTopButton').addEventListener('click', toggleLibrary);
+
+      document.getElementById('detailsButton').addEventListener('click', event => {
+        const open = document.getElementById('hudDetails').classList.toggle('open');
+        event.currentTarget.textContent = open ? 'Hide details' : 'Analysis details';
+      });
+
+      document.getElementById('advancedButton').addEventListener('click', event => {
+        const open = document.getElementById('advancedDrawer').classList.toggle('open');
+        event.currentTarget.classList.toggle('active', open);
+        event.currentTarget.textContent = open ? 'Close advanced analysis' : 'Advanced analysis';
+      });
+
+      ['loopButton', 'metroButton', 'countButton'].forEach(id => document.getElementById(id).addEventListener('click', event => event.currentTarget.classList.toggle('active')));
+
+      document.querySelectorAll('.review-marker').forEach(marker => marker.addEventListener('click', () => {
+        setPlaying(false);
+        const position = Number(marker.dataset.position);
+        document.querySelector('.score-playhead').style.left = `${Math.min(95, position)}%`;
+        document.querySelector('.timeline-cursor').style.left = `${position}%`;
+        document.getElementById('timeReadout').textContent = position < 40 ? '00:30.960' : position < 65 ? '00:34.240' : '00:36.120';
+      }));
+
+      function updateTempo(delta) {
+        tempo = Math.max(40, Math.min(160, tempo + delta));
+        document.getElementById('tempoValue').textContent = tempo;
+      }
+      document.getElementById('tempoDown').addEventListener('click', () => updateTempo(-2));
+      document.getElementById('tempoUp').addEventListener('click', () => updateTempo(2));
+
+      function setSplit(clientX) {
+        const bounds = splitStage.getBoundingClientRect();
+        const ratio = Math.min(72, Math.max(44, ((clientX - bounds.left) / bounds.width) * 100));
+        app.style.setProperty('--score-width', `${ratio}%`);
+        splitter.setAttribute('aria-valuenow', Math.round(ratio));
+      }
+      splitter.addEventListener('pointerdown', event => { splitter.classList.add('dragging'); splitter.setPointerCapture(event.pointerId); });
+      splitter.addEventListener('pointermove', event => { if (splitter.hasPointerCapture(event.pointerId)) setSplit(event.clientX); });
+      splitter.addEventListener('pointerup', event => { splitter.classList.remove('dragging'); splitter.releasePointerCapture(event.pointerId); });
+      splitter.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+        event.preventDefault();
+        const current = parseFloat(getComputedStyle(app).getPropertyValue('--score-width')) || 58;
+        app.style.setProperty('--score-width', `${Math.min(72, Math.max(44, current + (event.key === 'ArrowLeft' ? -2 : 2)))}%`);
+      });
+
+      document.addEventListener('keydown', event => {
+        if (event.code === 'Space' && document.activeElement.tagName !== 'BUTTON') { event.preventDefault(); setPlaying(!app.classList.contains('playing')); }
+        if (event.key.toLowerCase() === 'v' && document.activeElement.tagName !== 'INPUT') document.querySelector('[data-layout="video"]').click();
+      });
+    </script>
+  </body>
+</html>

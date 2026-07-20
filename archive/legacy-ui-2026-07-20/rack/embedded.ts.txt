@@ -1,4 +1,4 @@
-/** Stable styling hooks for product tools rendered inside a RackModule. */
+/** Archived legacy styling hooks for product tools rendered inside a RackModule. */
 export const rackEmbeddedClassNames = {
   section: 'ss-rack-embedded-section',
   surface: 'ss-rack-embedded-surface',

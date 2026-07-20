@@ -1,0 +1,15 @@
+<!-- Archived legacy V2 mockup entry. -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="StringSight V2 — a live, score-centered guitar practice workspace." />
+    <meta name="theme-color" content="#ebe8de" />
+    <title>StringSight V2 — Live Practice Canvas</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/mockup-v2-main.tsx"></script>
+  </body>
+</html>
