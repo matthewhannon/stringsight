@@ -60,6 +60,10 @@ export const InitialPolyphonicAnalysisSnapshot: PolyphonicAnalysisSnapshot = {
 
 type SnapshotListener = () => void;
 type WorkerFactory = () => Worker;
+type AnalysisStreamMode = 'monitoring' | 'session';
+
+const pcmStream = (chunk: PcmChunk): 'monitoring' | 'recording' | 'replay' =>
+  chunk.stream ?? (chunk.source === 'replay' ? 'replay' : 'recording');
 
 const defaultWorkerFactory = (): Worker =>
   new Worker(new URL('../../workers/polyphonic-analysis.worker.ts', import.meta.url), {
@@ -71,25 +75,37 @@ export class PolyphonicAnalysisController {
   private readonly capture: MicrophoneCapture;
   private readonly listeners = new Set<SnapshotListener>();
   private readonly maxInFlightChunks: number;
+  private readonly maxMonitoringRunMs: number;
+  private readonly streamMode: AnalysisStreamMode;
   private readonly unsubscribeCaptureChunks: () => void;
   private readonly unsubscribeCaptureState: () => void;
   private readonly workerFactory: WorkerFactory;
   private inFlightChunks = 0;
   private pendingDiscontinuity = false;
   private previousOperationState: string;
+  private previousMonitoringEligible: boolean;
   private runCounter = 0;
+  private monitoringRunStartedAtMs: number | null = null;
   private snapshot: PolyphonicAnalysisSnapshot = InitialPolyphonicAnalysisSnapshot;
   private chordAnalysisProfile: ChordAnalysisProfile = 'accurate';
   private worker: Worker | null = null;
 
   constructor(
     capture: MicrophoneCapture,
-    options: { maxInFlightChunks?: number; workerFactory?: WorkerFactory } = {},
+    options: {
+      maxInFlightChunks?: number;
+      maxMonitoringRunMs?: number;
+      streamMode?: AnalysisStreamMode;
+      workerFactory?: WorkerFactory;
+    } = {},
   ) {
     this.capture = capture;
     this.maxInFlightChunks = options.maxInFlightChunks ?? 8;
+    this.maxMonitoringRunMs = options.maxMonitoringRunMs ?? 15_000;
+    this.streamMode = options.streamMode ?? 'session';
     this.workerFactory = options.workerFactory ?? defaultWorkerFactory;
     this.previousOperationState = capture.currentSnapshot.operationState;
+    this.previousMonitoringEligible = this.monitoringEligible();
     this.unsubscribeCaptureChunks = capture.subscribeToChunks(this.handleChunk);
     this.unsubscribeCaptureState = capture.subscribe(this.handleCaptureState);
   }
@@ -114,7 +130,7 @@ export class PolyphonicAnalysisController {
     } satisfies PolyphonicWorkerInbound);
   }
 
-  reset(source: 'microphone' | 'replay' = 'microphone'): void {
+  reset(source: 'microphone' | 'monitoring' | 'replay' = 'microphone'): void {
     this.runCounter += 1;
     const runId = `${source}-${String(this.runCounter)}`;
     this.inFlightChunks = 0;
@@ -146,6 +162,7 @@ export class PolyphonicAnalysisController {
   private readonly handleCaptureState = () => {
     const nextState = this.capture.currentSnapshot.operationState;
     if (
+      this.streamMode === 'session' &&
       nextState === 'idle' &&
       (this.previousOperationState === 'finalizing' || this.previousOperationState === 'replaying')
     ) {
@@ -154,11 +171,40 @@ export class PolyphonicAnalysisController {
         type: 'finish',
       } satisfies PolyphonicWorkerInbound);
     }
+    const monitoringEligible = this.monitoringEligible();
+    if (
+      this.streamMode === 'monitoring' &&
+      !monitoringEligible &&
+      this.previousMonitoringEligible
+    ) {
+      this.clearMonitoringRun();
+    }
     this.previousOperationState = nextState;
+    this.previousMonitoringEligible = monitoringEligible;
   };
 
   private readonly handleChunk = (chunk: PcmChunk) => {
-    if (chunk.sequence === 0) this.reset(chunk.source);
+    const stream = pcmStream(chunk);
+    if (
+      this.streamMode === 'monitoring'
+        ? stream !== 'monitoring' || !this.monitoringEligible()
+        : stream === 'monitoring'
+    ) {
+      return;
+    }
+    if (this.streamMode === 'monitoring') {
+      const chunkStartMs = Number(chunk.startMs);
+      if (
+        chunk.sequence === 0 ||
+        this.monitoringRunStartedAtMs === null ||
+        chunkStartMs - this.monitoringRunStartedAtMs >= this.maxMonitoringRunMs
+      ) {
+        this.reset('monitoring');
+        this.monitoringRunStartedAtMs = chunkStartMs;
+      }
+    } else if (chunk.sequence === 0) {
+      this.reset(chunk.source);
+    }
     if (this.inFlightChunks >= this.maxInFlightChunks) {
       this.pendingDiscontinuity = true;
       this.update({ droppedChunks: this.snapshot.droppedChunks + 1 });
@@ -184,6 +230,35 @@ export class PolyphonicAnalysisController {
       [data.buffer],
     );
   };
+
+  private monitoringEligible(): boolean {
+    const capture = this.capture.currentSnapshot;
+    return (
+      capture.connectionState === 'monitoring' &&
+      ['failed', 'idle', 'paused'].includes(capture.operationState)
+    );
+  }
+
+  private clearMonitoringRun(): void {
+    this.monitoringRunStartedAtMs = null;
+    this.inFlightChunks = 0;
+    this.pendingDiscontinuity = false;
+    this.snapshot = {
+      ...InitialPolyphonicAnalysisSnapshot,
+      chordAnalysisProfile: this.chordAnalysisProfile,
+      chroma: emptyChroma(),
+    };
+    if (this.worker !== null) {
+      this.runCounter += 1;
+      this.worker.postMessage({
+        chordAnalysisProfile: this.chordAnalysisProfile,
+        protocolVersion: WORKER_PROTOCOL_VERSION,
+        runId: `monitoring-cleared-${String(this.runCounter)}`,
+        type: 'reset',
+      } satisfies PolyphonicWorkerInbound);
+    }
+    this.emit();
+  }
 
   private ensureWorker(): void {
     if (this.worker !== null) return;

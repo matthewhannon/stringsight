@@ -61,6 +61,7 @@ export async function replayRecording(
         recording.startedAtMs + (startFrame / recording.sampleRate) * 1_000,
       ),
       startSampleFrame: startFrame,
+      stream: 'replay',
     });
     sequence += 1;
     if (options.realtime === true && endFrame < recording.frameCount) {

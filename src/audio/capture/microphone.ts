@@ -491,12 +491,18 @@ export class MicrophoneCapture {
   }
 
   private handlePcmChunk(message: WorkletChunkMessage): void {
-    const sequenceDiscontinuity = message.sequence !== this.expectedSequence;
+    const recordingStream = message.stream === 'recording';
+    const sequenceDiscontinuity = recordingStream && message.sequence !== this.expectedSequence;
     const frameDiscontinuity =
-      this.expectedStartFrame !== null && message.startSampleFrame !== this.expectedStartFrame;
-    const discontinuity = this.pendingDiscontinuity || sequenceDiscontinuity || frameDiscontinuity;
-    this.expectedSequence = message.sequence + 1;
-    this.expectedStartFrame = message.startSampleFrame + message.frameCount;
+      recordingStream &&
+      this.expectedStartFrame !== null &&
+      message.startSampleFrame !== this.expectedStartFrame;
+    const discontinuity =
+      recordingStream && (this.pendingDiscontinuity || sequenceDiscontinuity || frameDiscontinuity);
+    if (recordingStream) {
+      this.expectedSequence = message.sequence + 1;
+      this.expectedStartFrame = message.startSampleFrame + message.frameCount;
+    }
     const startMs = sessionTimestampMs((message.startSampleFrame / message.sampleRate) * 1_000);
     const durationMs = (message.frameCount / message.sampleRate) * 1_000;
     const contextStartSampleFrame =
@@ -529,8 +535,10 @@ export class MicrophoneCapture {
       source: 'microphone',
       startMs,
       startSampleFrame: message.startSampleFrame,
+      stream: message.stream,
     };
     for (const listener of this.chunkListeners) listener(chunk);
+    if (!recordingStream) return;
     this.update({
       clippingSamples: this.snapshot.clippingSamples + message.clippingSamples,
       discontinuityCount: this.snapshot.discontinuityCount + (discontinuity ? 1 : 0),

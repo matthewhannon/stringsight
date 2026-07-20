@@ -36,6 +36,7 @@ export const PcmChunkSchema = z.object({
   source: z.enum(['microphone', 'replay']),
   startMs: SessionTimestampMsSchema,
   startSampleFrame: z.number().int().nonnegative(),
+  stream: z.enum(['monitoring', 'recording', 'replay']).optional(),
 });
 
 export type PcmChunk = z.infer<typeof PcmChunkSchema>;
@@ -66,6 +67,7 @@ export const WorkletChunkMessageSchema = z.object({
   sampleRate: z.number().int().positive(),
   sequence: z.number().int().nonnegative(),
   startSampleFrame: z.number().int().nonnegative(),
+  stream: z.enum(['monitoring', 'recording']).default('recording'),
   type: z.literal('chunk'),
 });
 

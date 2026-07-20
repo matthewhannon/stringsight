@@ -6,7 +6,7 @@ import {
   type PolyphonicAnalysisState,
 } from '../audio/polyphonic';
 import { rackEmbeddedClassNames } from '../ui/rack';
-import { defaultPolyphonicAnalysis } from './audioCaptureController';
+import { defaultDisplayedPolyphonicAnalysis } from './audioCaptureController';
 
 type PolyphonicAnalysisPanelProps = {
   analysis?: Pick<PolyphonicAnalysisController, 'currentSnapshot' | 'subscribe'> & {
@@ -31,7 +31,7 @@ export function PolyphonicAnalysisPanel({
   analysis,
   embedded = false,
 }: PolyphonicAnalysisPanelProps) {
-  const controller = analysis ?? defaultPolyphonicAnalysis;
+  const controller = analysis ?? defaultDisplayedPolyphonicAnalysis;
   const subscribe = useCallback(
     (listener: () => void) => controller.subscribe(listener),
     [controller],

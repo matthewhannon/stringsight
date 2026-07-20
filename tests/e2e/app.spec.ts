@@ -24,7 +24,7 @@ test('captures and replays audio through a simulated microphone', async ({ page 
   const capturePanel = page.getByLabel('Audio capture controls');
   await expect(capturePanel.getByText('Microphone connected', { exact: true })).toBeVisible();
   await expect(capturePanel.getByText(/Microphone connected — not recording/)).toBeVisible();
-  await expect(page.getByLabel('Note analysis diagnostics')).not.toContainText('microphone-1');
+  await expect(page.getByLabel('Note analysis diagnostics')).toContainText('monitoring-1');
   await page.getByRole('button', { name: 'Record take' }).click();
   await expect(capturePanel.getByText('Recording', { exact: true })).toBeVisible();
   await expect(

@@ -38,6 +38,15 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
   private monitorPeak = 0;
   private monitorSumSquares = 0;
   private monitorWaveform: Float32Array;
+  private monitoringAnalysisBuffer: Float32Array;
+  private monitoringAnalysisClippingSamples = 0;
+  private monitoringAnalysisContextStartFrame = 0;
+  private monitoringAnalysisFrame = 0;
+  private monitoringAnalysisPeak = 0;
+  private monitoringAnalysisSequence = 0;
+  private monitoringAnalysisStartFrame = 0;
+  private monitoringAnalysisSumSquares = 0;
+  private monitoringAnalysisWriteOffset = 0;
   private recording = false;
   private recordingBuffer: Float32Array;
   private recordingClippingSamples = 0;
@@ -59,6 +68,7 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
       Math.floor(processorOptions?.monitorWaveformSamples ?? 64),
     );
     this.monitorWaveform = new Float32Array(this.monitorWaveformSamples);
+    this.monitoringAnalysisBuffer = new Float32Array(this.chunkFrames);
     this.recordingBuffer = new Float32Array(this.chunkFrames);
     this.port.onmessage = (event: MessageEvent<unknown>) => {
       if (!isWorkletCommand(event.data)) return;
@@ -68,6 +78,7 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
 
   private handleCommand(command: WorkletCommand): void {
     if (command.type === 'start-recording') {
+      this.resetMonitoringAnalysis();
       this.resetRecording();
       this.recordingMaxFrames = Math.max(0, Math.floor(command.maxRecordingFrames));
       this.recording = this.recordingMaxFrames > 0;
@@ -78,17 +89,32 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
     if (command.type === 'pause-recording') {
       this.publishRecordingChunk();
       this.recording = false;
+      this.resetMonitoringAnalysis();
       this.port.postMessage({ type: 'recording-paused' });
       return;
     }
     if (command.type === 'resume-recording') {
+      this.resetMonitoringAnalysis();
       if (this.recordingFrame < this.recordingMaxFrames) this.recording = true;
       this.port.postMessage({ type: 'recording-resumed' });
       return;
     }
     this.publishRecordingChunk();
     this.recording = false;
+    this.resetMonitoringAnalysis();
     this.port.postMessage({ type: 'recording-stopped' });
+  }
+
+  private resetMonitoringAnalysis(): void {
+    this.monitoringAnalysisBuffer = new Float32Array(this.chunkFrames);
+    this.monitoringAnalysisClippingSamples = 0;
+    this.monitoringAnalysisContextStartFrame = 0;
+    this.monitoringAnalysisFrame = 0;
+    this.monitoringAnalysisPeak = 0;
+    this.monitoringAnalysisSequence = 0;
+    this.monitoringAnalysisStartFrame = 0;
+    this.monitoringAnalysisSumSquares = 0;
+    this.monitoringAnalysisWriteOffset = 0;
   }
 
   private resetRecording(): void {
@@ -105,7 +131,7 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
     this.recordingWriteOffset = 0;
   }
 
-  private observeMonitorSample(sample: number): void {
+  private observeMonitorSample(sample: number, contextFrame: number): void {
     const magnitude = Math.abs(sample);
     this.monitorPeak = Math.max(this.monitorPeak, magnitude);
     this.monitorSumSquares += sample * sample;
@@ -116,11 +142,56 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
     );
     if (magnitude >= Math.abs(this.monitorWaveform[bin] ?? 0)) this.monitorWaveform[bin] = sample;
     this.monitorFrameCount += 1;
+    if (!this.recording) this.observeMonitoringAnalysisSample(sample, contextFrame);
     if (this.monitorFrameCount === this.chunkFrames) this.publishMonitorSummary();
+  }
+
+  private observeMonitoringAnalysisSample(sample: number, contextFrame: number): void {
+    if (this.monitoringAnalysisWriteOffset === 0) {
+      this.monitoringAnalysisContextStartFrame = contextFrame;
+      this.monitoringAnalysisStartFrame = this.monitoringAnalysisFrame;
+    }
+    this.monitoringAnalysisBuffer[this.monitoringAnalysisWriteOffset] = sample;
+    this.monitoringAnalysisWriteOffset += 1;
+    this.monitoringAnalysisFrame += 1;
+    const magnitude = Math.abs(sample);
+    this.monitoringAnalysisPeak = Math.max(this.monitoringAnalysisPeak, magnitude);
+    this.monitoringAnalysisSumSquares += sample * sample;
+    if (magnitude >= 0.995) this.monitoringAnalysisClippingSamples += 1;
+  }
+
+  private publishMonitoringAnalysisChunk(): void {
+    if (this.monitoringAnalysisWriteOffset === 0) return;
+    const data = this.monitoringAnalysisBuffer.slice(0, this.monitoringAnalysisWriteOffset);
+    this.port.postMessage(
+      {
+        clippingSamples: this.monitoringAnalysisClippingSamples,
+        contextStartSampleFrame: this.monitoringAnalysisContextStartFrame,
+        data,
+        frameCount: data.length,
+        inputChannelMode: this.inputChannelMode,
+        inputChannelCount: this.inputChannelCount,
+        peak: this.monitoringAnalysisPeak,
+        rms: Math.sqrt(this.monitoringAnalysisSumSquares / this.monitoringAnalysisWriteOffset),
+        sampleRate,
+        sequence: this.monitoringAnalysisSequence,
+        startSampleFrame: this.monitoringAnalysisStartFrame,
+        stream: 'monitoring',
+        type: 'chunk',
+      },
+      [data.buffer],
+    );
+    this.monitoringAnalysisBuffer = new Float32Array(this.chunkFrames);
+    this.monitoringAnalysisClippingSamples = 0;
+    this.monitoringAnalysisPeak = 0;
+    this.monitoringAnalysisSequence += 1;
+    this.monitoringAnalysisSumSquares = 0;
+    this.monitoringAnalysisWriteOffset = 0;
   }
 
   private publishMonitorSummary(): void {
     if (this.monitorFrameCount === 0) return;
+    this.publishMonitoringAnalysisChunk();
     const waveform = this.monitorWaveform;
     this.port.postMessage(
       {
@@ -159,6 +230,7 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
     if (this.recordingFrame === this.recordingMaxFrames) {
       this.publishRecordingChunk();
       this.recording = false;
+      this.resetMonitoringAnalysis();
       this.port.postMessage({ type: 'recording-limit-reached' });
     }
   }
@@ -179,6 +251,7 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
         sampleRate,
         sequence: this.recordingSequence,
         startSampleFrame: this.recordingStartFrame,
+        stream: 'recording',
         type: 'chunk',
       },
       [data.buffer],
@@ -202,7 +275,7 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
     );
     for (let inputOffset = 0; inputOffset < frameCount; inputOffset += 1) {
       const sample = averageChannelSample(inputChannels, inputOffset);
-      this.observeMonitorSample(sample);
+      this.observeMonitorSample(sample, currentFrame + inputOffset);
       if (this.recording) this.observeRecordingSample(sample, currentFrame + inputOffset);
     }
     return true;

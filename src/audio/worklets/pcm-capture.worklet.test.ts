@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 describe('PCM capture worklet lifecycle', () => {
-  it('emits only bounded summaries while monitoring and keeps recording time contiguous', async () => {
+  it('emits bounded transient analysis while monitoring and keeps recording time contiguous', async () => {
     const posted: PostedMessage[] = [];
     const processorConstructors: (new (options?: AudioWorkletNodeOptions) => Processor)[] = [];
 
@@ -49,9 +49,24 @@ describe('PCM capture worklet lifecycle', () => {
       processor.port.onmessage?.(new MessageEvent('message', { data }));
 
     process(256);
-    expect(posted.map(({ type }) => type)).toEqual(['monitor-summary', 'monitor-summary']);
-    expect(posted.every((message) => message.type !== 'chunk')).toBe(true);
-    expect(posted.map((message) => (message.waveform as Float32Array).length)).toEqual([8, 8]);
+    expect(posted.map(({ type }) => type)).toEqual([
+      'chunk',
+      'monitor-summary',
+      'chunk',
+      'monitor-summary',
+    ]);
+    const monitoringChunks = posted.filter(
+      (message) => message.type === 'chunk' && message.stream === 'monitoring',
+    );
+    expect(monitoringChunks).toMatchObject([
+      { frameCount: 128, sequence: 0, startSampleFrame: 0 },
+      { frameCount: 128, sequence: 1, startSampleFrame: 128 },
+    ]);
+    expect(
+      posted
+        .filter((message) => message.type === 'monitor-summary')
+        .map((message) => (message.waveform as Float32Array).length),
+    ).toEqual([8, 8]);
 
     posted.length = 0;
     command({ maxRecordingFrames: 200, type: 'start-recording' });
@@ -61,13 +76,20 @@ describe('PCM capture worklet lifecycle', () => {
     command({ type: 'resume-recording' });
     process(72);
 
-    const chunks = posted.filter((message) => message.type === 'chunk');
+    const chunks = posted.filter(
+      (message) => message.type === 'chunk' && message.stream === 'recording',
+    );
     expect(chunks).toMatchObject([
       { frameCount: 128, sequence: 0, startSampleFrame: 0 },
       { frameCount: 72, sequence: 1, startSampleFrame: 128 },
     ]);
     expect(posted.map(({ type }) => type)).toContain('recording-limit-reached');
     expect(chunks.reduce((total, chunk) => total + Number(chunk.frameCount), 0)).toBe(200);
+    expect(posted).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sequence: 0, stream: 'monitoring', type: 'chunk' }),
+      ]),
+    );
 
     posted.length = 0;
     command({ maxRecordingFrames: 1_000, type: 'start-recording' });
@@ -75,7 +97,12 @@ describe('PCM capture worklet lifecycle', () => {
     command({ type: 'stop-recording' });
     expect(posted).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ frameCount: 50, sequence: 0, type: 'chunk' }),
+        expect.objectContaining({
+          frameCount: 50,
+          sequence: 0,
+          stream: 'recording',
+          type: 'chunk',
+        }),
         expect.objectContaining({ type: 'recording-stopped' }),
       ]),
     );

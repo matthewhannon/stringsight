@@ -5,6 +5,7 @@ import {
   InitialCaptureSnapshot,
   MicrophoneCapture,
   PcmChunkSchema,
+  type CaptureSnapshot,
   type PcmChunk,
 } from '../capture';
 import { PolyphonicAnalysisController } from './controller';
@@ -208,5 +209,63 @@ describe('PolyphonicAnalysisController', () => {
 
     controller.dispose();
     expect(worker.terminated).toBe(true);
+  });
+
+  it('keeps transient chord analysis bounded and separate from recording runs', () => {
+    const capture = new MicrophoneCapture();
+    let chunkListener: ((chunk: PcmChunk) => void) | null = null;
+    let stateListener: (() => void) | null = null;
+    let captureSnapshot: CaptureSnapshot = {
+      ...InitialCaptureSnapshot,
+      connectionState: 'monitoring',
+    };
+    Object.defineProperty(capture, 'currentSnapshot', { get: () => captureSnapshot });
+    vi.spyOn(capture, 'subscribeToChunks').mockImplementation((listener) => {
+      chunkListener = listener;
+      return vi.fn();
+    });
+    vi.spyOn(capture, 'subscribe').mockImplementation((listener) => {
+      stateListener = () => listener(captureSnapshot);
+      return vi.fn();
+    });
+    const worker = new FakeWorker();
+    const controller = new PolyphonicAnalysisController(capture, {
+      maxMonitoringRunMs: 10,
+      streamMode: 'monitoring',
+      workerFactory: () => worker as unknown as Worker,
+    });
+    const sendChunk = chunkListener as unknown as (chunk: PcmChunk) => void;
+
+    sendChunk(PcmChunkSchema.parse({ ...pcmChunk, stream: 'recording' }));
+    expect(worker.messages).toEqual([]);
+    sendChunk(PcmChunkSchema.parse({ ...pcmChunk, stream: 'monitoring' }));
+    expect(controller.currentSnapshot.runId).toBe('monitoring-1');
+
+    sendChunk(
+      PcmChunkSchema.parse({
+        ...pcmChunk,
+        sequence: 1,
+        startMs: 12,
+        startSampleFrame: 4,
+        stream: 'monitoring',
+      }),
+    );
+    expect(controller.currentSnapshot.runId).toBe('monitoring-2');
+    expect(
+      worker.messages.filter(
+        (message) =>
+          typeof message === 'object' &&
+          message !== null &&
+          'type' in message &&
+          message.type === 'reset',
+      ),
+    ).toHaveLength(2);
+
+    captureSnapshot = { ...captureSnapshot, operationState: 'recording' };
+    const notifyState = stateListener as unknown as () => void;
+    notifyState();
+    expect(controller.currentSnapshot.runId).toBeNull();
+    expect(worker.messages.at(-1)).toMatchObject({ type: 'reset' });
+    controller.dispose();
   });
 });

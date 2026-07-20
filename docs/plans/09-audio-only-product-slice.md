@@ -35,13 +35,15 @@ and preserves completed results until replay replacement is ready.
 Microphone connection and recording operation are independent. Connection follows
 `disconnected -> connecting -> monitoring`; recording follows
 `idle -> recording <-> paused -> finalizing -> idle`. Connecting alone does not create a session or
-analyzer run. Replay is an operation on a complete session and does not erase its finalized events.
-Failures preserve the last valid recording and events whenever recovery is possible.
+recording transport. It does create bounded transient pitch/chord analyzer runs that are isolated
+from the session analyzers. Replay is an operation on a complete session and does not erase its
+finalized events. Failures preserve the last valid recording and events whenever recovery is possible.
 
 Pausing tells the worklet to flush its partial recording chunk and stop advancing its logical frame
 clock. The `AudioContext` remains active for bounded meter/waveform monitoring, but monitoring PCM is
-not transferred to analyzers or retained. Stop finalizes the accepted take and returns to monitoring;
-only explicit Disconnect releases the media tracks and `AudioContext`.
+sent only to rotating transient analyzers and is not recorded or retained. The recording analyzers
+remain paused so Resume preserves their contiguous run. Stop finalizes the accepted take and returns
+to transient live analysis; only explicit Disconnect releases the media tracks and `AudioContext`.
 
 ## Event and interpretation model
 
@@ -111,6 +113,6 @@ states use both text and visual treatment.
   F1, and pitch-class-set recall. The generic label-driven private production replay validates 18
   correctly labeled events from the 19-chord take and all 10 power/inversion events, including both
   labeled bass inversions. The fresh transition take remains exactly G-D-E-G-D-E.
-- `npm run verify` passes 276 tests across 32 files with 90.78% statement and 80.12% branch coverage,
+- `npm run verify` passes 280 tests across 33 files with 91.02% statement and 80.4% branch coverage,
   plus formatting, linting, type checking, license checks, corpus validation, evaluator self-tests,
   monophonic evaluation, and the production build.

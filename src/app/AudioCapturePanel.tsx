@@ -232,8 +232,8 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
 
           {snapshot.connectionState === 'monitoring' && snapshot.operationState === 'idle' && (
             <p className="capture-calibration" role="status">
-              Microphone connected — not recording. Only bounded input-meter and waveform summaries
-              are retained until you record a take.
+              Microphone connected — not recording. Live pitch and chord analysis uses a bounded
+              transient window; no session or recording is retained until you record a take.
             </p>
           )}
 
@@ -431,9 +431,9 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
             </button>
           </div>
           <p className="capture-reference-help">
-            Privacy: microphone audio stays in this browser. Monitoring keeps only the latest
-            bounded meter and waveform summary; Disconnect microphone releases the media track and
-            audio context.
+            Privacy: microphone audio stays in this browser. Monitoring keeps only bounded transient
+            analysis plus the latest meter and waveform summary; Disconnect microphone releases the
+            media track and audio context.
           </p>
           <p className="capture-reference-help">
             Optional end-to-end check: play the reference WAV through your normal input chain, avoid

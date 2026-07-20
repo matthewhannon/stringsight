@@ -535,7 +535,23 @@ describe('microphone capture orchestration', () => {
       type: 'monitor-summary',
       waveform: new Float32Array(64),
     });
-    expect(chunks).toHaveLength(0);
+    FakeAudioWorkletNode.instances[0]?.emit({
+      clippingSamples: 0,
+      data: new Float32Array(2_048).fill(0.1),
+      frameCount: 2_048,
+      inputChannelCount: 1,
+      inputChannelMode: 'mono',
+      peak: 0.1,
+      rms: 0.1,
+      sampleRate: 48_000,
+      sequence: 0,
+      startSampleFrame: 0,
+      stream: 'monitoring',
+      type: 'chunk',
+    });
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]).toMatchObject({ stream: 'monitoring' });
+    expect(FakeWorker.instances).toHaveLength(0);
     expect(capture.currentSnapshot.waveform).toHaveLength(64);
     await capture.startRecording();
     expect(FakeWorker.instances).toHaveLength(1);
@@ -581,7 +597,11 @@ describe('microphone capture orchestration', () => {
       peak: 1,
       warning: 'clipping',
     });
-    expect(chunks[0]).toMatchObject({ source: 'microphone', startMs: 0, startSampleFrame: 0 });
+    expect(chunks.find(({ stream }) => stream === 'recording')).toMatchObject({
+      source: 'microphone',
+      startMs: 0,
+      startSampleFrame: 0,
+    });
 
     const recording = await capture.stop();
     expect(recording.frameCount).toBe(4);

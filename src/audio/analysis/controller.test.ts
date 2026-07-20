@@ -208,4 +208,57 @@ describe('AudioAnalysisController', () => {
     expect(worker.terminated).toBe(true);
     expect(listener).toHaveBeenCalled();
   });
+
+  it('keeps monitoring runs bounded and isolated from recording chunks', () => {
+    const capture = new MicrophoneCapture();
+    let chunkListener: ((chunk: PcmChunk) => void) | null = null;
+    let stateListener: (() => void) | null = null;
+    let captureSnapshot: CaptureSnapshot = {
+      ...InitialCaptureSnapshot,
+      connectionState: 'monitoring',
+    };
+    Object.defineProperty(capture, 'currentSnapshot', { get: () => captureSnapshot });
+    vi.spyOn(capture, 'subscribeToChunks').mockImplementation((listener) => {
+      chunkListener = listener;
+      return vi.fn();
+    });
+    vi.spyOn(capture, 'subscribe').mockImplementation((listener) => {
+      stateListener = () => listener(captureSnapshot);
+      return vi.fn();
+    });
+    const worker = new FakeAnalysisWorker();
+    const controller = new AudioAnalysisController(capture, {
+      maxMonitoringRunMs: 10,
+      streamMode: 'monitoring',
+      workerFactory: () => worker as unknown as Worker,
+    });
+    const sendChunk = chunkListener as unknown as (chunk: PcmChunk) => void;
+
+    sendChunk({ ...pcmChunk(), stream: 'recording' });
+    expect(worker.messages).toEqual([]);
+    sendChunk({ ...pcmChunk(), stream: 'monitoring' });
+    expect(controller.currentSnapshot.runId).toBe('monitoring-1');
+    expect(worker.messages.map(messageType)).toEqual(['initialize', 'reset', 'chunk']);
+
+    sendChunk({
+      ...pcmChunk(1),
+      startMs: sessionTimestampMs(12),
+      stream: 'monitoring',
+    });
+    expect(controller.currentSnapshot.runId).toBe('monitoring-2');
+    expect(worker.messages.map(messageType)).toEqual([
+      'initialize',
+      'reset',
+      'chunk',
+      'reset',
+      'chunk',
+    ]);
+
+    captureSnapshot = { ...captureSnapshot, operationState: 'recording' };
+    const notifyState = stateListener as unknown as () => void;
+    notifyState();
+    expect(controller.currentSnapshot.runId).toBeNull();
+    expect(worker.messages.at(-1)).toMatchObject({ type: 'reset' });
+    controller.dispose();
+  });
 });

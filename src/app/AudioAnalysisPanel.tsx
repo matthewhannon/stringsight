@@ -1,11 +1,17 @@
 import { useCallback, useSyncExternalStore } from 'react';
 
-import { AudioAnalysisController, type AnalysisState } from '../audio/analysis';
-import { defaultAudioAnalysis } from './audioCaptureController';
+import {
+  type AnalysisState,
+  type AudioAnalysisController,
+  type AudioAnalysisSnapshot,
+} from '../audio/analysis';
+import { defaultDisplayedAudioAnalysis } from './audioCaptureController';
 import { rackEmbeddedClassNames } from '../ui/rack';
 
 type AudioAnalysisPanelProps = {
-  analysis?: AudioAnalysisController;
+  analysis?: Pick<AudioAnalysisController, 'currentSnapshot' | 'subscribe'> & {
+    currentSnapshot: AudioAnalysisSnapshot;
+  };
   embedded?: boolean;
 };
 
@@ -24,7 +30,7 @@ const formatCents = (cents: number): string => `${cents >= 0 ? '+' : ''}${cents.
 const TIMELINE_EVENT_LIMIT = 6;
 
 export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysisPanelProps) {
-  const controller = analysis ?? defaultAudioAnalysis;
+  const controller = analysis ?? defaultDisplayedAudioAnalysis;
   const subscribe = useCallback(
     (listener: () => void) => controller.subscribe(listener),
     [controller],
@@ -64,7 +70,7 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
           {currentCandidate === null ? (
             <div className="note-empty">
               <strong>—</strong>
-              <span>Start the microphone and play one clear note.</span>
+              <span>Connect the microphone and play one clear note.</span>
             </div>
           ) : (
             <>

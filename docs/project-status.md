@@ -84,10 +84,11 @@ event unchanged.
 Item 9, the complete audio-only session product slice, is complete under
 `docs/plans/09-audio-only-product-slice.md`. Microphone connection is now independent from recording:
 Connect opens the local audio graph and enters bounded monitoring without creating a session,
-transport worker, analyzer run, or retained PCM history. Record starts a fresh logical frame clock
-and analyzer/session run; Pause flushes partial PCM and excludes paused wall-clock time while
-monitoring continues; Stop finalizes and returns to monitoring; Disconnect explicitly releases the
-media tracks and audio context while preserving a completed take.
+transport worker, or retained PCM history. Rotating transient monophonic and polyphonic runs provide
+live pitch/chord feedback while connected. Record starts a separate logical frame clock and
+analyzer/session run; Pause flushes partial PCM and excludes paused wall-clock time while transient
+analysis continues independently; Stop finalizes and returns to live monitoring; Disconnect
+explicitly releases the media tracks and audio context while preserving a completed take.
 
 In-memory recording is conservatively limited to five minutes for short guitar takes. Reaching the
 limit finalizes the accepted audio successfully with an honest maximum-duration warning. Terminal
@@ -169,7 +170,7 @@ interpretation. Audio must remain useful without a camera.
 
 The current verification passes formatting, linting, type checking, dependency-license checks,
 corpus validation, evaluation self-tests, coverage, and the production build. The suite contains
-276 unit/integration tests across 32 files with 90.78% statement and 80.12% branch coverage. The
+280 unit/integration tests across 33 files with 91.02% statement and 80.4% branch coverage. The
 public production browser matrix remains 100% chord top-1/top-3 on its two fixtures, and the private
 browser replay now asserts the supported labels and inversions on the real model/fusion path. Item
 7's reopened finalization checkbox and Item 9 are closed, including the fresh

@@ -24,7 +24,7 @@ StringSight needs one reliable timestamped PCM stream that can originate from li
 | Component               | Responsibility                                                                                                            |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `MicrophoneCapture`     | Permission, device selection, independent connection/recording state, graph lifecycle, recording timestamps, backpressure |
-| PCM capture worklet     | Emit bounded monitoring summaries; copy and transfer PCM only while recording                                             |
+| PCM capture worklet     | Emit bounded diagnostics and transient analysis PCM; separately emit retainable recording PCM only during a take          |
 | Audio transport worker  | Validate ordering, acknowledge chunks, assemble recordings, report buffered duration                                      |
 | `RecordingReplaySource` | Re-chunk stored PCM through the same `PcmChunk` subscriber interface                                                      |
 | React capture panel     | Explain permission, select a device, show state/diagnostics, waveform, level, and recovery actions                        |
@@ -41,11 +41,13 @@ The main thread coordinates these pieces but does not run per-sample DSP. The wo
 1. On page load, report capability support without requesting permission.
 2. A user gesture calls `getUserMedia` with mono audio plus echo cancellation, noise suppression, and automatic gain control requested off.
 3. Create/resume `AudioContext` and load the capture worklet. Connection enters monitoring without
-   creating a session, transport worker, analyzer run, or retained PCM history.
+   creating a session, transport worker, or retained PCM history. Separate transient analyzers
+   provide live pitch and chord feedback.
 4. Connect `MediaStreamAudioSourceNode` to the worklet. The worklet connects through a zero-gain node so it remains scheduled without audible monitoring or feedback.
-5. Monitoring publishes fixed-size meter and waveform summaries only. Starting a take resets the
-   logical frame/sequence counters, creates the transport worker, and begins PCM delivery to the
-   analyzers.
+5. Monitoring publishes fixed-size meter/waveform summaries and fixed PCM chunks to local transient
+   analyzers. Their runs rotate every 15 seconds so derived events and model input remain bounded.
+   Starting a take resets the logical frame/sequence counters, creates the transport worker, and
+   switches the UI and session controller to separate recording analyzers.
 6. Pause flushes the partial recording chunk and stops logical recording-time advancement while the
    connected microphone continues bounded monitoring. Resume continues at the next logical frame,
    excluding the paused wall-clock gap.
@@ -95,7 +97,8 @@ Recovery behavior:
 
 - No microphone request occurs before explicit user action.
 - Raw PCM remains in the browser and is retained only for the current bounded recording. Monitoring
-  does not retain raw PCM or growing event history.
+  PCM is processed synchronously by local analyzers and discarded; analyzer runs rotate so no
+  growing event or model-input history is retained.
 - Recording is conservatively capped at five minutes. Reaching the cap finalizes the accepted take
   successfully and surfaces a maximum-duration warning; this slice does not implement long-form
   streaming storage.

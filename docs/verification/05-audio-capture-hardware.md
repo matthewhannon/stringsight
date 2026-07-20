@@ -14,7 +14,8 @@ later hardware-matrix pass.
 2. Confirm the browser has not requested microphone permission before pressing **Connect microphone**.
 3. Select the intended interface or microphone, press **Connect microphone**, and allow permission when prompted.
 4. Confirm the UI says **Microphone connected — not recording** and that the meter/waveform respond
-   without creating note or chord events. Press **Record take**, then play or strum for about ten seconds.
+   while live pitch/chord feedback appears without creating a session or retained take. Press
+   **Record take**, then play or strum for about ten seconds.
 5. Confirm the waveform and input meter move without audible microphone monitoring or feedback.
 6. Confirm the actual sample rate and channel count appear. Record whether echo cancellation, noise suppression, and automatic gain report `Off` or `Not reported`.
 7. Stay quiet for at least two seconds and confirm the silence warning appears, then play again and confirm it clears.
