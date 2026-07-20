@@ -237,17 +237,19 @@ approves what the spike may test; it does not pre-approve a dependency or invent
       state/action regions, desktop resize/zoom/accessibility, and first-release exclusions.
 - [x] Record owner acceptance of the consequential product decisions in
       `docs/plans/desktop-practice-product-decisions.md`.
-- [ ] Add optional `ReferenceVideo`, `TakeVideo`, separately stored timed-media assets, and a
-      versioned multi-anchor `ScoreMediaSyncMap` bound to the exact immutable `PracticeDocument`
-      revision ID and content hash it was authored against. Define stale detection on revision/hash
-      mismatch and explicit validated rebase or re-author behavior after score edits; never silently
-      retarget a map.
-- [ ] Preserve `PracticeTransport` and the application audio clock as the sole command/time authority
+- [x] Add optional `ReferenceVideo`, `TakeVideo`, separately stored timed-media assets, a versioned
+      multi-anchor `ReferenceScoreMediaSyncMap` bound to the exact immutable `PracticeDocument`
+      revision/hash it was authored against, and a distinct `TakeCaptureMediaSyncMap` bound to one
+      immutable take and its capture/audio epochs. Define stale reference-map detection plus explicit
+      validated rebase or re-author behavior after score edits; never silently retarget either map.
+- [x] Preserve `PracticeTransport` and the application audio clock as the sole command/time authority
       for notation playback, metronome, capture, replay, cursor, and synchronized video.
-- [ ] Define the spike questions, accepted invariants, candidate/fallback order, and provisional
+- [x] Define the spike questions, accepted invariants, candidate/fallback order, and provisional
       policies without claiming technology, codec, or measured-budget acceptance.
-- [ ] Independently review the product and architecture direction and resolve every blocking
+- [x] Independently review the product and architecture direction and resolve every blocking
       contradiction before the spike.
+- [x] Record owner approval of the spike-only alphaTab/MPL evaluation, candidate/fallback order,
+      staged desktop evidence matrix, and invariant-based disqualifications.
 
 **Done when:** The owner has accepted the product boundary and a proposed architecture direction is
 coherent enough to define a safe disposable spike without claiming final technology or budgets.
@@ -409,11 +411,13 @@ authority across pauses, seeks, ranges, tempo maps, failures, and long runs.
 
 - [ ] Store `ReferenceVideo` and `TakeVideo` as optional media records separate from the canonical
       score, observed evidence, and immutable take identity. Attach `ReferenceVideo` through its
-      revision-bound sync map, not directly to a mutable document.
-- [ ] Implement versioned `ScoreMediaSyncMap` records with one or multiple validated
-      score-tick/media-time anchors, deterministic interpolation, provenance, and edit history. Each
-      map binds the exact immutable `PracticeDocument` revision ID and content hash against which its
-      anchors were authored.
+      revision-bound reference map, not directly to a mutable document; attach `TakeVideo` through
+      its immutable take/capture mapping.
+- [ ] Implement versioned `ReferenceScoreMediaSyncMap` records with one or multiple validated
+      score-tick/media-PTS anchors, deterministic interpolation/inverse behavior, provenance, gaps,
+      and edit history. Implement separate `TakeCaptureMediaSyncMap` records from take-video PTS to
+      capture/audio/logical frames and transport/capture generations. Never substitute one role for
+      the other.
 - [ ] Detect a sync map as stale whenever its bound revision ID or content hash differs from the
       score revision being used. Score edits require an explicit validated rebase or re-author
       operation that preserves provenance; never silently retarget anchors to a new revision.
@@ -524,8 +528,9 @@ and cannot mutate or overstate either expected or observed evidence.
 This preserves the useful outcomes from the former Items 11-13 but deliberately moves them after the
 complete Practice Workspace. It is separate from reference/take video playback.
 
-- [ ] Implement permissioned camera capture, shared-timebase frame timestamps, bounded off-main-thread
-      transport, diagnostics, fixture replay, adaptive quality, and audio-priority degradation.
+- [ ] Implement permissioned camera capture with explicit camera/performance/audio/session timestamp
+      anchors, bounded off-main-thread transport, diagnostics, fixture replay, adaptive quality, and
+      audio-priority degradation.
 - [ ] Detect, rectify, index, and temporally track the fretboard with explicit uncertainty.
 - [ ] Detect the fretting hand and map landmarks to probabilistic string/fret regions without
       presenting inferred contacts as observations.
@@ -539,7 +544,8 @@ interrupting the core practice/audio experience.
 
 This preserves the former Items 14-15 after the deferred vision gate.
 
-- [ ] Join audio and visual evidence through the shared timebase and canonical guitar model.
+- [ ] Join audio and visual evidence through explicit versioned clock mappings and the canonical
+      guitar model; do not infer that camera and audio share a physical clock.
 - [ ] Score physical candidate states over time while preserving unfused audio evidence.
 - [ ] Represent multiple plausible absolute fret alignments and use phrase-level audio evidence to
       resolve or reopen them.
@@ -810,7 +816,7 @@ behavior and completed UI commits are preserved for selective review/porting, no
 - [x] Complete item 6 real-guitar verification; automated implementation and corpus baseline pass.
 - [x] Complete item 7 polyphonic evaluation with reviewed power-chord and inversion coverage.
 - [x] Build items 5 through 9 as the first complete vertical slice.
-- [ ] Update the Product/Architecture approval gate for the desktop Practice Workspace and optional
+- [x] Update the Product/Architecture approval gate for the desktop Practice Workspace and optional
       synchronized timed media; resolve owner decisions and repeat independent review.
 - [ ] Run the disposable notation/playback/video integration gate after approval.
 - [ ] Complete active Items 10-20 in order. Do not resume the superseded rack-primary UI roadmap or
@@ -820,8 +826,8 @@ behavior and completed UI commits are preserved for selective review/porting, no
 
 - [x] **Foundation gate:** Items 1-4 complete.
 - [x] **Audio gate:** Items 5-9 complete and evaluated.
-- [ ] **Product/architecture gate:** Updated desktop/video plan and ADR accepted after owner decisions
-      and independent review.
+- [x] **Product/architecture direction gate:** Updated desktop/video product decisions and proposed
+      spike architecture approved after owner decisions and independent review.
 - [ ] **Disposable integration gate:** Notation, single-authority playback, timed video, capture
       coexistence, licensing, and measured budgets pass or select documented fallbacks.
 - [ ] **Guitar-model gate:** Active Item 10 complete and independently reviewed.

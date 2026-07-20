@@ -51,11 +51,20 @@ public verification suite remains independent of these private files.
 
 ## Next implementation milestone
 
-Product/UX step #2 was accepted on 2026-07-20. Next, update the proposed Practice System plan and ADR
-0006 for the approved desktop/timed-media direction, define the disposable spike questions and
-invariants, and independently review that provisional architecture. Then run the isolated
-notation/audio/video feasibility spike and accept final technology, license, fallback, and measured
-budgets before production domain implementation.
+Product/UX step #2 was accepted on 2026-07-20. The provisional Practice System architecture step #3
+is documented and independently reviewed with no blocking contradiction. On 2026-07-20, the owner
+approved alphaTab 1.8.4/MPL-2.0 evaluation, the proposed candidate/fallback order, the staged desktop
+browser/hardware/fixture/workload matrix, and all invariant-based disqualifications for the isolated
+spike. The Proposed plan, ADR 0006, dedicated transport/timed-media research, and spike specification
+preserve one `PracticeTransport`, one application audio runtime, explicit clock mappings, distinct
+reference and take-video maps, and a transport-owned mapless-preview fallback. No production
+technology, license procedure, codec, schema, support claim, or performance budget has been
+accepted.
+
+Next, create a separate disposable spike branch, inventory the exact available hardware/devices,
+collect raw notation/audio/MIDI/video evidence, record unavailable physical coverage honestly, and
+complete the final technology, license, fallback, supported-claim, and measured-budget acceptance
+gate before production domain implementation.
 
 The executable dependency order is maintained in `BUILD_CHECKLIST.md`. Live computer vision,
 fusion, and GPT interpretation remain deferred until after the complete score/practice/take product.
