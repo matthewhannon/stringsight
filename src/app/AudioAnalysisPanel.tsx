@@ -1,4 +1,4 @@
-import { useCallback, useSyncExternalStore } from 'react';
+import { memo, useCallback, useSyncExternalStore, type CSSProperties } from 'react';
 
 import {
   type AnalysisState,
@@ -29,6 +29,48 @@ const formatCents = (cents: number): string => `${cents >= 0 ? '+' : ''}${cents.
 
 const TIMELINE_EVENT_LIMIT = 6;
 
+type MeterScaleStyle = CSSProperties & { '--meter-scale': number };
+
+const meterScaleStyle = (value: number): MeterScaleStyle => ({
+  '--meter-scale': Math.max(0, Math.min(1, value)),
+});
+
+const NoteTimelineEvents = memo(function NoteTimelineEvents({
+  events,
+  isMonitoring,
+}: {
+  events: AudioAnalysisSnapshot['events'];
+  isMonitoring: boolean;
+}) {
+  if (events.length === 0) {
+    return <p>Detected notes will appear here with their timing, confidence, and lifecycle.</p>;
+  }
+  const timelineEvents = events.slice(-TIMELINE_EVENT_LIMIT).reverse();
+  return (
+    <ol aria-label="Latest note events, newest first">
+      {timelineEvents.map((event) => {
+        const candidate = event.candidates[0];
+        if (candidate === undefined) return null;
+        return (
+          <li key={event.id}>
+            <div className="timeline-card-heading">
+              <time>{formatTime(event.time.startMs)}</time>
+              <span className={`lifecycle lifecycle--${isMonitoring ? 'live' : event.lifecycle}`}>
+                {isMonitoring ? 'live' : event.lifecycle}
+              </span>
+            </div>
+            <strong>{candidate.noteName}</strong>
+            <div className="timeline-card-details">
+              <span>{formatCents(candidate.centsOffset)}</span>
+              <span>{Math.round(candidate.confidence * 100)}%</span>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+});
+
 export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysisPanelProps) {
   const controller = analysis ?? defaultDisplayedAudioAnalysis;
   const subscribe = useCallback(
@@ -40,7 +82,6 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
   const isMonitoring = snapshot.analysisMode === 'monitoring';
   const currentCandidate = snapshot.currentEvent?.candidates[0] ?? null;
   const alternatives = snapshot.currentEvent?.candidates.slice(1) ?? [];
-  const timelineEvents = snapshot.events.slice(-TIMELINE_EVENT_LIMIT).reverse();
 
   return (
     <section
@@ -84,7 +125,7 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
                 </div>
               </div>
               <div className="candidate-confidence" aria-label="Pitch confidence">
-                <span style={{ width: `${(currentCandidate.confidence * 100).toFixed(1)}%` }} />
+                <span style={meterScaleStyle(currentCandidate.confidence)} />
               </div>
               <div className="alternatives">
                 <span>Ranked alternatives</span>
@@ -164,33 +205,7 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
                 : `${String(snapshot.events.length)} events`}
           </span>
         </div>
-        {snapshot.events.length === 0 ? (
-          <p>Detected notes will appear here with their timing, confidence, and lifecycle.</p>
-        ) : (
-          <ol aria-label="Latest note events, newest first">
-            {timelineEvents.map((event) => {
-              const candidate = event.candidates[0];
-              if (candidate === undefined) return null;
-              return (
-                <li key={event.id}>
-                  <div className="timeline-card-heading">
-                    <time>{formatTime(event.time.startMs)}</time>
-                    <span
-                      className={`lifecycle lifecycle--${isMonitoring ? 'live' : event.lifecycle}`}
-                    >
-                      {isMonitoring ? 'live' : event.lifecycle}
-                    </span>
-                  </div>
-                  <strong>{candidate.noteName}</strong>
-                  <div className="timeline-card-details">
-                    <span>{formatCents(candidate.centsOffset)}</span>
-                    <span>{Math.round(candidate.confidence * 100)}%</span>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        )}
+        <NoteTimelineEvents events={snapshot.events} isMonitoring={isMonitoring} />
       </div>
     </section>
   );

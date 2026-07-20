@@ -1,4 +1,4 @@
-import { useCallback, useSyncExternalStore } from 'react';
+import { memo, useCallback, useSyncExternalStore, type CSSProperties } from 'react';
 
 import {
   PolyphonicAnalysisController,
@@ -27,6 +27,63 @@ const pitchClasses = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#'
 const formatTime = (milliseconds: number): string => `${(milliseconds / 1_000).toFixed(2)}s`;
 const TIMELINE_EVENT_LIMIT = 6;
 
+type MeterScaleStyle = CSSProperties & { '--meter-scale': number };
+
+const meterScaleStyle = (value: number): MeterScaleStyle => ({
+  '--meter-scale': Math.max(0, Math.min(1, value)),
+});
+
+const ChordTimelineEvents = memo(function ChordTimelineEvents({
+  events,
+  isMonitoring,
+}: {
+  events: PolyphonicAnalysisSnapshot['chordEvents'];
+  isMonitoring: boolean;
+}) {
+  if (events.length === 0) {
+    return (
+      <p>
+        {isMonitoring
+          ? 'Live chord candidates will appear here in a bounded rolling history.'
+          : 'Provisional chord candidates will appear here with timing and lifecycle.'}
+      </p>
+    );
+  }
+  const timelineEvents = events.slice(-TIMELINE_EVENT_LIMIT).reverse();
+  return (
+    <ol aria-label="Latest chord events, newest first">
+      {timelineEvents.map((event) => {
+        const candidate = event.candidates[0];
+        if (candidate === undefined) return null;
+        const observed = event.observedPitchClasses
+          .filter(({ weight }) => weight >= 0.08)
+          .map(({ pitchClass }) => pitchClass);
+        const evidenceLabel =
+          observed.length > 0
+            ? `Observed ${observed.join(' ')}`
+            : `Template ${candidate.pitchClasses.join(' ')}`;
+        return (
+          <li key={event.id}>
+            <div className="timeline-card-heading">
+              <time>{formatTime(event.time.startMs)}</time>
+              <span className={`lifecycle lifecycle--${isMonitoring ? 'live' : event.lifecycle}`}>
+                {isMonitoring ? 'live' : event.lifecycle}
+              </span>
+            </div>
+            <strong>{candidate.symbol}</strong>
+            <span className="timeline-card-evidence" aria-label={evidenceLabel}>
+              {evidenceLabel}
+            </span>
+            <span className="timeline-card-match">
+              {Math.round(candidate.confidence * 100)}% match
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+});
+
 export function PolyphonicAnalysisPanel({
   analysis,
   embedded = false,
@@ -47,7 +104,6 @@ export function PolyphonicAnalysisPanel({
         ? 'Finalized chord'
         : stateLabels[snapshot.state];
   const alternatives = snapshot.currentChord?.candidates.slice(1, 4) ?? [];
-  const timelineEvents = snapshot.chordEvents.slice(-TIMELINE_EVENT_LIMIT).reverse();
 
   return (
     <section
@@ -101,7 +157,7 @@ export function PolyphonicAnalysisPanel({
             </div>
           ) : (
             <>
-              <div className="note-readout chord-readout">
+              <div className="note-readout chord-readout" key={snapshot.currentChord?.id}>
                 <strong>{currentCandidate.symbol}</strong>
                 <div>
                   <span>{Math.round(currentCandidate.confidence * 100)}% match strength</span>
@@ -114,7 +170,7 @@ export function PolyphonicAnalysisPanel({
                 </div>
               </div>
               <div className="candidate-confidence" aria-label="Chord match strength">
-                <span style={{ width: `${(currentCandidate.confidence * 100).toFixed(1)}%` }} />
+                <span style={meterScaleStyle(currentCandidate.confidence)} />
               </div>
               <div className="alternatives">
                 <span>Ranked alternatives</span>
@@ -135,7 +191,7 @@ export function PolyphonicAnalysisPanel({
               const value = snapshot.chroma[index] ?? 0;
               return (
                 <span key={pitchClass}>
-                  <i aria-hidden="true" style={{ height: `${(value * 100).toFixed(1)}%` }} />
+                  <i aria-hidden="true" style={meterScaleStyle(value)} />
                   <b>{pitchClass}</b>
                 </span>
               );
@@ -228,46 +284,7 @@ export function PolyphonicAnalysisPanel({
                 : `${String(snapshot.chordEvents.length)} events`}
           </span>
         </div>
-        {timelineEvents.length === 0 ? (
-          <p>
-            {isMonitoring
-              ? 'Live chord candidates will appear here in a bounded rolling history.'
-              : 'Provisional chord candidates will appear here with timing and lifecycle.'}
-          </p>
-        ) : (
-          <ol aria-label="Latest chord events, newest first">
-            {timelineEvents.map((event) => {
-              const candidate = event.candidates[0];
-              if (candidate === undefined) return null;
-              const observed = event.observedPitchClasses
-                .filter(({ weight }) => weight >= 0.08)
-                .map(({ pitchClass }) => pitchClass);
-              const evidenceLabel =
-                observed.length > 0
-                  ? `Observed ${observed.join(' ')}`
-                  : `Template ${candidate.pitchClasses.join(' ')}`;
-              return (
-                <li key={event.id}>
-                  <div className="timeline-card-heading">
-                    <time>{formatTime(event.time.startMs)}</time>
-                    <span
-                      className={`lifecycle lifecycle--${isMonitoring ? 'live' : event.lifecycle}`}
-                    >
-                      {isMonitoring ? 'live' : event.lifecycle}
-                    </span>
-                  </div>
-                  <strong>{candidate.symbol}</strong>
-                  <span className="timeline-card-evidence" aria-label={evidenceLabel}>
-                    {evidenceLabel}
-                  </span>
-                  <span className="timeline-card-match">
-                    {Math.round(candidate.confidence * 100)}% match
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        )}
+        <ChordTimelineEvents events={snapshot.chordEvents} isMonitoring={isMonitoring} />
       </div>
     </section>
   );

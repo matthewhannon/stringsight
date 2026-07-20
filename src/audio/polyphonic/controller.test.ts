@@ -300,6 +300,31 @@ describe('PolyphonicAnalysisController', () => {
       'monitoring-1-chord-2',
       'monitoring-1-chord-3',
     ]);
+    const chordHistory = controller.currentSnapshot.chordEvents;
+    const noteSetHistory = controller.currentSnapshot.noteSetEvents;
+    worker.emit({
+      analysisSampleRate: 16_000,
+      chordAnalysisProfile: 'accurate',
+      chordEvents: [],
+      chroma: [0.3, 0, 0, 0, 0.3, 0, 0, 0.4, 0, 0, 0, 0],
+      energy: 0.1,
+      eventUpdateMode: 'upsert',
+      inputSampleRate: 48_000,
+      modelBackend: null,
+      modelInferenceMs: null,
+      modelLoadMs: null,
+      modelState: 'not-loaded',
+      modelWindowCount: 0,
+      noteSetEvents: [],
+      processingLatencyMs: 1,
+      protocolVersion: WORKER_PROTOCOL_VERSION,
+      runId: 'monitoring-1',
+      sourceTimestampMs: 400,
+      state: 'tracking',
+      type: 'update',
+    });
+    expect(controller.currentSnapshot.chordEvents).toBe(chordHistory);
+    expect(controller.currentSnapshot.noteSetEvents).toBe(noteSetHistory);
 
     captureSnapshot = { ...captureSnapshot, operationState: 'recording' };
     const notifyState = stateListener as unknown as () => void;

@@ -305,13 +305,19 @@ export class PolyphonicAnalysisController {
     const chordEvents =
       message.eventUpdateMode === 'replace'
         ? [...message.chordEvents]
-        : this.mergeEvents(this.snapshot.chordEvents, message.chordEvents);
+        : message.chordEvents.length === 0
+          ? this.snapshot.chordEvents
+          : this.mergeEvents(this.snapshot.chordEvents, message.chordEvents);
     const retainedChordEvents =
-      this.streamMode === 'monitoring' ? chordEvents.slice(-this.maxMonitoringEvents) : chordEvents;
+      this.streamMode === 'monitoring' && chordEvents.length > this.maxMonitoringEvents
+        ? chordEvents.slice(-this.maxMonitoringEvents)
+        : chordEvents;
     const noteSetEvents =
       message.eventUpdateMode === 'replace'
         ? [...message.noteSetEvents]
-        : this.mergeEvents(this.snapshot.noteSetEvents, message.noteSetEvents);
+        : message.noteSetEvents.length === 0
+          ? this.snapshot.noteSetEvents
+          : this.mergeEvents(this.snapshot.noteSetEvents, message.noteSetEvents);
     this.update({
       analysisSampleRate: message.analysisSampleRate,
       chordAnalysisProfile: message.chordAnalysisProfile,

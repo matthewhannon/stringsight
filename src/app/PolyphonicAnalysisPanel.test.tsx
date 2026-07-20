@@ -176,6 +176,12 @@ describe('PolyphonicAnalysisPanel', () => {
     expect(screen.getByText('125.6 ms / 3 windows')).toBeVisible();
     expect(screen.getByText(/shorter look-ahead/i)).toBeVisible();
     expect(screen.getByText('86% match strength')).toBeVisible();
+    const confidenceMeter = screen.getByLabelText('Chord match strength').querySelector('span');
+    expect(confidenceMeter?.style.getPropertyValue('--meter-scale')).toBe('0.86');
+    const chromaBars = screen.getByLabelText('Pitch-class energy').querySelectorAll('i');
+    expect(chromaBars).toHaveLength(12);
+    expect(chromaBars[0]?.style.getPropertyValue('--meter-scale')).toBe('0.3');
+    expect(chromaBars[7]?.style.getPropertyValue('--meter-scale')).toBe('0.45');
     expect(screen.getAllByText('Template C E G').length).toBeGreaterThan(0);
   });
 

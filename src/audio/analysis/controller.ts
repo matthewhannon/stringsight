@@ -245,18 +245,22 @@ export class AudioAnalysisController {
       return;
     }
     this.inFlightChunks = Math.max(0, this.inFlightChunks - 1);
-    const eventsById = new Map(this.snapshot.events.map((noteEvent) => [noteEvent.id, noteEvent]));
-    for (const noteEvent of message.events) eventsById.set(noteEvent.id, noteEvent);
-    const onsetsById = new Map(this.snapshot.onsets.map((onset) => [onset.id, onset]));
-    for (const onset of message.onsets) onsetsById.set(onset.id, onset);
-    const allEvents = [...eventsById.values()].sort(
-      (left, right) => left.time.startMs - right.time.startMs,
-    );
+    const allEvents =
+      message.events.length === 0
+        ? this.snapshot.events
+        : this.mergeEvents(this.snapshot.events, message.events, (event) => event.time.startMs);
     const events =
-      this.streamMode === 'monitoring' ? allEvents.slice(-this.maxMonitoringEvents) : allEvents;
-    const allOnsets = [...onsetsById.values()].sort((left, right) => left.atMs - right.atMs);
+      this.streamMode === 'monitoring' && allEvents.length > this.maxMonitoringEvents
+        ? allEvents.slice(-this.maxMonitoringEvents)
+        : allEvents;
+    const allOnsets =
+      message.onsets.length === 0
+        ? this.snapshot.onsets
+        : this.mergeEvents(this.snapshot.onsets, message.onsets, (onset) => onset.atMs);
     const onsets =
-      this.streamMode === 'monitoring' ? allOnsets.slice(-this.maxMonitoringOnsets) : allOnsets;
+      this.streamMode === 'monitoring' && allOnsets.length > this.maxMonitoringOnsets
+        ? allOnsets.slice(-this.maxMonitoringOnsets)
+        : allOnsets;
     this.update({
       analysisSampleRate: message.analysisSampleRate,
       currentEvent: events.at(-1) ?? null,
@@ -272,6 +276,16 @@ export class AudioAnalysisController {
       state: message.state,
     });
   };
+
+  private mergeEvents<TEvent extends { id: string }>(
+    existing: readonly TEvent[],
+    updates: readonly TEvent[],
+    timestamp: (event: TEvent) => number,
+  ): TEvent[] {
+    const byId = new Map(existing.map((event) => [event.id, event]));
+    for (const event of updates) byId.set(event.id, event);
+    return [...byId.values()].sort((left, right) => timestamp(left) - timestamp(right));
+  }
 
   private update(patch: Partial<AudioAnalysisSnapshot>): void {
     this.snapshot = { ...this.snapshot, ...patch };

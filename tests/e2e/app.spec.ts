@@ -84,6 +84,22 @@ test('finalizes a chord WAV with the real model and prepares a reviewed chord fi
   await expect(chordResults.getByText('Finalized chord', { exact: true })).toBeVisible();
   await expect(chordResults.locator('.chord-readout > strong')).toHaveText('C');
   await expect(page.getByLabel('Latest chord events').getByRole('listitem')).toHaveCount(1);
+  const chromaBars = chordResults.locator('.chroma-strip i');
+  await expect(chromaBars).toHaveCount(12);
+  const firstChromaBar = chromaBars.nth(0);
+  expect(
+    await firstChromaBar.evaluate((element) => ({
+      height: getComputedStyle(element).height,
+      transitionProperty: getComputedStyle(element).transitionProperty,
+    })),
+  ).toEqual({ height: '86px', transitionProperty: 'transform' });
+  expect(await firstChromaBar.getAttribute('style')).toContain('--meter-scale');
+  expect(
+    await chordResults
+      .getByLabel('Chord match strength')
+      .locator('span')
+      .evaluate((element) => getComputedStyle(element).transitionProperty),
+  ).toBe('transform');
 
   await page.getByLabel('Fixture type').selectOption('chords');
   const reviewedChord = page.getByLabel('True chord for event 1');

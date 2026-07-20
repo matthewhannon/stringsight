@@ -83,6 +83,8 @@ describe('AudioAnalysisPanel', () => {
     expect(screen.getByText('440.80 Hz')).toBeVisible();
     expect(screen.getAllByText('+3.2¢')).toHaveLength(2);
     expect(screen.getByText('94% confidence')).toBeVisible();
+    const confidenceMeter = screen.getByLabelText('Pitch confidence').querySelector('span');
+    expect(confidenceMeter?.style.getPropertyValue('--meter-scale')).toBe('0.94');
     expect(screen.getByText('A3')).toBeVisible();
     expect(screen.getByText('finalized')).toBeVisible();
     expect(screen.getByText('2.4 ms')).toBeVisible();

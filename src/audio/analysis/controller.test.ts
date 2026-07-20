@@ -297,6 +297,24 @@ describe('AudioAnalysisController', () => {
       'monitoring-1-onset-2',
       'monitoring-1-onset-3',
     ]);
+    const eventHistory = controller.currentSnapshot.events;
+    const onsetHistory = controller.currentSnapshot.onsets;
+    worker.emit(
+      AnalysisWorkerUpdateSchema.parse({
+        analysisSampleRate: 16_000,
+        events: [],
+        inputSampleRate: 48_000,
+        onsets: [],
+        processingLatencyMs: 1,
+        protocolVersion: WORKER_PROTOCOL_VERSION,
+        runId: 'monitoring-1',
+        sourceTimestampMs: 400,
+        state: 'tracking',
+        type: 'update',
+      }),
+    );
+    expect(controller.currentSnapshot.events).toBe(eventHistory);
+    expect(controller.currentSnapshot.onsets).toBe(onsetHistory);
 
     captureSnapshot = { ...captureSnapshot, operationState: 'recording' };
     const notifyState = stateListener as unknown as () => void;

@@ -77,6 +77,11 @@ raw events, interpreted results, confidence, alternatives, and corrections. Pers
 actions appear only when a valid session exists. Provisional, finalized, interpreted, and corrected
 states use both text and visual treatment.
 
+Live pitch-class and confidence meters interpolate analyzer frames with compositor-only transforms,
+so visual smoothing does not change detector cadence, chord confirmation, or recorded evidence.
+Controllers preserve bounded event-history identity on updates with no event changes, avoiding
+unnecessary timeline reconciliation while chroma values continue updating.
+
 ## Delivery sequence
 
 1. Add pause/resume behavior to capture, including stop-from-pause and UI controls.
@@ -114,6 +119,6 @@ states use both text and visual treatment.
   F1, and pitch-class-set recall. The generic label-driven private production replay validates 18
   correctly labeled events from the 19-chord take and all 10 power/inversion events, including both
   labeled bass inversions. The fresh transition take remains exactly G-D-E-G-D-E.
-- `npm run verify` passes 285 tests across 34 files with 91.07% statement and 80.32% branch coverage,
+- `npm run verify` passes 285 tests across 34 files with 91.09% statement and 80.37% branch coverage,
   plus formatting, linting, type checking, license checks, corpus validation, evaluator self-tests,
   monophonic evaluation, and the production build.
