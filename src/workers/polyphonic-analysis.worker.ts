@@ -11,6 +11,7 @@ import {
   type PolyphonicWorkerOutbound,
   type AcousticChordHop,
   type ChordAnalysisProfile,
+  type PolyphonicAnalysisMode,
 } from '../audio/polyphonic';
 import { StreamingAnalysisResampler } from '../audio/analysis/resample';
 import { BasicPitchModelRunner } from '../audio/polyphonic/basic-pitch-model';
@@ -35,6 +36,7 @@ let provisionalEvents = new Map<string, ChordEvent>();
 let runId = 'polyphonic-analysis';
 let sampleRate = 0;
 let chordAnalysisProfile: ChordAnalysisProfile = 'accurate';
+let analysisMode: PolyphonicAnalysisMode = 'session';
 
 type ModelDiagnostics = {
   backend: 'cpu' | 'wasm' | null;
@@ -56,7 +58,7 @@ function post(message: PolyphonicWorkerOutbound): void {
   workerScope.postMessage(message);
 }
 
-function reset(nextRunId: string): void {
+function reset(nextRunId: string, nextAnalysisMode: PolyphonicAnalysisMode): void {
   analyzer = null;
   acousticObservations = [];
   lastSourceTimestampMs = 0;
@@ -67,6 +69,7 @@ function reset(nextRunId: string): void {
   provisionalEvents = new Map();
   runId = nextRunId;
   sampleRate = 0;
+  analysisMode = nextAnalysisMode;
 }
 
 function postUpdate(
@@ -76,8 +79,6 @@ function postUpdate(
   noteSetEvents: NoteSetEvent[] = [],
   eventUpdateMode: 'replace' | 'upsert' = 'upsert',
 ): void {
-  acousticObservations.push(...result.observations);
-  result.events.forEach((event) => provisionalEvents.set(event.id, event));
   post({
     analysisSampleRate: result.analysisSampleRate,
     chordAnalysisProfile,
@@ -99,6 +100,14 @@ function postUpdate(
     state: result.state,
     type: 'update',
   });
+}
+
+function retainForFinalization(
+  result: ReturnType<StreamingProvisionalChordAnalyzer['push']>,
+): void {
+  if (analysisMode === 'monitoring') return;
+  acousticObservations.push(...result.observations);
+  result.events.forEach((event) => provisionalEvents.set(event.id, event));
 }
 
 function concatenateModelAudio(): Float32Array {
@@ -192,7 +201,7 @@ workerScope.onmessage = (event: MessageEvent<unknown>) => {
     const message = PolyphonicWorkerInboundSchema.parse(event.data);
     if (message.type === 'initialize' || message.type === 'reset') {
       chordAnalysisProfile = message.chordAnalysisProfile;
-      reset(message.runId);
+      reset(message.runId, message.analysisMode);
       post({ protocolVersion: WORKER_PROTOCOL_VERSION, runId, type: 'ready' });
       return;
     }
@@ -202,37 +211,47 @@ workerScope.onmessage = (event: MessageEvent<unknown>) => {
       return;
     }
     if (message.type === 'chunk') {
+      const monitoringChunk = message.chunk.stream === 'monitoring';
+      if (monitoringChunk !== (analysisMode === 'monitoring')) {
+        throw new Error('Polyphonic analysis received PCM for the wrong analysis mode.');
+      }
       if (analyzer === null) {
         sampleRate = message.chunk.sampleRate;
         analyzer = new StreamingProvisionalChordAnalyzer(sampleRate, runId, {
           profile: chordAnalysisProfile,
         });
-        modelResampler = new StreamingAnalysisResampler(sampleRate, BASIC_PITCH_SAMPLE_RATE);
+        modelResampler =
+          analysisMode === 'session'
+            ? new StreamingAnalysisResampler(sampleRate, BASIC_PITCH_SAMPLE_RATE)
+            : null;
       }
       if (message.chunk.sampleRate !== sampleRate) {
         throw new Error('Audio sample rate changed during a polyphonic analysis run.');
       }
       const startedAt = performance.now();
-      modelAudioStartMs ??= message.chunk.startMs;
-      const gapSamples = modelGapSampleCount(
-        modelSourceEndMs,
-        message.chunk.startMs,
-        BASIC_PITCH_SAMPLE_RATE,
-      );
-      if (gapSamples > 0) modelAudioChunks.push(new Float32Array(gapSamples));
       const result = analyzer.push(
         message.chunk.data,
         message.chunk.startMs,
         message.chunk.diagnostics.discontinuity,
       );
-      const modelChunk = modelResampler?.push(
-        message.chunk.data,
-        message.chunk.diagnostics.discontinuity,
-      );
-      if (modelChunk !== undefined && modelChunk.samples.length > 0) {
-        modelAudioChunks.push(modelChunk.samples);
+      retainForFinalization(result);
+      if (analysisMode === 'session') {
+        modelAudioStartMs ??= message.chunk.startMs;
+        const gapSamples = modelGapSampleCount(
+          modelSourceEndMs,
+          message.chunk.startMs,
+          BASIC_PITCH_SAMPLE_RATE,
+        );
+        if (gapSamples > 0) modelAudioChunks.push(new Float32Array(gapSamples));
+        const modelChunk = modelResampler?.push(
+          message.chunk.data,
+          message.chunk.diagnostics.discontinuity,
+        );
+        if (modelChunk !== undefined && modelChunk.samples.length > 0) {
+          modelAudioChunks.push(modelChunk.samples);
+        }
+        modelSourceEndMs = message.chunk.startMs + message.chunk.durationMs;
       }
-      modelSourceEndMs = message.chunk.startMs + message.chunk.durationMs;
       lastSourceTimestampMs = result.sourceTimestampMs;
       postUpdate(result, startedAt);
       return;
@@ -244,6 +263,12 @@ workerScope.onmessage = (event: MessageEvent<unknown>) => {
     const startedAt = performance.now();
     const targetRunId = runId;
     const result = analyzer.finish(lastSourceTimestampMs);
+    retainForFinalization(result);
+    if (analysisMode === 'monitoring') {
+      postUpdate(result, startedAt);
+      post({ protocolVersion: WORKER_PROTOCOL_VERSION, runId: targetRunId, type: 'complete' });
+      return;
+    }
     void finalizeModel(result, targetRunId, startedAt);
   } catch (error) {
     post({

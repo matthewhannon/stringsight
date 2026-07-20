@@ -8,6 +8,7 @@ import {
 } from './contracts';
 
 export type AudioAnalysisSnapshot = {
+  analysisMode: AnalysisStreamMode;
   analysisSampleRate: number | null;
   currentEvent: NoteEvent | null;
   droppedChunks: number;
@@ -23,6 +24,7 @@ export type AudioAnalysisSnapshot = {
 };
 
 export const InitialAudioAnalysisSnapshot: AudioAnalysisSnapshot = {
+  analysisMode: 'session',
   analysisSampleRate: null,
   currentEvent: null,
   droppedChunks: 0,
@@ -39,7 +41,10 @@ export const InitialAudioAnalysisSnapshot: AudioAnalysisSnapshot = {
 
 type SnapshotListener = () => void;
 type WorkerFactory = () => Worker;
-type AnalysisStreamMode = 'monitoring' | 'session';
+export type AnalysisStreamMode = 'monitoring' | 'session';
+
+export const MONITORING_NOTE_EVENT_LIMIT = 12;
+export const MONITORING_ONSET_LIMIT = 24;
 
 const pcmStream = (chunk: PcmChunk): 'monitoring' | 'recording' | 'replay' =>
   chunk.stream ?? (chunk.source === 'replay' ? 'replay' : 'recording');
@@ -54,7 +59,8 @@ export class AudioAnalysisController {
   private readonly capture: MicrophoneCapture;
   private readonly listeners = new Set<SnapshotListener>();
   private readonly maxInFlightChunks: number;
-  private readonly maxMonitoringRunMs: number;
+  private readonly maxMonitoringEvents: number;
+  private readonly maxMonitoringOnsets: number;
   private readonly streamMode: AnalysisStreamMode;
   private readonly unsubscribeCaptureChunks: () => void;
   private readonly unsubscribeCaptureState: () => void;
@@ -63,7 +69,6 @@ export class AudioAnalysisController {
   private previousOperationState: string;
   private previousMonitoringEligible: boolean;
   private runCounter = 0;
-  private monitoringRunStartedAtMs: number | null = null;
   private snapshot: AudioAnalysisSnapshot = InitialAudioAnalysisSnapshot;
   private worker: Worker | null = null;
 
@@ -71,18 +76,29 @@ export class AudioAnalysisController {
     capture: MicrophoneCapture,
     options: {
       maxInFlightChunks?: number;
-      maxMonitoringRunMs?: number;
+      maxMonitoringEvents?: number;
+      maxMonitoringOnsets?: number;
       streamMode?: AnalysisStreamMode;
       workerFactory?: WorkerFactory;
     } = {},
   ) {
     this.capture = capture;
     this.maxInFlightChunks = options.maxInFlightChunks ?? 8;
-    this.maxMonitoringRunMs = options.maxMonitoringRunMs ?? 15_000;
+    this.maxMonitoringEvents = Math.max(
+      1,
+      Math.floor(options.maxMonitoringEvents ?? MONITORING_NOTE_EVENT_LIMIT),
+    );
+    this.maxMonitoringOnsets = Math.max(
+      1,
+      Math.floor(options.maxMonitoringOnsets ?? MONITORING_ONSET_LIMIT),
+    );
     this.streamMode = options.streamMode ?? 'session';
     this.workerFactory = options.workerFactory ?? defaultWorkerFactory;
     this.previousOperationState = capture.currentSnapshot.operationState;
     this.previousMonitoringEligible = this.monitoringEligible();
+    if (this.streamMode === 'monitoring') {
+      this.snapshot = { ...InitialAudioAnalysisSnapshot, analysisMode: 'monitoring' };
+    }
     this.unsubscribeCaptureChunks = capture.subscribeToChunks(this.handleChunk);
     this.unsubscribeCaptureState = capture.subscribe(this.handleCaptureState);
   }
@@ -100,7 +116,7 @@ export class AudioAnalysisController {
     this.runCounter += 1;
     const runId = `${source}-${String(this.runCounter)}`;
     this.inFlightChunks = 0;
-    this.snapshot = { ...InitialAudioAnalysisSnapshot, runId };
+    this.snapshot = { ...InitialAudioAnalysisSnapshot, analysisMode: this.streamMode, runId };
     this.ensureWorker();
     this.worker?.postMessage({
       protocolVersion: WORKER_PROTOCOL_VERSION,
@@ -152,14 +168,8 @@ export class AudioAnalysisController {
       return;
     }
     if (this.streamMode === 'monitoring') {
-      const chunkStartMs = Number(chunk.startMs);
-      if (
-        chunk.sequence === 0 ||
-        this.monitoringRunStartedAtMs === null ||
-        chunkStartMs - this.monitoringRunStartedAtMs >= this.maxMonitoringRunMs
-      ) {
+      if (chunk.sequence === 0 || this.snapshot.runId === null) {
         this.reset('monitoring');
-        this.monitoringRunStartedAtMs = chunkStartMs;
       }
     } else if (chunk.sequence === 0) {
       this.reset(chunk.source);
@@ -191,9 +201,8 @@ export class AudioAnalysisController {
   }
 
   private clearMonitoringRun(): void {
-    this.monitoringRunStartedAtMs = null;
     this.inFlightChunks = 0;
-    this.snapshot = InitialAudioAnalysisSnapshot;
+    this.snapshot = { ...InitialAudioAnalysisSnapshot, analysisMode: 'monitoring' };
     if (this.worker !== null) {
       this.runCounter += 1;
       this.worker.postMessage({
@@ -240,9 +249,14 @@ export class AudioAnalysisController {
     for (const noteEvent of message.events) eventsById.set(noteEvent.id, noteEvent);
     const onsetsById = new Map(this.snapshot.onsets.map((onset) => [onset.id, onset]));
     for (const onset of message.onsets) onsetsById.set(onset.id, onset);
-    const events = [...eventsById.values()].sort(
+    const allEvents = [...eventsById.values()].sort(
       (left, right) => left.time.startMs - right.time.startMs,
     );
+    const events =
+      this.streamMode === 'monitoring' ? allEvents.slice(-this.maxMonitoringEvents) : allEvents;
+    const allOnsets = [...onsetsById.values()].sort((left, right) => left.atMs - right.atMs);
+    const onsets =
+      this.streamMode === 'monitoring' ? allOnsets.slice(-this.maxMonitoringOnsets) : allOnsets;
     this.update({
       analysisSampleRate: message.analysisSampleRate,
       currentEvent: events.at(-1) ?? null,
@@ -253,7 +267,7 @@ export class AudioAnalysisController {
         message.processingLatencyMs,
       ),
       inputSampleRate: message.inputSampleRate,
-      onsets: [...onsetsById.values()].sort((left, right) => left.atMs - right.atMs),
+      onsets,
       processingLatencyMs: message.processingLatencyMs,
       state: message.state,
     });

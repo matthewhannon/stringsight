@@ -37,6 +37,7 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
   );
   const getSnapshot = useCallback(() => controller.currentSnapshot, [controller]);
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const isMonitoring = snapshot.analysisMode === 'monitoring';
   const currentCandidate = snapshot.currentEvent?.candidates[0] ?? null;
   const alternatives = snapshot.currentEvent?.candidates.slice(1) ?? [];
   const timelineEvents = snapshot.events.slice(-TIMELINE_EVENT_LIMIT).reverse();
@@ -154,9 +155,13 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
         <div>
           <h3 id="timeline-title">Note timeline</h3>
           <span>
-            {snapshot.events.length > TIMELINE_EVENT_LIMIT
-              ? `Latest ${String(TIMELINE_EVENT_LIMIT)} of ${String(snapshot.events.length)} · ${String(snapshot.events.length - TIMELINE_EVENT_LIMIT)} earlier hidden`
-              : `${String(snapshot.events.length)} events`}
+            {isMonitoring
+              ? snapshot.events.length > TIMELINE_EVENT_LIMIT
+                ? `Latest ${String(TIMELINE_EVENT_LIMIT)} live · rolling history`
+                : `${String(snapshot.events.length)} live ${snapshot.events.length === 1 ? 'event' : 'events'}`
+              : snapshot.events.length > TIMELINE_EVENT_LIMIT
+                ? `Latest ${String(TIMELINE_EVENT_LIMIT)} of ${String(snapshot.events.length)} · ${String(snapshot.events.length - TIMELINE_EVENT_LIMIT)} earlier hidden`
+                : `${String(snapshot.events.length)} events`}
           </span>
         </div>
         {snapshot.events.length === 0 ? (
@@ -170,8 +175,10 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
                 <li key={event.id}>
                   <div className="timeline-card-heading">
                     <time>{formatTime(event.time.startMs)}</time>
-                    <span className={`lifecycle lifecycle--${event.lifecycle}`}>
-                      {event.lifecycle}
+                    <span
+                      className={`lifecycle lifecycle--${isMonitoring ? 'live' : event.lifecycle}`}
+                    >
+                      {isMonitoring ? 'live' : event.lifecycle}
                     </span>
                   </div>
                   <strong>{candidate.noteName}</strong>

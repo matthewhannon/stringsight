@@ -50,7 +50,7 @@ const workspaceModules: readonly WorkspaceModuleDefinition[] = [
   },
   {
     Component: PolyphonicAnalysisPanel,
-    description: 'Provisional chroma evidence, ranked chord candidates, and finalized note sets.',
+    description: 'Live chroma evidence, ranked chord candidates, and finalized note sets.',
     id: 'polyphonic-analysis',
     size: 'expanded',
     title: 'Chord analysis',

@@ -211,7 +211,7 @@ describe('PolyphonicAnalysisController', () => {
     expect(worker.terminated).toBe(true);
   });
 
-  it('keeps transient chord analysis bounded and separate from recording runs', () => {
+  it('keeps one continuous monitoring run with bounded chord history', () => {
     const capture = new MicrophoneCapture();
     let chunkListener: ((chunk: PcmChunk) => void) | null = null;
     let stateListener: (() => void) | null = null;
@@ -230,7 +230,7 @@ describe('PolyphonicAnalysisController', () => {
     });
     const worker = new FakeWorker();
     const controller = new PolyphonicAnalysisController(capture, {
-      maxMonitoringRunMs: 10,
+      maxMonitoringEvents: 2,
       streamMode: 'monitoring',
       workerFactory: () => worker as unknown as Worker,
     });
@@ -240,17 +240,21 @@ describe('PolyphonicAnalysisController', () => {
     expect(worker.messages).toEqual([]);
     sendChunk(PcmChunkSchema.parse({ ...pcmChunk, stream: 'monitoring' }));
     expect(controller.currentSnapshot.runId).toBe('monitoring-1');
+    expect(worker.messages.at(1)).toMatchObject({
+      analysisMode: 'monitoring',
+      type: 'reset',
+    });
 
     sendChunk(
       PcmChunkSchema.parse({
         ...pcmChunk,
         sequence: 1,
-        startMs: 12,
+        startMs: 120_000,
         startSampleFrame: 4,
         stream: 'monitoring',
       }),
     );
-    expect(controller.currentSnapshot.runId).toBe('monitoring-2');
+    expect(controller.currentSnapshot.runId).toBe('monitoring-1');
     expect(
       worker.messages.filter(
         (message) =>
@@ -259,7 +263,43 @@ describe('PolyphonicAnalysisController', () => {
           'type' in message &&
           message.type === 'reset',
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
+
+    for (let index = 1; index <= 3; index += 1) {
+      worker.emit({
+        analysisSampleRate: 16_000,
+        chordAnalysisProfile: 'accurate',
+        chordEvents: [
+          {
+            ...chordEvent,
+            id: `monitoring-1-chord-${String(index)}`,
+            provenance: { ...chordEvent.provenance, runId: 'monitoring-1' },
+            time: { endMs: index * 100 + 80, startMs: index * 100 },
+          },
+        ],
+        chroma: [0.3, 0, 0, 0, 0.3, 0, 0, 0.4, 0, 0, 0, 0],
+        energy: 0.1,
+        eventUpdateMode: 'upsert',
+        inputSampleRate: 48_000,
+        modelBackend: null,
+        modelInferenceMs: null,
+        modelLoadMs: null,
+        modelState: 'not-loaded',
+        modelWindowCount: 0,
+        noteSetEvents: [],
+        processingLatencyMs: 1,
+        protocolVersion: WORKER_PROTOCOL_VERSION,
+        runId: 'monitoring-1',
+        sourceTimestampMs: index * 100 + 80,
+        state: 'tracking',
+        type: 'update',
+      });
+    }
+    expect(controller.currentSnapshot.analysisMode).toBe('monitoring');
+    expect(controller.currentSnapshot.chordEvents.map(({ id }) => id)).toEqual([
+      'monitoring-1-chord-2',
+      'monitoring-1-chord-3',
+    ]);
 
     captureSnapshot = { ...captureSnapshot, operationState: 'recording' };
     const notifyState = stateListener as unknown as () => void;

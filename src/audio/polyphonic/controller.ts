@@ -9,6 +9,7 @@ import {
 import type { PolyphonicAnalysisState } from './streaming';
 
 export type PolyphonicAnalysisSnapshot = {
+  analysisMode: AnalysisStreamMode;
   analysisSampleRate: number | null;
   chordEvents: readonly ChordEvent[];
   chordAnalysisProfile: ChordAnalysisProfile;
@@ -35,6 +36,7 @@ export type PolyphonicAnalysisSnapshot = {
 const emptyChroma = (): number[] => Array.from({ length: 12 }, () => 0);
 
 export const InitialPolyphonicAnalysisSnapshot: PolyphonicAnalysisSnapshot = {
+  analysisMode: 'session',
   analysisSampleRate: null,
   chordEvents: [],
   chordAnalysisProfile: 'accurate',
@@ -60,7 +62,9 @@ export const InitialPolyphonicAnalysisSnapshot: PolyphonicAnalysisSnapshot = {
 
 type SnapshotListener = () => void;
 type WorkerFactory = () => Worker;
-type AnalysisStreamMode = 'monitoring' | 'session';
+export type AnalysisStreamMode = 'monitoring' | 'session';
+
+export const MONITORING_CHORD_EVENT_LIMIT = 12;
 
 const pcmStream = (chunk: PcmChunk): 'monitoring' | 'recording' | 'replay' =>
   chunk.stream ?? (chunk.source === 'replay' ? 'replay' : 'recording');
@@ -75,7 +79,7 @@ export class PolyphonicAnalysisController {
   private readonly capture: MicrophoneCapture;
   private readonly listeners = new Set<SnapshotListener>();
   private readonly maxInFlightChunks: number;
-  private readonly maxMonitoringRunMs: number;
+  private readonly maxMonitoringEvents: number;
   private readonly streamMode: AnalysisStreamMode;
   private readonly unsubscribeCaptureChunks: () => void;
   private readonly unsubscribeCaptureState: () => void;
@@ -85,7 +89,6 @@ export class PolyphonicAnalysisController {
   private previousOperationState: string;
   private previousMonitoringEligible: boolean;
   private runCounter = 0;
-  private monitoringRunStartedAtMs: number | null = null;
   private snapshot: PolyphonicAnalysisSnapshot = InitialPolyphonicAnalysisSnapshot;
   private chordAnalysisProfile: ChordAnalysisProfile = 'accurate';
   private worker: Worker | null = null;
@@ -94,18 +97,28 @@ export class PolyphonicAnalysisController {
     capture: MicrophoneCapture,
     options: {
       maxInFlightChunks?: number;
-      maxMonitoringRunMs?: number;
+      maxMonitoringEvents?: number;
       streamMode?: AnalysisStreamMode;
       workerFactory?: WorkerFactory;
     } = {},
   ) {
     this.capture = capture;
     this.maxInFlightChunks = options.maxInFlightChunks ?? 8;
-    this.maxMonitoringRunMs = options.maxMonitoringRunMs ?? 15_000;
+    this.maxMonitoringEvents = Math.max(
+      1,
+      Math.floor(options.maxMonitoringEvents ?? MONITORING_CHORD_EVENT_LIMIT),
+    );
     this.streamMode = options.streamMode ?? 'session';
     this.workerFactory = options.workerFactory ?? defaultWorkerFactory;
     this.previousOperationState = capture.currentSnapshot.operationState;
     this.previousMonitoringEligible = this.monitoringEligible();
+    if (this.streamMode === 'monitoring') {
+      this.snapshot = {
+        ...InitialPolyphonicAnalysisSnapshot,
+        analysisMode: 'monitoring',
+        chroma: emptyChroma(),
+      };
+    }
     this.unsubscribeCaptureChunks = capture.subscribeToChunks(this.handleChunk);
     this.unsubscribeCaptureState = capture.subscribe(this.handleCaptureState);
   }
@@ -137,6 +150,7 @@ export class PolyphonicAnalysisController {
     this.pendingDiscontinuity = false;
     this.snapshot = {
       ...InitialPolyphonicAnalysisSnapshot,
+      analysisMode: this.streamMode,
       chordAnalysisProfile: this.chordAnalysisProfile,
       chroma: emptyChroma(),
       runId,
@@ -144,6 +158,7 @@ export class PolyphonicAnalysisController {
     this.ensureWorker();
     this.worker?.postMessage({
       protocolVersion: WORKER_PROTOCOL_VERSION,
+      analysisMode: this.streamMode,
       chordAnalysisProfile: this.chordAnalysisProfile,
       runId,
       type: 'reset',
@@ -193,14 +208,8 @@ export class PolyphonicAnalysisController {
       return;
     }
     if (this.streamMode === 'monitoring') {
-      const chunkStartMs = Number(chunk.startMs);
-      if (
-        chunk.sequence === 0 ||
-        this.monitoringRunStartedAtMs === null ||
-        chunkStartMs - this.monitoringRunStartedAtMs >= this.maxMonitoringRunMs
-      ) {
+      if (chunk.sequence === 0 || this.snapshot.runId === null) {
         this.reset('monitoring');
-        this.monitoringRunStartedAtMs = chunkStartMs;
       }
     } else if (chunk.sequence === 0) {
       this.reset(chunk.source);
@@ -240,11 +249,11 @@ export class PolyphonicAnalysisController {
   }
 
   private clearMonitoringRun(): void {
-    this.monitoringRunStartedAtMs = null;
     this.inFlightChunks = 0;
     this.pendingDiscontinuity = false;
     this.snapshot = {
       ...InitialPolyphonicAnalysisSnapshot,
+      analysisMode: 'monitoring',
       chordAnalysisProfile: this.chordAnalysisProfile,
       chroma: emptyChroma(),
     };
@@ -252,6 +261,7 @@ export class PolyphonicAnalysisController {
       this.runCounter += 1;
       this.worker.postMessage({
         chordAnalysisProfile: this.chordAnalysisProfile,
+        analysisMode: this.streamMode,
         protocolVersion: WORKER_PROTOCOL_VERSION,
         runId: `monitoring-cleared-${String(this.runCounter)}`,
         type: 'reset',
@@ -267,6 +277,7 @@ export class PolyphonicAnalysisController {
     this.worker.onerror = () => this.update({ error: 'The polyphonic analysis worker failed.' });
     this.worker.postMessage({
       protocolVersion: WORKER_PROTOCOL_VERSION,
+      analysisMode: this.streamMode,
       chordAnalysisProfile: this.chordAnalysisProfile,
       runId: this.snapshot.runId ?? 'polyphonic-analysis-0',
       type: 'initialize',
@@ -295,6 +306,8 @@ export class PolyphonicAnalysisController {
       message.eventUpdateMode === 'replace'
         ? [...message.chordEvents]
         : this.mergeEvents(this.snapshot.chordEvents, message.chordEvents);
+    const retainedChordEvents =
+      this.streamMode === 'monitoring' ? chordEvents.slice(-this.maxMonitoringEvents) : chordEvents;
     const noteSetEvents =
       message.eventUpdateMode === 'replace'
         ? [...message.noteSetEvents]
@@ -302,9 +315,9 @@ export class PolyphonicAnalysisController {
     this.update({
       analysisSampleRate: message.analysisSampleRate,
       chordAnalysisProfile: message.chordAnalysisProfile,
-      chordEvents,
+      chordEvents: retainedChordEvents,
       chroma: message.chroma,
-      currentChord: chordEvents.at(-1) ?? null,
+      currentChord: retainedChordEvents.at(-1) ?? null,
       currentNoteSet: noteSetEvents.at(-1) ?? null,
       energy: message.energy,
       error: null,

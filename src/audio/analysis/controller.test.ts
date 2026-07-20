@@ -209,7 +209,7 @@ describe('AudioAnalysisController', () => {
     expect(listener).toHaveBeenCalled();
   });
 
-  it('keeps monitoring runs bounded and isolated from recording chunks', () => {
+  it('keeps one continuous monitoring run with bounded event history', () => {
     const capture = new MicrophoneCapture();
     let chunkListener: ((chunk: PcmChunk) => void) | null = null;
     let stateListener: (() => void) | null = null;
@@ -228,7 +228,8 @@ describe('AudioAnalysisController', () => {
     });
     const worker = new FakeAnalysisWorker();
     const controller = new AudioAnalysisController(capture, {
-      maxMonitoringRunMs: 10,
+      maxMonitoringEvents: 2,
+      maxMonitoringOnsets: 2,
       streamMode: 'monitoring',
       workerFactory: () => worker as unknown as Worker,
     });
@@ -242,16 +243,59 @@ describe('AudioAnalysisController', () => {
 
     sendChunk({
       ...pcmChunk(1),
-      startMs: sessionTimestampMs(12),
+      startMs: sessionTimestampMs(120_000),
       stream: 'monitoring',
     });
-    expect(controller.currentSnapshot.runId).toBe('monitoring-2');
-    expect(worker.messages.map(messageType)).toEqual([
-      'initialize',
-      'reset',
-      'chunk',
-      'reset',
-      'chunk',
+    expect(controller.currentSnapshot.runId).toBe('monitoring-1');
+    expect(worker.messages.map(messageType)).toEqual(['initialize', 'reset', 'chunk', 'chunk']);
+
+    for (let index = 1; index <= 3; index += 1) {
+      worker.emit(
+        AnalysisWorkerUpdateSchema.parse({
+          analysisSampleRate: 16_000,
+          events: [
+            {
+              ...noteEvent,
+              id: `monitoring-1-note-${String(index)}`,
+              provenance: { ...noteEvent.provenance, runId: 'monitoring-1' },
+              time: { startMs: index * 100 },
+            },
+          ],
+          inputSampleRate: 48_000,
+          onsets: [
+            {
+              atMs: index * 100,
+              confidence: 0.9,
+              id: `monitoring-1-onset-${String(index)}`,
+              provenance: {
+                algorithm: 'adaptive-energy-envelope-rise',
+                generatedAtMs: index * 100,
+                runId: 'monitoring-1',
+                subsystem: 'audio-analysis',
+                version: '0.2.1',
+              },
+              rms: 0.1,
+              schemaVersion: CONTRACT_SCHEMA_VERSION,
+              strengthDb: 18,
+            },
+          ],
+          processingLatencyMs: 1,
+          protocolVersion: WORKER_PROTOCOL_VERSION,
+          runId: 'monitoring-1',
+          sourceTimestampMs: index * 100,
+          state: 'tracking',
+          type: 'update',
+        }),
+      );
+    }
+    expect(controller.currentSnapshot.analysisMode).toBe('monitoring');
+    expect(controller.currentSnapshot.events.map(({ id }) => id)).toEqual([
+      'monitoring-1-note-2',
+      'monitoring-1-note-3',
+    ]);
+    expect(controller.currentSnapshot.onsets.map(({ id }) => id)).toEqual([
+      'monitoring-1-onset-2',
+      'monitoring-1-onset-3',
     ]);
 
     captureSnapshot = { ...captureSnapshot, operationState: 'recording' };

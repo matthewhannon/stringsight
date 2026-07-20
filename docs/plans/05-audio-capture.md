@@ -45,9 +45,11 @@ The main thread coordinates these pieces but does not run per-sample DSP. The wo
    provide live pitch and chord feedback.
 4. Connect `MediaStreamAudioSourceNode` to the worklet. The worklet connects through a zero-gain node so it remains scheduled without audible monitoring or feedback.
 5. Monitoring publishes fixed-size meter/waveform summaries and fixed PCM chunks to local transient
-   analyzers. Their runs rotate every 15 seconds so derived events and model input remain bounded.
-   Starting a take resets the logical frame/sequence counters, creates the transport worker, and
-   switches the UI and session controller to separate recording analyzers.
+   analyzers. A monitoring run remains continuous while connected, but its displayed note/chord
+   history is a bounded rolling window. The polyphonic worker does not retain monitoring PCM,
+   acoustic observations, or model-finalization input. Starting a take resets the logical
+   frame/sequence counters, creates the transport worker, and switches the UI and session controller
+   to separate recording analyzers.
 6. Pause flushes the partial recording chunk and stops logical recording-time advancement while the
    connected microphone continues bounded monitoring. Resume continues at the next logical frame,
    excluding the paused wall-clock gap.
@@ -97,8 +99,9 @@ Recovery behavior:
 
 - No microphone request occurs before explicit user action.
 - Raw PCM remains in the browser and is retained only for the current bounded recording. Monitoring
-  PCM is processed synchronously by local analyzers and discarded; analyzer runs rotate so no
-  growing event or model-input history is retained.
+  PCM is processed by fixed-window local analyzers and discarded. Monitoring controllers retain only
+  a small rolling event history, and the polyphonic worker does not accumulate model input or
+  finalization evidence.
 - Recording is conservatively capped at five minutes. Reaching the cap finalizes the accepted take
   successfully and surfaces a maximum-duration warning; this slice does not implement long-form
   streaming storage.

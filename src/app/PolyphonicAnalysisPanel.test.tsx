@@ -77,6 +77,7 @@ class FakeAnalysis {
 }
 
 const emptySnapshot: PolyphonicAnalysisSnapshot = {
+  analysisMode: 'session',
   analysisSampleRate: null,
   chordAnalysisProfile: 'accurate',
   chordEvents: [],
@@ -176,5 +177,31 @@ describe('PolyphonicAnalysisPanel', () => {
     expect(screen.getByText(/shorter look-ahead/i)).toBeVisible();
     expect(screen.getByText('86% match strength')).toBeVisible();
     expect(screen.getAllByText('Template C E G').length).toBeGreaterThan(0);
+  });
+
+  it('presents monitoring chords as live while preserving provisional data semantics', () => {
+    const events = Array.from({ length: 8 }, (_, index) => chordEvent(index + 1));
+    const currentChord = events.at(-1) ?? null;
+    render(
+      <PolyphonicAnalysisPanel
+        analysis={
+          new FakeAnalysis({
+            ...emptySnapshot,
+            analysisMode: 'monitoring',
+            chordEvents: events,
+            currentChord,
+            runId: 'monitoring-1',
+            state: 'tracking',
+          })
+        }
+      />,
+    );
+
+    expect(screen.getByText('Live chord')).toBeVisible();
+    expect(screen.getByText('Latest 6 live · rolling history')).toBeVisible();
+    expect(screen.getAllByText('live')).toHaveLength(6);
+    expect(screen.queryByText('provisional')).not.toBeInTheDocument();
+    expect(screen.getByText('recording only')).toBeVisible();
+    expect(events.every(({ lifecycle }) => lifecycle === 'provisional')).toBe(true);
   });
 });

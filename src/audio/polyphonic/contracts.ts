@@ -17,11 +17,14 @@ export const PolyphonicAnalysisStateSchema = z.enum([
 
 export const PolyphonicModelStateSchema = z.enum(['not-loaded', 'loading', 'ready', 'failed']);
 export const ChordAnalysisProfileSchema = z.enum(['accurate', 'responsive']);
+export const PolyphonicAnalysisModeSchema = z.enum(['monitoring', 'session']);
 
 export type ChordAnalysisProfile = z.infer<typeof ChordAnalysisProfileSchema>;
+export type PolyphonicAnalysisMode = z.infer<typeof PolyphonicAnalysisModeSchema>;
 export type PolyphonicModelState = z.infer<typeof PolyphonicModelStateSchema>;
 
 const InitializeSchema = z.object({
+  analysisMode: PolyphonicAnalysisModeSchema,
   chordAnalysisProfile: ChordAnalysisProfileSchema,
   protocolVersion: z.literal(WORKER_PROTOCOL_VERSION),
   runId: z.string().min(1).max(160),

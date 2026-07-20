@@ -123,4 +123,28 @@ describe('AudioAnalysisPanel', () => {
     expect(within(newestItem).getByText('finalized')).toBeVisible();
     analysis.dispose();
   });
+
+  it('labels transient monitoring results as a bounded live history', () => {
+    const events = Array.from({ length: 8 }, (_, index) => ({
+      ...noteEvent,
+      id: `monitoring-1-note-${String(index + 1)}`,
+      lifecycle: 'provisional' as const,
+      time: { startMs: sessionTimestampMs(index * 100) },
+    }));
+    const analysis = analysisWithSnapshot({
+      ...InitialAudioAnalysisSnapshot,
+      analysisMode: 'monitoring',
+      currentEvent: events.at(-1) ?? null,
+      events,
+      runId: 'monitoring-1',
+      state: 'tracking',
+    });
+
+    render(<AudioAnalysisPanel analysis={analysis} />);
+
+    expect(screen.getByText('Latest 6 live · rolling history')).toBeVisible();
+    expect(screen.getAllByText('live')).toHaveLength(6);
+    expect(screen.queryByText('provisional')).not.toBeInTheDocument();
+    analysis.dispose();
+  });
 });

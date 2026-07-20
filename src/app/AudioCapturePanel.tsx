@@ -232,8 +232,8 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
 
           {snapshot.connectionState === 'monitoring' && snapshot.operationState === 'idle' && (
             <p className="capture-calibration" role="status">
-              Microphone connected — not recording. Live pitch and chord analysis uses a bounded
-              transient window; no session or recording is retained until you record a take.
+              Microphone connected — not recording. Live pitch and chord analysis keeps only a
+              bounded rolling history; no session or recording is retained until you record a take.
             </p>
           )}
 

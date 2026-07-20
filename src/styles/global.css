@@ -840,6 +840,10 @@ select:disabled {
   color: #a8d8c3;
 }
 
+.lifecycle--live {
+  color: #89c7dc;
+}
+
 @keyframes note-timeline-enter {
   from {
     opacity: 0;

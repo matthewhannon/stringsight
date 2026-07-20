@@ -38,11 +38,14 @@ export function PolyphonicAnalysisPanel({
   );
   const getSnapshot = useCallback(() => controller.currentSnapshot, [controller]);
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const isMonitoring = snapshot.analysisMode === 'monitoring';
   const currentCandidate = snapshot.currentChord?.candidates[0] ?? null;
   const stateLabel =
-    snapshot.currentChord?.lifecycle === 'finalized'
-      ? 'Finalized chord'
-      : stateLabels[snapshot.state];
+    isMonitoring && snapshot.currentChord !== null
+      ? 'Live chord'
+      : snapshot.currentChord?.lifecycle === 'finalized'
+        ? 'Finalized chord'
+        : stateLabels[snapshot.state];
   const alternatives = snapshot.currentChord?.candidates.slice(1, 4) ?? [];
   const timelineEvents = snapshot.chordEvents.slice(-TIMELINE_EVENT_LIMIT).reverse();
 
@@ -57,9 +60,8 @@ export function PolyphonicAnalysisPanel({
           <p className="eyebrow">Polyphonic recognition - Item 7</p>
           <h2 id="polyphonic-analysis-title">Resolve notes played together.</h2>
           <p>
-            Independent chroma evidence produces fast provisional chord candidates. When recording
-            ends, local model note sets can finalize or revise them through the same worker
-            boundary.
+            Independent chroma evidence produces fast live chord candidates. When recording ends,
+            local model note sets can finalize or revise them through the same worker boundary.
           </p>
         </div>
       )}
@@ -157,7 +159,7 @@ export function PolyphonicAnalysisPanel({
             </div>
             <div>
               <dt>Finalized model</dt>
-              <dd>{snapshot.modelState}</dd>
+              <dd>{isMonitoring ? 'recording only' : snapshot.modelState}</dd>
             </div>
             <div>
               <dt>Model backend</dt>
@@ -217,13 +219,21 @@ export function PolyphonicAnalysisPanel({
         <div>
           <h3 id="chord-timeline-title">Chord timeline</h3>
           <span>
-            {snapshot.chordEvents.length > TIMELINE_EVENT_LIMIT
-              ? `Latest ${String(TIMELINE_EVENT_LIMIT)} of ${String(snapshot.chordEvents.length)} · ${String(snapshot.chordEvents.length - TIMELINE_EVENT_LIMIT)} earlier hidden`
-              : `${String(snapshot.chordEvents.length)} events`}
+            {isMonitoring
+              ? snapshot.chordEvents.length > TIMELINE_EVENT_LIMIT
+                ? `Latest ${String(TIMELINE_EVENT_LIMIT)} live · rolling history`
+                : `${String(snapshot.chordEvents.length)} live ${snapshot.chordEvents.length === 1 ? 'event' : 'events'}`
+              : snapshot.chordEvents.length > TIMELINE_EVENT_LIMIT
+                ? `Latest ${String(TIMELINE_EVENT_LIMIT)} of ${String(snapshot.chordEvents.length)} · ${String(snapshot.chordEvents.length - TIMELINE_EVENT_LIMIT)} earlier hidden`
+                : `${String(snapshot.chordEvents.length)} events`}
           </span>
         </div>
         {timelineEvents.length === 0 ? (
-          <p>Provisional chord candidates will appear here with timing and lifecycle.</p>
+          <p>
+            {isMonitoring
+              ? 'Live chord candidates will appear here in a bounded rolling history.'
+              : 'Provisional chord candidates will appear here with timing and lifecycle.'}
+          </p>
         ) : (
           <ol aria-label="Latest chord events, newest first">
             {timelineEvents.map((event) => {
@@ -240,8 +250,10 @@ export function PolyphonicAnalysisPanel({
                 <li key={event.id}>
                   <div className="timeline-card-heading">
                     <time>{formatTime(event.time.startMs)}</time>
-                    <span className={`lifecycle lifecycle--${event.lifecycle}`}>
-                      {event.lifecycle}
+                    <span
+                      className={`lifecycle lifecycle--${isMonitoring ? 'live' : event.lifecycle}`}
+                    >
+                      {isMonitoring ? 'live' : event.lifecycle}
                     </span>
                   </div>
                   <strong>{candidate.symbol}</strong>
