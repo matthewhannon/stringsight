@@ -6,6 +6,7 @@ import {
   defaultDisplayedAudioAnalysis,
   defaultDisplayedPolyphonicAnalysis,
 } from '../audioCaptureController';
+import { pitchConfidenceLevel } from '../pitchAnalysisPresentation';
 
 type SnapshotSource<TSnapshot> = {
   readonly currentSnapshot: TSnapshot;
@@ -67,7 +68,7 @@ export function AudioInputAnalysisMonitor({
           <small>
             {note === null
               ? 'Waiting'
-              : `${formatCents(note.centsOffset)} · ${String(Math.round(note.confidence * 100))}%`}
+              : `${formatCents(note.centsOffset)} · ${pitchConfidenceLevel(note.confidence)} confidence`}
           </small>
           <em>{noteState}</em>
         </div>

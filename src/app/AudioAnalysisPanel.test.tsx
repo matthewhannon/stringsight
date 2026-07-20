@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -19,26 +20,26 @@ function analysisWithSnapshot(snapshot: AudioAnalysisSnapshot): AudioAnalysisCon
 const noteEvent = NoteEventSchema.parse({
   candidates: [
     {
-      centsOffset: 3.2,
-      confidence: 0.94,
-      evidence: ['yin-periodicity'],
-      frequencyHz: 440.8,
-      midi: 69,
-      noteName: 'A4',
-      pitchClass: 'A',
+      centsOffset: 18.3,
+      confidence: 0.69,
+      evidence: ['yin-periodicity', 'temporal-median'],
+      frequencyHz: 249.56,
+      midi: 59,
+      noteName: 'B3',
+      pitchClass: 'B',
       rank: 1,
-      score: 0.94,
+      score: 0.69,
     },
     {
-      centsOffset: 3.2,
-      confidence: 0.3,
+      centsOffset: 18.3,
+      confidence: 0.22,
       evidence: ['known-octave-ambiguity'],
-      frequencyHz: 220.4,
-      midi: 57,
-      noteName: 'A3',
-      pitchClass: 'A',
+      frequencyHz: 124.78,
+      midi: 47,
+      noteName: 'B2',
+      pitchClass: 'B',
       rank: 2,
-      score: 0.3,
+      score: 0.22,
     },
   ],
   diagnostics: { centsSpread: 4, pitchState: 'tracking' },
@@ -47,7 +48,7 @@ const noteEvent = NoteEventSchema.parse({
   lifecycle: 'finalized',
   provenance: {
     algorithm: 'yin-energy-monophonic',
-    generatedAtMs: 250,
+    generatedAtMs: 500,
     runId: 'run-1',
     subsystem: 'audio-analysis',
     version: '0.1.0',
@@ -57,76 +58,129 @@ const noteEvent = NoteEventSchema.parse({
 });
 
 describe('AudioAnalysisPanel', () => {
-  it('explains the empty state before a note is available', () => {
+  it('uses a compact listening state before a note is available', () => {
     const analysis = analysisWithSnapshot(InitialAudioAnalysisSnapshot);
     render(<AudioAnalysisPanel analysis={analysis} />);
-    expect(
-      screen.getByRole('heading', { name: /turn the signal into note candidates/i }),
-    ).toBeVisible();
-    expect(screen.getByText(/play one clear note/i)).toBeVisible();
-    expect(screen.getByText('0 events')).toBeVisible();
+
+    expect(screen.getByRole('heading', { name: 'Pitch analysis' })).toBeVisible();
+    expect(screen.getByText('Listening')).toBeVisible();
+    expect(screen.getByText('Listening for a clear note')).toBeVisible();
+    expect(screen.getByRole('status', { name: 'Tuning offset unavailable' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Recent note history' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/candidate match/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ranked alternatives/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/confidence/i)).not.toBeInTheDocument();
     analysis.dispose();
   });
 
-  it('renders the best note, ranked alternative, timing, lifecycle, and diagnostics', () => {
+  it('groups the detected note, tuning facts, instruction, and qualitative signal state', async () => {
+    const user = userEvent.setup();
     const analysis = analysisWithSnapshot({
       ...InitialAudioAnalysisSnapshot,
+      analysisMode: 'monitoring',
       currentEvent: noteEvent,
       events: [noteEvent],
       maxProcessingLatencyMs: 5.6,
       processingLatencyMs: 2.4,
-      runId: 'run-1',
+      runId: 'monitoring-1',
       state: 'tracking',
     });
+
     render(<AudioAnalysisPanel analysis={analysis} />);
-    expect(screen.getAllByText('A4')).toHaveLength(2);
-    expect(screen.getByText('440.80 Hz')).toBeVisible();
-    expect(screen.getAllByText('+3.2¢')).toHaveLength(2);
-    expect(screen.getByText('94% confidence')).toBeVisible();
-    const confidenceMeter = screen.getByLabelText('Pitch confidence').querySelector('span');
-    expect(confidenceMeter?.style.getPropertyValue('--meter-scale')).toBe('0.94');
-    expect(screen.getByText('A3')).toBeVisible();
-    expect(screen.getByText('finalized')).toBeVisible();
+
+    expect(screen.getByText('B3 detected')).toBeVisible();
+    expect(screen.getByText('B3')).toBeVisible();
+    expect(screen.getByText(/\+18\.3¢/)).toHaveTextContent('sharp');
+    expect(screen.getByText('249.56 Hz')).toBeVisible();
+    expect(screen.getByText('246.94 Hz')).toBeVisible();
+    expect(screen.getByText('Lower pitch slightly')).toBeVisible();
+    expect(screen.getByText('· Stable signal')).toBeVisible();
+    expect(screen.getByText('· High confidence')).toBeVisible();
+    expect(screen.queryByText(/69%/)).not.toBeInTheDocument();
+    expect(screen.queryByText('B2')).not.toBeInTheDocument();
+    expect(screen.getByRole('meter', { name: 'Tuning offset' })).toHaveAttribute(
+      'aria-valuetext',
+      '+18.3¢, sharp',
+    );
+    expect(screen.queryByRole('region', { name: 'Recent note history' })).not.toBeInTheDocument();
+
+    const details = screen.getByRole('button', { name: 'Analysis details' });
+    expect(details).toHaveAttribute('aria-expanded', 'false');
+    await user.click(details);
+    expect(screen.getByRole('button', { name: 'Hide analysis details' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByLabelText('Note analysis diagnostics')).toBeVisible();
     expect(screen.getByText('2.4 ms')).toBeVisible();
+    expect(screen.getByText('monitoring-1')).toBeVisible();
     analysis.dispose();
   });
 
-  it('shows the latest 6 note events newest-first in a bounded non-scrolling timeline', () => {
-    const events = Array.from({ length: 30 }, (_, index) => ({
+  it('keeps an analysis failure visible and reports signal loss', () => {
+    const analysis = analysisWithSnapshot({
+      ...InitialAudioAnalysisSnapshot,
+      error: 'Pitch analysis stopped. Reconnect the input to try again.',
+      state: 'uncertain',
+    });
+
+    render(<AudioAnalysisPanel analysis={analysis} embedded />);
+
+    expect(screen.getByText('Signal lost')).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent('Reconnect the input');
+    expect(screen.queryByLabelText('Note analysis diagnostics')).not.toBeInTheDocument();
+    analysis.dispose();
+  });
+
+  it('opens analysis details from the keyboard', async () => {
+    const user = userEvent.setup();
+    const analysis = analysisWithSnapshot(InitialAudioAnalysisSnapshot);
+
+    render(<AudioAnalysisPanel analysis={analysis} embedded />);
+
+    const detailLink = screen.getByRole('button', { name: 'Analysis details' });
+    await user.tab();
+    expect(detailLink).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByLabelText('Note analysis diagnostics')).toBeVisible();
+    analysis.dispose();
+  });
+
+  it('shows only a thin bounded history after multiple complete notes have useful evidence', () => {
+    const events = Array.from({ length: 8 }, (_, index) => ({
       ...noteEvent,
       id: `run-1-note-${String(index + 1)}`,
       time: {
-        endMs: sessionTimestampMs(index * 100 + 50),
-        startMs: sessionTimestampMs(index * 100),
+        endMs: sessionTimestampMs(index * 500 + 400),
+        startMs: sessionTimestampMs(index * 500),
       },
     }));
     const analysis = analysisWithSnapshot({
       ...InitialAudioAnalysisSnapshot,
+      currentEvent: events.at(-1) ?? null,
       events,
       runId: 'run-1',
+      state: 'tracking',
     });
 
     render(<AudioAnalysisPanel analysis={analysis} />);
 
-    expect(screen.getByText('Latest 6 of 30 · 24 earlier hidden')).toBeVisible();
-    const timeline = screen.getByRole('list', { name: 'Latest note events, newest first' });
+    const history = screen.getByRole('region', { name: 'Recent note history' });
+    const timeline = within(history).getByRole('list', {
+      name: 'Recent note history, oldest first',
+    });
     const items = within(timeline).getAllByRole('listitem');
-    expect(items).toHaveLength(6);
-    const newestItem = items.at(0);
-    const oldestVisibleItem = items.at(-1);
-    if (newestItem === undefined || oldestVisibleItem === undefined) {
-      throw new Error('Expected the bounded note timeline to contain events.');
-    }
-    expect(within(newestItem).getByText('2.90s')).toBeVisible();
-    expect(within(oldestVisibleItem).getByText('2.40s')).toBeVisible();
-    expect(within(timeline).getByText('2.90s')).toBeVisible();
-    expect(within(timeline).queryByText('2.30s')).not.toBeInTheDocument();
-    expect(within(newestItem).getByText('A4')).toBeVisible();
-    expect(within(newestItem).getByText('finalized')).toBeVisible();
+    expect(items).toHaveLength(5);
+    const firstItem = items[0];
+    if (firstItem === undefined) throw new Error('Expected a visible history event.');
+    expect(within(firstItem).getByText('0.40s')).toBeVisible();
+    expect(within(firstItem).getByText('+18.3¢ median')).toBeVisible();
+    expect(within(firstItem).getByText('4.0¢ variation')).toBeVisible();
+    expect(within(history).queryByText(/confidence/i)).not.toBeInTheDocument();
     analysis.dispose();
   });
 
-  it('labels transient monitoring results as a bounded live history', () => {
+  it('does not show history for multiple provisional notes without duration data', () => {
     const events = Array.from({ length: 8 }, (_, index) => ({
       ...noteEvent,
       id: `monitoring-1-note-${String(index + 1)}`,
@@ -144,9 +198,7 @@ describe('AudioAnalysisPanel', () => {
 
     render(<AudioAnalysisPanel analysis={analysis} />);
 
-    expect(screen.getByText('Latest 6 live · rolling history')).toBeVisible();
-    expect(screen.getAllByText('live')).toHaveLength(6);
-    expect(screen.queryByText('provisional')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Recent note history' })).not.toBeInTheDocument();
     analysis.dispose();
   });
 });

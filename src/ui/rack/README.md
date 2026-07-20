@@ -24,12 +24,21 @@ Import these through `src/ui/rack/index.ts`, not their individual files.
 2. Give the product component an `embedded` presentation when its standalone title or outer card is
    redundant inside a `RackModule`. Apply `rackEmbeddedClassNames.section` to its root and
    `surface` or `clippedSurface` to the inner cards that should receive the rack treatment.
-3. Add one typed entry to `workspaceModules` in `RackWorkspace.tsx`.
+3. Add one typed entry to `WorkspaceModuleRegistry` in `rackWorkspaceModules.ts`. Optional module
+   state stores only the registry ID; never place components or domain state in the saved layout.
 4. Choose `standard` for compact readouts and `expanded` for tools with controls, diagnostics, or
    timelines.
 5. Use a stable `moduleId`, unit label, functional title, short operational description, and honest
    status.
 6. Verify keyboard operation, narrow-screen stacking, and the module's domain tests.
+
+## Workspace customization
+
+`Session control` and `Audio input` are required modules and always occupy the first two rack
+positions. Every module below the management strip is optional, unique, removable, and reorderable.
+The validated `WorkspaceLayout` preference is stored separately from audio sessions, so hiding a
+module never deletes evidence or stops its domain controller. Pointer dragging is an enhancement;
+every reorder operation must also be available through labeled keyboard controls.
 
 ## Design tokens
 

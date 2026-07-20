@@ -104,7 +104,7 @@ describe('AudioInputAnalysisMonitor', () => {
 
     const monitor = screen.getByRole('region', { name: 'Live note and chord analysis' });
     expect(within(monitor).getByText('A4')).toBeVisible();
-    expect(within(monitor).getByText('+3.2¢ · 94%')).toBeVisible();
+    expect(within(monitor).getByText('+3.2¢ · High confidence')).toBeVisible();
     expect(within(monitor).getByText('FINAL')).toBeVisible();
     expect(within(monitor).getByText('C')).toBeVisible();
     expect(within(monitor).getByText('major · 86%')).toBeVisible();
