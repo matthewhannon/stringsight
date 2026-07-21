@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore, type DragEvent } from 'react';
 
 import { MONOPHONIC_ANALYZER_VERSION } from '../audio/analysis';
-import type { CaptureSnapshot } from '../audio/capture';
-import {
-  Rack,
-  RackButton,
-  RackModule,
-  RackStatus,
-  RackValue,
-  type RackStatusTone,
-} from '../ui/rack';
+import { Rack, RackButton, RackModule, RackStatus, RackValue } from '../ui/rack';
 import { AudioCapturePanel } from './AudioCapturePanel';
 import { defaultAudioSession } from './audioCaptureController';
 import {
@@ -19,7 +11,6 @@ import {
   type OptionalWorkspaceModuleId,
   type WorkspaceModuleDefinition,
 } from './rackWorkspaceModules';
-import { summarizeInterpretations } from './theoryPresentation';
 import {
   addWorkspaceModule,
   loadWorkspaceLayout,
@@ -31,46 +22,9 @@ import {
   type WorkspaceLayout,
 } from './workspaceLayout';
 
-const sessionStateLabel = (snapshot: CaptureSnapshot): string => {
-  if (snapshot.operationState === 'recording') return 'Recording';
-  if (snapshot.operationState === 'paused') return 'Paused';
-  if (snapshot.operationState === 'finalizing') return 'Finalizing';
-  if (snapshot.operationState === 'replaying') return 'Replaying';
-  if (snapshot.operationState === 'failed') return 'Recording needs attention';
-  if (snapshot.connectionState === 'monitoring') return 'Connected · not recording';
-  if (snapshot.connectionState === 'connecting') return 'Connecting microphone';
-  if (snapshot.connectionState === 'failed') return 'Microphone needs attention';
-  if (snapshot.connectionState === 'unsupported') return 'Unsupported browser';
-  return snapshot.bufferedDurationMs > 0 ? 'Take ready · microphone disconnected' : 'Disconnected';
-};
-
-const sessionStatusTone = (snapshot: CaptureSnapshot): RackStatusTone => {
-  if (snapshot.operationState === 'recording' || snapshot.operationState === 'replaying') {
-    return 'active';
-  }
-  if (snapshot.operationState === 'paused' || snapshot.operationState === 'finalizing') {
-    return 'warning';
-  }
-  if (
-    snapshot.operationState === 'failed' ||
-    snapshot.connectionState === 'failed' ||
-    snapshot.connectionState === 'unsupported'
-  ) {
-    return 'danger';
-  }
-  return 'idle';
-};
-
-const formatSessionDuration = (milliseconds: number): string => {
-  const totalTenths = Math.max(0, Math.floor(milliseconds / 100));
-  const minutes = Math.floor(totalTenths / 600);
-  const seconds = Math.floor((totalTenths % 600) / 10);
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(totalTenths % 10)}`;
-};
-
 const RequiredModule = () => <span className="rack-required-module">Required</span>;
 
-function SessionModule({ editing }: { editing: boolean }) {
+function AudioInputHeaderActions({ editing }: { editing: boolean }) {
   const subscribe = useCallback(
     (listener: () => void) => defaultAudioSession.subscribe(listener),
     [],
@@ -78,58 +32,21 @@ function SessionModule({ editing }: { editing: boolean }) {
   const getSnapshot = useCallback(() => defaultAudioSession.currentSnapshot, []);
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const sampleRate = snapshot.capture.device?.sampleRate;
-  const interpretationPending = snapshot.session !== null && snapshot.session.status !== 'complete';
-  const key = summarizeInterpretations(
-    snapshot.keyInterpretations.map(({ key: interpretation, score }) => ({
-      name: interpretation.name,
-      score,
-    })),
-  );
-  const scale = summarizeInterpretations(
-    snapshot.scaleInterpretations.map(({ scale: interpretation, score }) => ({
-      name: interpretation.name,
-      score,
-    })),
-  );
-  const audioEvents = snapshot.session?.events.audio ?? [];
-  const noteCount = audioEvents.filter(({ kind }) => kind === 'note').length;
-  const chordCount = audioEvents.filter(({ kind }) => kind === 'chord').length;
 
   return (
-    <RackModule
-      actions={editing ? <RequiredModule /> : undefined}
-      description="Current browser session and processing boundary."
-      moduleId="session"
-      size="compact"
-      status={sessionStateLabel(snapshot.capture)}
-      statusTone={sessionStatusTone(snapshot.capture)}
-      title="Session control"
-      unit="SS · 00"
-    >
-      <div className="rack-session-strip">
-        <RackValue label="MODE" value="LOCAL" />
-        <RackValue
-          label="AUDIO"
-          value={
-            sampleRate === null || sampleRate === undefined
-              ? 'NOT ACTIVE'
-              : `${sampleRate.toLocaleString()} Hz`
-          }
-        />
-        <RackValue label="ANALYZER" value={`MONO v${MONOPHONIC_ANALYZER_VERSION}`} />
-        <RackValue label="SESSION" value={formatSessionDuration(snapshot.capture.elapsedMs)} />
-        <RackValue
-          label={key.ambiguous ? 'KEY · AMBIG' : 'KEY'}
-          value={interpretationPending ? 'AFTER STOP' : key.value}
-        />
-        <RackValue
-          label={scale.ambiguous ? 'SCALE · AMBIG' : 'SCALE'}
-          value={interpretationPending ? 'AFTER STOP' : scale.value}
-        />
-        <RackValue label="NOTES" value={String(noteCount).padStart(2, '0')} />
-        <RackValue label="CHORDS" value={String(chordCount).padStart(2, '0')} />
-      </div>
-    </RackModule>
+    <>
+      <RackValue label="MODE" value="LOCAL" />
+      <RackValue
+        label="AUDIO"
+        value={
+          sampleRate === null || sampleRate === undefined
+            ? 'NOT ACTIVE'
+            : `${sampleRate.toLocaleString()} Hz`
+        }
+      />
+      <RackValue label="ANALYZER" value={`MONO v${MONOPHONIC_ANALYZER_VERSION}`} />
+      {editing && <RequiredModule />}
+    </>
   );
 }
 
@@ -287,10 +204,8 @@ export function RackWorkspace() {
 
       <main className="rack-workspace-main">
         <Rack>
-          <SessionModule editing={editing} />
-
           <RackModule
-            actions={editing ? <RequiredModule /> : undefined}
+            actions={<AudioInputHeaderActions editing={editing} />}
             moduleId="capture"
             size="expanded"
             title="Audio input"

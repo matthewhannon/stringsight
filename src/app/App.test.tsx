@@ -15,8 +15,14 @@ describe('App', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: /stringsight rack workspace/i }),
     ).toBeVisible();
-    expect(screen.getByRole('heading', { name: /session control/i })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: /session control/i })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /audio input/i })).toBeVisible();
+    expect(screen.getByText('MODE')).toBeVisible();
+    expect(screen.getByText('LOCAL')).toBeVisible();
+    expect(screen.getByText('AUDIO')).toBeVisible();
+    expect(screen.getByText('NOT ACTIVE')).toBeVisible();
+    expect(screen.getByText('ANALYZER')).toBeVisible();
+    expect(screen.getByText('MONO v0.2.1')).toBeVisible();
     expect(screen.queryByRole('heading', { name: /pitch analysis/i })).not.toBeInTheDocument();
     expect(screen.getByText('00 installed')).toBeVisible();
     expect(screen.getByRole('button', { name: '+ Add module' })).toBeEnabled();
@@ -41,7 +47,7 @@ describe('App', () => {
     expect(pitch.compareDocumentPosition(chord) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: 'Edit rack' }));
-    expect(screen.getAllByText('Required')).toHaveLength(2);
+    expect(screen.getAllByText('Required')).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: 'Move Chord analysis up' }));
     pitch = screen.getByRole('heading', { name: 'Pitch analysis' });
     chord = screen.getByRole('heading', { name: 'Chord analysis' });

@@ -440,8 +440,7 @@
   line-height: 1.45;
 }
 
-.ss-rack-module-actions,
-.rack-session-strip {
+.ss-rack-module-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--rack-space-4);
@@ -556,6 +555,20 @@
   font-size: 0.62rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.ss-rack-rocker-row > span {
+  transition:
+    color var(--rack-motion-fast) ease,
+    text-shadow var(--rack-motion-fast) ease;
+}
+
+.ss-rack-rocker.is-active + span {
+  color: #9fffd0;
+  font-weight: 700;
+  text-shadow:
+    0 0 5px rgb(115 255 192 / 80%),
+    0 0 12px rgb(88 234 167 / 48%);
 }
 
 .ss-rack-rocker {
@@ -1075,15 +1088,6 @@
   bottom: 10px;
 }
 
-.rack-session-strip {
-  justify-content: flex-start;
-  padding: 0 34px 28px;
-}
-
-.rack-session-strip .ss-rack-value:last-child {
-  margin-left: auto;
-}
-
 .ss-rack-module-content > .ss-rack-embedded-section {
   padding: 0;
   border: 0;
@@ -1379,14 +1383,6 @@
   .ss-rack-module--standard .ss-rack-module-content,
   .ss-rack-module--expanded .ss-rack-module-content {
     padding: 0 24px 24px;
-  }
-
-  .rack-session-strip {
-    padding: 0 24px 24px;
-  }
-
-  .rack-session-strip .ss-rack-value:last-child {
-    margin-left: 0;
   }
 
   .session-review-toolbar,
