@@ -21,7 +21,7 @@ type EmbeddedToolProps = {
 export type WorkspaceModuleDefinition = {
   Component: ComponentType<EmbeddedToolProps>;
   description?: string;
-  developmentOnly?: boolean;
+  hidden?: boolean;
   id: OptionalWorkspaceModuleId;
   libraryDescription: string;
   recommended?: boolean;
@@ -60,7 +60,7 @@ export const WorkspaceModuleRegistry: Readonly<
   benchmark: {
     Component: BenchmarkPanel,
     description: 'Prepare and export private fixtures for development evaluation.',
-    developmentOnly: true,
+    hidden: true,
     id: 'benchmark',
     libraryDescription: 'Prepare and export private fixtures for development evaluation',
     title: 'Evaluation bench',
@@ -70,7 +70,7 @@ export const WorkspaceModuleRegistry: Readonly<
 
 export const AvailableWorkspaceModules: readonly WorkspaceModuleDefinition[] =
   OptionalWorkspaceModuleIds.map((id) => WorkspaceModuleRegistry[id]).filter(
-    ({ developmentOnly }) => developmentOnly !== true || import.meta.env.DEV,
+    ({ hidden }) => hidden !== true,
   );
 
 export const AvailableWorkspaceModuleIds: readonly OptionalWorkspaceModuleId[] =

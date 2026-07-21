@@ -1,11 +1,5 @@
-import { expect, test, type Download, type Page } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
+import { expect, test, type Page } from '@playwright/test';
 import path from 'node:path';
-
-async function readTextDownload(download: Download): Promise<string> {
-  const path = await download.path();
-  return readFile(path, 'utf8');
-}
 
 async function addRackModules(page: Page, titles: readonly string[]): Promise<void> {
   await page.getByRole('button', { exact: true, name: '+ Add module' }).click();
@@ -31,9 +25,12 @@ test('opens directly into the functional realistic rack', async ({ page }) => {
   await expect(page.getByRole('button', { exact: true, name: 'Input' })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Source' })).toBeEnabled();
 
-  await addRackModules(page, ['Pitch analysis', 'Evaluation bench']);
+  await page.getByRole('button', { exact: true, name: '+ Add module' }).click();
+  await expect(page.getByRole('button', { name: 'Add Evaluation bench' })).toHaveCount(0);
+  await page.getByRole('button', { exact: true, name: 'Add Pitch analysis' }).click();
+  await page.getByRole('button', { exact: true, name: 'Close library' }).click();
   await expect(page.getByRole('heading', { name: 'Pitch analysis' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Evaluation bench' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Evaluation bench' })).toHaveCount(0);
 });
 
 test('captures and replays audio through a simulated microphone', async ({ page }) => {
@@ -106,17 +103,19 @@ test('loads a WAV through the normal replay analysis path', async ({ page }) => 
   await expect(page.getByRole('button', { exact: true, name: 'Replay' })).toBeEnabled();
 });
 
-test('finalizes a chord WAV with the real model and prepares a reviewed chord fixture', async ({
+test('finalizes a chord WAV with the real model and reveals analysis details on demand', async ({
   page,
 }) => {
   await page.goto('/#capture');
-  await addRackModules(page, ['Chord analysis', 'Evaluation bench']);
+  await addRackModules(page, ['Chord analysis']);
   const capturePanel = page.getByLabel('Audio capture controls');
   await capturePanel
     .locator('input[type="file"]')
     .setInputFiles(path.resolve('tests/fixtures/audio/dev-c-major-loud.wav'));
 
   const chordResults = page.getByLabel('Chord analysis results');
+  await expect(page.getByLabel('Chord analysis diagnostics')).toHaveCount(0);
+  await chordResults.getByRole('button', { name: 'Analysis details' }).click();
   const chordDiagnostics = page.getByLabel('Chord analysis diagnostics');
   await expect(chordDiagnostics).toContainText('ready', { timeout: 10_000 });
   await expect(chordDiagnostics).toContainText(/WASM|CPU/);
@@ -139,20 +138,6 @@ test('finalizes a chord WAV with the real model and prepares a reviewed chord fi
       .locator('span')
       .evaluate((element) => getComputedStyle(element).transitionProperty),
   ).toBe('transform');
-
-  await page.getByLabel('Fixture type').selectOption('chords');
-  const reviewedChord = page.getByLabel('True chord for event 1');
-  await expect(reviewedChord).toHaveValue('C');
-  const labelsDownloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Accept suggestions & download labels' }).click();
-  const fixture = JSON.parse(await readTextDownload(await labelsDownloadPromise)) as {
-    groundTruth: { chords: { pitchClasses: number[]; symbol: string }[] };
-    source: { license: string };
-  };
-  expect(fixture.groundTruth.chords).toEqual([
-    expect.objectContaining({ pitchClasses: [0, 4, 7], symbol: 'C' }),
-  ]);
-  expect(fixture.source.license).toBe('private-evaluation-only');
 });
 
 test('keeps the rack usable without horizontal overflow on a narrow screen', async ({ page }) => {

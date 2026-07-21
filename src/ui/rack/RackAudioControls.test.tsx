@@ -83,6 +83,45 @@ describe('rack audio controls', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
+  it('opens the source list above when the viewport has more room there', async () => {
+    const user = userEvent.setup();
+    const bounds = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      bottom: 574,
+      height: 54,
+      left: 0,
+      right: 320,
+      top: 520,
+      width: 320,
+      x: 0,
+      y: 520,
+      toJSON: () => ({}),
+    });
+    const originalInnerHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 });
+
+    render(
+      <RackSourceSelector
+        label="Source"
+        onChange={vi.fn()}
+        options={[
+          { label: 'System default', value: '' },
+          { label: 'Interface input', value: 'interface' },
+        ]}
+        value=""
+      />,
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'Source' }));
+    expect(screen.getByRole('listbox')).toHaveClass('ss-rack-source-menu--above');
+    expect(screen.getByRole('listbox')).toHaveStyle({ maxHeight: '420px' });
+
+    bounds.mockRestore();
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: originalInnerHeight,
+    });
+  });
+
   it('exposes the active record punch as the stop action', async () => {
     const user = userEvent.setup();
     const stop = vi.fn();

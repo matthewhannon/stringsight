@@ -1,4 +1,4 @@
-import { memo, useCallback, useSyncExternalStore, type CSSProperties } from 'react';
+import { memo, useCallback, useState, useSyncExternalStore, type CSSProperties } from 'react';
 
 import {
   PolyphonicAnalysisController,
@@ -88,6 +88,7 @@ export function PolyphonicAnalysisPanel({
   analysis,
   embedded = false,
 }: PolyphonicAnalysisPanelProps) {
+  const [showDetails, setShowDetails] = useState(false);
   const controller = analysis ?? defaultDisplayedPolyphonicAnalysis;
   const subscribe = useCallback(
     (listener: () => void) => controller.subscribe(listener),
@@ -122,33 +123,10 @@ export function PolyphonicAnalysisPanel({
         </div>
       )}
 
-      <div className="chord-profile-control" aria-label="Chord analysis mode">
-        <div>
-          <strong>Chord analysis</strong>
-          <span>
-            {snapshot.chordAnalysisProfile === 'accurate'
-              ? 'More look-ahead and stronger change confirmation.'
-              : 'Shorter look-ahead for quicker provisional changes.'}
-          </span>
-        </div>
-        <div role="group" aria-label="Chord analysis mode options">
-          {(['accurate', 'responsive'] as const).map((profile) => (
-            <button
-              aria-pressed={snapshot.chordAnalysisProfile === profile}
-              key={profile}
-              onClick={() => controller.setChordAnalysisProfile?.(profile)}
-              type="button"
-            >
-              {profile === 'accurate' ? 'Accurate' : 'Responsive'}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div
-        className={`analysis-console ${embedded ? rackEmbeddedClassNames.clippedSurface : ''}`.trim()}
+        className={`analysis-console chord-analysis-console ${showDetails ? 'chord-analysis-console--expanded' : ''} ${embedded ? rackEmbeddedClassNames.clippedSurface : ''}`.trim()}
       >
-        <div className="current-note current-chord" aria-live="polite">
+        <div className="current-note current-chord chord-summary-display" aria-live="polite">
           <span className={`analysis-state analysis-state--${snapshot.state}`}>{stateLabel}</span>
           {currentCandidate === null ? (
             <div className="note-empty">
@@ -161,131 +139,169 @@ export function PolyphonicAnalysisPanel({
                 <strong>{currentCandidate.symbol}</strong>
                 <div>
                   <span>{Math.round(currentCandidate.confidence * 100)}% match strength</span>
-                  <span>{currentCandidate.quality}</span>
-                  <span>
-                    {currentCandidate.bass === undefined
-                      ? 'Bass unresolved'
-                      : `Bass ${currentCandidate.bass}`}
-                  </span>
                 </div>
               </div>
               <div className="candidate-confidence" aria-label="Chord match strength">
                 <span style={meterScaleStyle(currentCandidate.confidence)} />
               </div>
-              <div className="alternatives">
-                <span>Ranked alternatives</span>
-                <ol>
-                  {alternatives.map((candidate) => (
-                    <li key={`${String(candidate.rank)}-${candidate.symbol}`}>
-                      <strong>{candidate.symbol}</strong>
-                      <span>{Math.round(candidate.confidence * 100)}% match</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
             </>
           )}
 
-          <div className="chroma-strip" aria-label="Pitch-class energy">
-            {pitchClasses.map((pitchClass, index) => {
-              const value = snapshot.chroma[index] ?? 0;
-              return (
-                <span key={pitchClass}>
-                  <i aria-hidden="true" style={meterScaleStyle(value)} />
-                  <b>{pitchClass}</b>
-                </span>
-              );
-            })}
+          {showDetails && (
+            <div className="chord-analysis-evidence" id="chord-analysis-evidence">
+              {currentCandidate !== null && (
+                <>
+                  <dl className="chord-candidate-facts">
+                    <div>
+                      <dt>Quality</dt>
+                      <dd>{currentCandidate.quality}</dd>
+                    </div>
+                    <div>
+                      <dt>Bass</dt>
+                      <dd>{currentCandidate.bass ?? 'Unresolved'}</dd>
+                    </div>
+                  </dl>
+                  <div className="alternatives">
+                    <span>Ranked alternatives</span>
+                    <ol>
+                      {alternatives.map((candidate) => (
+                        <li key={`${String(candidate.rank)}-${candidate.symbol}`}>
+                          <strong>{candidate.symbol}</strong>
+                          <span>{Math.round(candidate.confidence * 100)}% match</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </>
+              )}
+
+              <div className="chroma-strip" aria-label="Pitch-class energy">
+                {pitchClasses.map((pitchClass, index) => {
+                  const value = snapshot.chroma[index] ?? 0;
+                  return (
+                    <span key={pitchClass}>
+                      <i aria-hidden="true" style={meterScaleStyle(value)} />
+                      <b>{pitchClass}</b>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {snapshot.error !== null && (
+            <p className="chord-analysis-error" role="alert">
+              {snapshot.error}
+            </p>
+          )}
+
+          <footer className="chord-analysis-footer">
+            <button
+              aria-controls="chord-analysis-evidence chord-analysis-diagnostics chord-analysis-timeline"
+              aria-expanded={showDetails}
+              onClick={() => setShowDetails((visible) => !visible)}
+              type="button"
+            >
+              {showDetails ? 'Hide analysis details' : 'Analysis details'}
+            </button>
+          </footer>
+        </div>
+
+        {showDetails && (
+          <aside
+            className="analysis-diagnostics"
+            aria-label="Chord analysis diagnostics"
+            id="chord-analysis-diagnostics"
+          >
+            <dl>
+              <div>
+                <dt>Chord mode</dt>
+                <dd>{snapshot.chordAnalysisProfile}</dd>
+              </div>
+              <div>
+                <dt>Chord events</dt>
+                <dd>{snapshot.chordEvents.length}</dd>
+              </div>
+              <div>
+                <dt>Finalized note sets</dt>
+                <dd>{snapshot.noteSetEvents.length}</dd>
+              </div>
+              <div>
+                <dt>Finalized model</dt>
+                <dd>{isMonitoring ? 'recording only' : snapshot.modelState}</dd>
+              </div>
+              <div>
+                <dt>Model backend</dt>
+                <dd>{snapshot.modelBackend?.toUpperCase() ?? '-'}</dd>
+              </div>
+              <div>
+                <dt>Model load and warmup</dt>
+                <dd>
+                  {snapshot.modelLoadMs === null ? '-' : `${snapshot.modelLoadMs.toFixed(1)} ms`}
+                </dd>
+              </div>
+              <div>
+                <dt>Model inference</dt>
+                <dd>
+                  {snapshot.modelInferenceMs === null
+                    ? '-'
+                    : `${snapshot.modelInferenceMs.toFixed(1)} ms / ${String(snapshot.modelWindowCount)} ${snapshot.modelWindowCount === 1 ? 'window' : 'windows'}`}
+                </dd>
+              </div>
+              <div>
+                <dt>Worker processing</dt>
+                <dd>{snapshot.processingLatencyMs.toFixed(1)} ms</dd>
+              </div>
+              <div>
+                <dt>Maximum processing</dt>
+                <dd>{snapshot.maxProcessingLatencyMs.toFixed(1)} ms</dd>
+              </div>
+              <div>
+                <dt>Analysis sample rate</dt>
+                <dd>
+                  {snapshot.analysisSampleRate === null
+                    ? '-'
+                    : `${snapshot.analysisSampleRate.toLocaleString()} Hz`}
+                </dd>
+              </div>
+              <div>
+                <dt>Signal energy</dt>
+                <dd>{snapshot.energy.toFixed(4)}</dd>
+              </div>
+              <div>
+                <dt>Dropped chunks</dt>
+                <dd>{snapshot.droppedChunks}</dd>
+              </div>
+              <div>
+                <dt>Analysis run</dt>
+                <dd>{snapshot.runId ?? '-'}</dd>
+              </div>
+            </dl>
+          </aside>
+        )}
+      </div>
+
+      {showDetails && (
+        <div
+          className={`note-timeline chord-timeline ${embedded ? rackEmbeddedClassNames.surface : ''}`.trim()}
+          aria-labelledby="chord-timeline-title"
+          id="chord-analysis-timeline"
+        >
+          <div>
+            <h3 id="chord-timeline-title">Chord timeline</h3>
+            <span>
+              {isMonitoring
+                ? snapshot.chordEvents.length > TIMELINE_EVENT_LIMIT
+                  ? `Latest ${String(TIMELINE_EVENT_LIMIT)} live · rolling history`
+                  : `${String(snapshot.chordEvents.length)} live ${snapshot.chordEvents.length === 1 ? 'event' : 'events'}`
+                : snapshot.chordEvents.length > TIMELINE_EVENT_LIMIT
+                  ? `Latest ${String(TIMELINE_EVENT_LIMIT)} of ${String(snapshot.chordEvents.length)} · ${String(snapshot.chordEvents.length - TIMELINE_EVENT_LIMIT)} earlier hidden`
+                  : `${String(snapshot.chordEvents.length)} events`}
+            </span>
           </div>
+          <ChordTimelineEvents events={snapshot.chordEvents} isMonitoring={isMonitoring} />
         </div>
-
-        <aside className="analysis-diagnostics" aria-label="Chord analysis diagnostics">
-          <dl>
-            <div>
-              <dt>Chord mode</dt>
-              <dd>{snapshot.chordAnalysisProfile}</dd>
-            </div>
-            <div>
-              <dt>Chord events</dt>
-              <dd>{snapshot.chordEvents.length}</dd>
-            </div>
-            <div>
-              <dt>Finalized note sets</dt>
-              <dd>{snapshot.noteSetEvents.length}</dd>
-            </div>
-            <div>
-              <dt>Finalized model</dt>
-              <dd>{isMonitoring ? 'recording only' : snapshot.modelState}</dd>
-            </div>
-            <div>
-              <dt>Model backend</dt>
-              <dd>{snapshot.modelBackend?.toUpperCase() ?? '-'}</dd>
-            </div>
-            <div>
-              <dt>Model load and warmup</dt>
-              <dd>
-                {snapshot.modelLoadMs === null ? '-' : `${snapshot.modelLoadMs.toFixed(1)} ms`}
-              </dd>
-            </div>
-            <div>
-              <dt>Model inference</dt>
-              <dd>
-                {snapshot.modelInferenceMs === null
-                  ? '-'
-                  : `${snapshot.modelInferenceMs.toFixed(1)} ms / ${String(snapshot.modelWindowCount)} ${snapshot.modelWindowCount === 1 ? 'window' : 'windows'}`}
-              </dd>
-            </div>
-            <div>
-              <dt>Worker processing</dt>
-              <dd>{snapshot.processingLatencyMs.toFixed(1)} ms</dd>
-            </div>
-            <div>
-              <dt>Maximum processing</dt>
-              <dd>{snapshot.maxProcessingLatencyMs.toFixed(1)} ms</dd>
-            </div>
-            <div>
-              <dt>Analysis sample rate</dt>
-              <dd>
-                {snapshot.analysisSampleRate === null
-                  ? '-'
-                  : `${snapshot.analysisSampleRate.toLocaleString()} Hz`}
-              </dd>
-            </div>
-            <div>
-              <dt>Signal energy</dt>
-              <dd>{snapshot.energy.toFixed(4)}</dd>
-            </div>
-            <div>
-              <dt>Dropped chunks</dt>
-              <dd>{snapshot.droppedChunks}</dd>
-            </div>
-            <div>
-              <dt>Analysis run</dt>
-              <dd>{snapshot.runId ?? '-'}</dd>
-            </div>
-          </dl>
-          {snapshot.error !== null && <p role="alert">{snapshot.error}</p>}
-        </aside>
-      </div>
-
-      <div
-        className={`note-timeline chord-timeline ${embedded ? rackEmbeddedClassNames.surface : ''}`.trim()}
-        aria-labelledby="chord-timeline-title"
-      >
-        <div>
-          <h3 id="chord-timeline-title">Chord timeline</h3>
-          <span>
-            {isMonitoring
-              ? snapshot.chordEvents.length > TIMELINE_EVENT_LIMIT
-                ? `Latest ${String(TIMELINE_EVENT_LIMIT)} live · rolling history`
-                : `${String(snapshot.chordEvents.length)} live ${snapshot.chordEvents.length === 1 ? 'event' : 'events'}`
-              : snapshot.chordEvents.length > TIMELINE_EVENT_LIMIT
-                ? `Latest ${String(TIMELINE_EVENT_LIMIT)} of ${String(snapshot.chordEvents.length)} · ${String(snapshot.chordEvents.length - TIMELINE_EVENT_LIMIT)} earlier hidden`
-                : `${String(snapshot.chordEvents.length)} events`}
-          </span>
-        </div>
-        <ChordTimelineEvents events={snapshot.chordEvents} isMonitoring={isMonitoring} />
-      </div>
+      )}
     </section>
   );
 }

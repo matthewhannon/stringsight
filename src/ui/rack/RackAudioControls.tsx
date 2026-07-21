@@ -1,6 +1,7 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ButtonHTMLAttributes,
@@ -206,6 +207,7 @@ export type RackSourceSelectorProps = {
 export function RackSourceSelector({ label, onChange, options, value }: RackSourceSelectorProps) {
   const generatedId = useId().replaceAll(':', '');
   const [open, setOpen] = useState(false);
+  const [menuLayout, setMenuLayout] = useState({ maxHeight: 420, placement: 'below' });
   const buttonRef = useRef<HTMLButtonElement>(null);
   const controlRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<(HTMLLIElement | null)[]>([]);
@@ -218,6 +220,43 @@ export function RackSourceSelector({ label, onChange, options, value }: RackSour
   useEffect(() => {
     if (open) optionRefs.current[selectedIndex]?.focus();
   }, [open, selectedIndex]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    const positionMenu = () => {
+      const button = buttonRef.current;
+      if (button === null) return;
+
+      const menuGap = 5;
+      const viewportPadding = 12;
+      const preferredMaxHeight = 420;
+      const buttonBounds = button.getBoundingClientRect();
+      const spaceBelow = Math.max(
+        0,
+        window.innerHeight - buttonBounds.bottom - viewportPadding - menuGap,
+      );
+      const spaceAbove = Math.max(0, buttonBounds.top - viewportPadding - menuGap);
+      const placement =
+        spaceBelow >= Math.min(240, preferredMaxHeight) || spaceBelow >= spaceAbove
+          ? 'below'
+          : 'above';
+      const availableSpace = placement === 'below' ? spaceBelow : spaceAbove;
+
+      setMenuLayout({
+        maxHeight: Math.max(96, Math.min(preferredMaxHeight, Math.floor(availableSpace))),
+        placement,
+      });
+    };
+
+    positionMenu();
+    window.addEventListener('resize', positionMenu);
+    window.addEventListener('scroll', positionMenu, true);
+    return () => {
+      window.removeEventListener('resize', positionMenu);
+      window.removeEventListener('scroll', positionMenu, true);
+    };
+  }, [open]);
 
   const focusOption = (index: number) => {
     if (options.length === 0) return;
@@ -272,9 +311,10 @@ export function RackSourceSelector({ label, onChange, options, value }: RackSour
       {open && options.length > 0 && (
         <ul
           aria-label={`Available ${label.toLocaleLowerCase()}s`}
-          className="ss-rack-source-menu"
+          className={`ss-rack-source-menu ss-rack-source-menu--${menuLayout.placement}`}
           id={`${generatedId}-options`}
           role="listbox"
+          style={{ maxHeight: menuLayout.maxHeight }}
         >
           {options.map((option, index) => (
             <li

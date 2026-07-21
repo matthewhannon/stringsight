@@ -367,6 +367,11 @@
   box-shadow: var(--rack-shadow-panel);
 }
 
+.ss-rack-module:has(.ss-rack-source-selector.is-open) {
+  z-index: 16;
+  overflow: visible;
+}
+
 .ss-rack-module::after {
   position: absolute;
   inset: 0;
@@ -940,6 +945,15 @@
     4px 5px 0 rgb(0 0 0 / 55%),
     0 10px 18px rgb(0 0 0 / 42%);
   list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #586168 #121518;
+  scrollbar-width: thin;
+}
+
+.ss-rack-source-menu--above {
+  top: auto;
+  bottom: calc(100% + 5px);
 }
 
 .ss-rack-source-menu li {

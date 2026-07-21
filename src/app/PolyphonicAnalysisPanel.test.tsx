@@ -109,16 +109,25 @@ describe('PolyphonicAnalysisPanel', () => {
     expect(screen.getByRole('region', { name: 'Chord analysis results' })).toBeVisible();
     expect(screen.getByText('Waiting for a chord')).toBeVisible();
     expect(screen.getByText(/play two or more notes/i)).toBeVisible();
-    expect(screen.getByText('0 events')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Accurate' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.queryByRole('button', { name: 'Accurate' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Responsive' })).not.toBeInTheDocument();
+    expect(screen.queryByText('0 events')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Chord analysis diagnostics')).not.toBeInTheDocument();
+
+    const details = screen.getByRole('button', { name: 'Analysis details' });
+    expect(details).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(details);
+
+    expect(screen.getByRole('button', { name: 'Hide analysis details' })).toHaveAttribute(
+      'aria-expanded',
       'true',
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Responsive' }));
-    expect(analysis.setChordAnalysisProfile).toHaveBeenCalledWith('responsive');
+    expect(screen.getByText('0 events')).toBeVisible();
+    expect(screen.getByLabelText('Chord analysis diagnostics')).toBeVisible();
+    expect(screen.getByText('accurate')).toBeVisible();
   });
 
-  it('renders ranked candidates, diagnostics, errors, and a bounded populated timeline', () => {
+  it('keeps a concise chord summary visible and reveals detailed evidence on demand', () => {
     const events = Array.from({ length: 17 }, (_, index) => chordEvent(index + 1, 'finalized'));
     const currentChord = chordEvent(18);
     render(
@@ -127,7 +136,6 @@ describe('PolyphonicAnalysisPanel', () => {
           new FakeAnalysis({
             ...emptySnapshot,
             analysisSampleRate: 16_000,
-            chordAnalysisProfile: 'responsive',
             chordEvents: [...events, currentChord],
             chroma: [0.3, 0, 0, 0, 0.25, 0, 0, 0.45, 0, 0, 0, 0],
             currentChord,
@@ -151,6 +159,18 @@ describe('PolyphonicAnalysisPanel', () => {
 
     expect(screen.getByRole('heading', { name: 'Resolve notes played together.' })).toBeVisible();
     expect(screen.getByText('Tracking chord')).toBeVisible();
+    expect(screen.getByText('C')).toBeVisible();
+    expect(screen.getByText('86% match strength')).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent('Model finalization is unavailable.');
+    expect(screen.queryByText('Am7')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Pitch-class energy')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Chord analysis diagnostics')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('list', { name: 'Latest chord events, newest first' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Analysis details' }));
+
     expect(screen.getAllByText('C').length).toBeGreaterThan(1);
     expect(screen.getByText('Am7')).toBeVisible();
     expect(screen.getByText('Csus4')).toBeVisible();
@@ -170,12 +190,9 @@ describe('PolyphonicAnalysisPanel', () => {
     expect(within(newestItem).getByText('provisional')).toBeVisible();
     expect(within(newestItem).getByText('86% match')).toBeVisible();
     expect(within(newestItem).getByText('Template C E G')).toBeVisible();
-    expect(screen.getByRole('alert')).toHaveTextContent('Model finalization is unavailable.');
     expect(screen.getByText('16,000 Hz')).toBeVisible();
     expect(screen.getByText('WASM')).toBeVisible();
     expect(screen.getByText('125.6 ms / 3 windows')).toBeVisible();
-    expect(screen.getByText(/shorter look-ahead/i)).toBeVisible();
-    expect(screen.getByText('86% match strength')).toBeVisible();
     const confidenceMeter = screen.getByLabelText('Chord match strength').querySelector('span');
     expect(confidenceMeter?.style.getPropertyValue('--meter-scale')).toBe('0.86');
     const chromaBars = screen.getByLabelText('Pitch-class energy').querySelectorAll('i');
@@ -183,6 +200,10 @@ describe('PolyphonicAnalysisPanel', () => {
     expect(chromaBars[0]?.style.getPropertyValue('--meter-scale')).toBe('0.3');
     expect(chromaBars[7]?.style.getPropertyValue('--meter-scale')).toBe('0.45');
     expect(screen.getAllByText('Template C E G').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide analysis details' }));
+    expect(screen.queryByText('Am7')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Chord analysis diagnostics')).not.toBeInTheDocument();
   });
 
   it('presents monitoring chords as live while preserving provisional data semantics', () => {
@@ -204,6 +225,7 @@ describe('PolyphonicAnalysisPanel', () => {
     );
 
     expect(screen.getByText('Live chord')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Analysis details' }));
     expect(screen.getByText('Latest 6 live · rolling history')).toBeVisible();
     expect(screen.getAllByText('live')).toHaveLength(6);
     expect(screen.queryByText('provisional')).not.toBeInTheDocument();
