@@ -1,9 +1,9 @@
 # ADR 0006: Practice documents, one transport/audio authority, and replaceable adapters
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-20
-- **Decision scope:** Owner-approved invariants and evaluation scope for the disposable feasibility
-  spike; production technology, licensing procedure, support claims, and budgets are not accepted
+- **Decision scope:** Core Practice System invariants plus the bounded hackathon profile in ADR
+  0007; pre-commercial support claims, schemas, and numeric budgets remain gated
 
 ## Context
 
@@ -124,18 +124,18 @@ Standard MIDI File import is raw-event-preflighted and converted into canonical 
 maps with quantified loss. SMF is never an independent runtime clock. Authored-document MIDI and
 observed-session MIDI remain separate.
 
-alphaTab 1.8.4 may be evaluated only after explicit owner authorization of MPL-2.0 evaluation and
-source/notice procedure. Exact evidence is pinned to npm integrity
+For the bounded hackathon profile, alphaTab 1.8.4 is accepted behind a replaceable adapter for
+fixture-backed notation/import only, subject to ADRs 0005 and 0007. Exact evidence is pinned to npm
+integrity
 `sha512-VN5rfTZZWgA63Ny1aDKCp02k3Qm9CHhg4Q9AnK0kHm7G+fNDNZo36TeToPDFoJ6VpB9+AHcCrHwHFUP1tKqdsw==`
-and upstream commit `022a45c8e42370f9e12e68949d11eada370da83d`.
+and upstream commit `022a45c8e42370f9e12e68949d11eada370da83d`. Initialize with player
+mode disabled and no soundfont. Broad GP/MusicXML/SMF fidelity is not accepted.
 
-The candidate order is:
-
-1. public alphaSynth output proven subordinate to StringSight authority;
-2. bounded rendered PCM scheduled by `AudioRuntime`, only if speed/range/tail/memory/edit-latency
-   fixtures pass;
-3. StringSight-owned shared-context reference rendering; or
-4. omit synthesized reference playback.
+The initial release does not instantiate or enable alphaSynth/synthesized reference playback and
+omits the audited SONiVOX banks and every unreviewed sound bank. The general alphaTab bundle may
+still contain uninvoked alphaSynth implementation bytes. A future synthesis candidate must prove public subordinate output,
+shared-runtime scheduling, cleanup, coexistence, and audible quality before a new decision accepts
+it.
 
 Private APIs, source patching to force adoption, and independent live clocks are rejected.
 
@@ -236,13 +236,14 @@ Rejected by accepted D1/D2. Video is a gated P1 enhancement and cannot weaken P0
 - **Resource contention:** simultaneous-workload spike and audio-first degradation.
 - **Inaccessible renderer:** independent semantic score/editor and ordinary command controls.
 
-## Contingent decisions and validation obligations
+## Accepted boundary and retained validation obligations
 
-This ADR intentionally does **not** accept:
+ADR 0007 accepts exact alphaTab 1.8.4 and its MPL-2.0 distribution procedure only for the bounded
+hackathon notation/import profile. It rejects alphaSynth and the audited SONiVOX banks for the
+initial release and limits imports to fixture-backed claims with explicit loss. This ADR still does
+**not** accept:
 
-- alphaTab/alphaSynth or any notation/import/reference candidate;
-- MPL-2.0 production distribution;
-- `@tonejs/midi` or a raw SMF parser;
+- a particular authored-MIDI library or general SMF fidelity;
 - PPQ/hash/canonical schema details;
 - a reference-video audio path;
 - `MediaRecorder`, TrackProcessor, WebCodecs, codec, container, or muxer;
@@ -250,16 +251,8 @@ This ADR intentionally does **not** accept:
 - IndexedDB store layout or cross-store deletion mechanics; or
 - performance, drift, seek, memory, bundle, storage, or quota budgets.
 
-Acceptance requires:
-
-1. Owner resolution of alphaTab evaluation/license process, candidate order, fixture/hardware
-   matrix, and invariant-based disqualifications.
-2. Repeatable raw results from `../plans/11-notation-audio-video-feasibility-spike.md` covering
-   notation/import, one-authority synthesis, all clock mappings, both media maps, follower
-   correction, take timestamps, full simultaneous load, security, accessibility, and licensing.
-3. Explicit post-spike technology/fallback/format/license/budget decisions.
-4. Golden contract/migration/map fixtures for the accepted schema.
-5. Independent review against ADRs 0001-0005 and accepted D1-D10 with no blocking contradiction.
-
-Until those gates pass, this ADR remains Proposed and authorizes no production dependency, schema,
-database migration, runtime refactor, or media implementation.
+The accepted architecture still requires golden contract/migration/map fixtures, protected capture
+regression, and item-specific implementation evidence. The spike did not prove one application-wide
+runtime, exact physical A/V alignment, Edge background/resume recovery, full renderer accessibility,
+representative hardware, repeated soaks, or numeric budgets. Those limitations constrain release
+claims without reopening the one-transport/one-runtime decision.

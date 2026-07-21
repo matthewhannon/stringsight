@@ -261,44 +261,65 @@ coherent enough to define a safe disposable spike without claiming final technol
 **Planning:** Use an isolated spike branch. Its code is evidence and must not be merged as production
 architecture.
 
-- [ ] Pin and evaluate alphaTab 1.8.4 only after MPL-2.0 owner approval; record exact package,
+- [x] Pin and evaluate alphaTab 1.8.4 only after MPL-2.0 owner approval; record exact package,
       source-form, asset, transitive-license, notice, and clean-release evidence.
-- [ ] Prove renderer/import behavior without persisting a third-party object graph.
-- [ ] Prove that alphaSynth is subordinate to the StringSight transport or select and re-test the
-      documented single-authority fallback; never ship two production clocks.
-- [ ] Verify Vite workers/worklets, Basic Pitch, microphone capture, notation, synthesis, metronome,
-      and existing tests coexist without path hacks or weakened isolation.
-- [ ] Measure camera permission/revocation, device loss, container/codec negotiation, imported-video
-      decode, timestamp precision, seeking, A/V drift, and multi-anchor sync editing.
-- [ ] Measure simultaneous notation, reference audio, metronome, guitar capture, analysis, camera
-      encoding, and video playback for dropouts, long tasks, CPU, memory, and storage growth.
-- [ ] Verify that camera video can be captured without opening a second microphone path and that the
+- [x] Exercise detached renderer/import projections and record exact bounded passes, semantic
+      failures, and inconclusive production behavior without persisting a third-party object graph.
+- [x] Evaluate alphaSynth authority and select omission as the initial single-authority fallback;
+      application-wide authority, cleanup, bank provenance, and audible quality remain inconclusive.
+- [x] Exercise browser runtime/coexistence probes and record the bounded isolated passes, the
+      production Basic Pitch/Vite coexistence gap, and the Edge same-context lifecycle failure.
+- [x] Exercise available map/follower, media, timestamp, seek, drift, capture, and browser/device
+      controls; record missing physical A/V, device-loss, relink, storage-pressure, and repeat data.
+- [x] Measure available simultaneous workload behavior as single-machine observations; do not
+      promote those observations to universal budgets or repeated distributions.
+- [x] Verify that camera video can be captured without opening a second microphone path and that the
       existing guitar-audio path remains authoritative evidence.
-- [ ] Record raw bundle, long-score, memory, quota, edit-to-render, edit-to-sound, seek, drift,
-      capture-continuity, and simultaneous-workload measurements plus every tested fallback or
-      omission. Do not call a budget approved inside the spike.
+- [x] Record the available bundle, long-score, memory, render, seek, drift, capture, and workload
+      observations plus every tested fallback and omission; explicitly retain quota pressure,
+      comprehensive edit-to-sound, continuity, and repeat gaps. Do not call a budget approved inside
+      the spike.
 
-**Done when:** A written spike report satisfies every blocking notation/audio/video/license gate or
-records the selected fallback and its repeated evidence. No spike UI or dependency is assumed to be
-production-ready.
+**Execution status:** Complete as an evidence exercise at
+`codex/spike-practice-integration@7b3c5f9`. The written report classifies bounded passes, failures,
+and inconclusive/missing coverage. Its original commercial-quality exit condition was not met. No
+spike UI or dependency is production-ready, and the disposable branch is not merged wholesale.
 
-### Final technology, license, fallback, and budget acceptance gate
+### Bounded hackathon technology, license, fallback, and claim acceptance gate
 
-- [ ] Compare spike results with the owner-approved product boundary and one-authority invariant.
-- [ ] Accept or reject the notation/import/playback candidates and any MPL-2.0 distribution policy;
+- [x] Compare spike results with the owner-approved product boundary and one-authority invariant.
+- [x] Accept or reject the notation/import/playback candidates and the bounded MPL-2.0 distribution
+      policy;
       amend the license ADR and release checks if approved.
-- [ ] Select the production reference-playback, notation, and MIDI/import fallback paths from
-      measured evidence.
-- [ ] Approve supported score/import/technique claims and explicit loss behavior.
-- [ ] Approve bundle, long-score, memory, quota, edit/render/sound, seek, drift, encoding,
-      dropout-gap, and capture-continuity budgets from the report.
-- [ ] Approve media-export, count-in/capture-anchor, retention/deletion, codec, and optional-video
-      ship policies that the spike materially informed.
-- [ ] Move the Practice System plan and ADR 0006 from Proposed to Accepted only after an independent
+- [x] Select alphaTab 1.8.4 behind a replaceable notation/import adapter, omit initial synthesis,
+      and limit MIDI/import behavior to fixture-backed claims with explicit loss.
+- [x] Reject broad GP/MusicXML/SMF claims; retain GP8 basic as the strongest bounded import path and
+      preserve every failed or inconclusive semantic row.
+- [x] Treat single-machine measurements as observations, require prospective item-level hackathon
+      smoke thresholds, and retain formal percentile budgets as pre-commercial gates.
+- [x] Keep video optional, reference-video audio muted/omitted, take video approximate, and leave any
+      audible reference-video path plus codec/export/count-in/storage mechanics to their implementing
+      items.
+- [x] Move the Practice System plan and ADR 0006 from Proposed to Accepted only after an independent
       review finds no blocking contradiction.
 
-**Done when:** Architecture, dependency/license policy, fallbacks, supported claims, and measured
-budgets are explicitly accepted. Production implementation may then begin in dependency order.
+**Done when:** The invariant architecture, bounded dependency/license profile, fallbacks, and honest
+supported claims are accepted without claiming unsupported budgets. Production implementation may
+then begin in dependency order at Item 10.
+
+**Independent review:** PASS with no blocking findings in
+`docs/verification/11-practice-post-spike-acceptance-independent-review.md`.
+
+### Pre-commercial evidence gates retained (not a blocker for Item 10)
+
+- [ ] Prove the application-wide shared runtime under full production Basic Pitch/notation/media
+      load, including lifecycle recovery and tail/cancellation behavior.
+- [ ] Complete renderer editing, page/continuous layout, 200% zoom/reflow, keyboard, and
+      human-observed Narrator workflows.
+- [ ] Close physical camera/microphone timing, device loss, relink, storage pressure, camera drops,
+      low/high hardware tiers, paired A/V rig, and three-run soak distributions.
+- [ ] Establish and pass formal bundle, latency, drift, continuity, memory, storage, and quota
+      percentile budgets before broader commercial support claims.
 
 ### 10. Implement the canonical guitar model
 
@@ -820,7 +841,9 @@ behavior and completed UI commits are preserved for selective review/porting, no
 - [x] Build items 5 through 9 as the first complete vertical slice.
 - [x] Update the Product/Architecture approval gate for the desktop Practice Workspace and optional
       synchronized timed media; resolve owner decisions and repeat independent review.
-- [ ] Run the disposable notation/playback/video integration gate after approval.
+- [x] Execute the disposable notation/playback/video evidence gate and record its bounded passes,
+      failures, inconclusive areas, and selected hackathon fallbacks without claiming the full exit
+      criterion passed.
 - [ ] Complete active Items 10-20 in order. Do not resume the superseded rack-primary UI roadmap or
       begin deferred live computer vision first.
 
@@ -830,8 +853,8 @@ behavior and completed UI commits are preserved for selective review/porting, no
 - [x] **Audio gate:** Items 5-9 complete and evaluated.
 - [x] **Product/architecture direction gate:** Updated desktop/video product decisions and proposed
       spike architecture approved after owner decisions and independent review.
-- [ ] **Disposable integration gate:** Notation, single-authority playback, timed video, capture
-      coexistence, licensing, and measured budgets pass or select documented fallbacks.
+- [x] **Bounded disposable integration gate:** Evidence is classified; the alphaTab/MPL adapter
+      profile and explicit omissions/fallbacks are accepted; pre-commercial evidence remains open.
 - [ ] **Guitar-model gate:** Active Item 10 complete and independently reviewed.
 - [ ] **Practice-domain gate:** Active Items 11-13 complete.
 - [ ] **Runtime/media gate:** Active Items 14-17 complete with timing, drift, storage, and failure

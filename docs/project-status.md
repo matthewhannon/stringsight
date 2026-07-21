@@ -51,24 +51,31 @@ public verification suite remains independent of these private files.
 
 ## Next implementation milestone
 
-Product/UX step #2 was accepted on 2026-07-20. The provisional Practice System architecture step #3
-is documented and independently reviewed with no blocking contradiction. On 2026-07-20, the owner
-approved alphaTab 1.8.4/MPL-2.0 evaluation, the proposed candidate/fallback order, the staged desktop
-browser/hardware/fixture/workload matrix, and all invariant-based disqualifications for the isolated
-spike. The Proposed plan, ADR 0006, dedicated transport/timed-media research, and spike specification
-preserve one `PracticeTransport`, one application audio runtime, explicit clock mappings, distinct
-reference and take-video maps, and a transport-owned mapless-preview fallback. No production
-technology, license procedure, codec, schema, support claim, or performance budget has been
-accepted.
+The disposable Practice System feasibility spike executed on
+`codex/spike-practice-integration@7b3c5f9`. Its original commercial-quality exit criterion was not
+met. Bounded reference-map/follower, canonical-detachment, declared SMF/import, and video-only
+privacy controls passed; broad MusicXML D4 and the tested GP7 effects path failed; Edge lost the
+same-context audio heartbeat floor after injected freeze/resume. Application-wide runtime
+coexistence, synthesis, physical A/V/device/storage behavior, complete accessibility, hardware
+breadth, repeated distributions, and numeric budgets remain inconclusive or missing.
 
-The owner subsequently narrowed the supported and release-validated environment to Windows 11 on
-current stable Chrome and Edge. macOS remains desirable best-effort portability, but it is untested,
-carries no support claim, and does not block the current spike or release gate.
+ADRs 0006 and 0007 now accept the invariant Practice System architecture and a narrow hackathon
+profile. alphaTab 1.8.4 may be implemented behind a replaceable canonical adapter with the pinned
+MPL source/notice/release procedure. Import claims remain fixture-backed and loss-reporting. The
+initial release does not instantiate or enable alphaSynth/synthesized reference playback and omits
+the audited SONiVOX banks and all unreviewed sound banks. Reference/take video remains optional;
+reference-video audio is muted or omitted, any audible path remains gated, and take-video alignment
+is approximate until physical evidence exists.
 
-Next, create a separate disposable spike branch, inventory the exact available hardware/devices,
-collect raw notation/audio/MIDI/video evidence, record unavailable physical coverage honestly, and
-complete the final technology, license, fallback, supported-claim, and measured-budget acceptance
-gate before production domain implementation.
+Current desktop Chrome on Windows 11 is the primary hackathon target. Edge is best effort, and
+users must not background an active Edge session until lifecycle recovery is fixed and repeated.
+macOS remains a portability goal without a current support claim. Single-machine numbers are
+observations; implementing items must define smoke thresholds, while formal percentile budgets stay
+pre-commercial.
+
+The next production implementation milestone is Checklist Item 10, the renderer-independent
+canonical guitar model. Score, import, save, transport, video, MIDI, alignment, and assessment
+surfaces in the current workspace remain placeholders.
 
 The executable dependency order is maintained in `BUILD_CHECKLIST.md`. Live computer vision,
 fusion, and GPT interpretation remain deferred until after the complete score/practice/take product.
@@ -205,9 +212,10 @@ interpretation. Audio must remain useful without a camera.
 
 ## Verification baseline
 
-The current verification passes formatting, linting, type checking, dependency-license checks,
-corpus validation, evaluation self-tests, coverage, and the production build. The suite contains
-285 unit/integration tests across 34 files with 91.09% statement and 80.37% branch coverage. The
+The current production baseline verification (separate from the disposable spike harness) passes
+formatting, linting, type checking, dependency-license checks, corpus validation, evaluation
+self-tests, coverage, and the production build. The suite contains
+349 unit/integration tests across 37 files with 90.50% statement and 80.30% branch coverage. The
 public production browser matrix remains 100% chord top-1/top-3 on its two fixtures, and the private
 browser replay now asserts the supported labels and inversions on the real model/fusion path. Item
 7's reopened finalization checkbox and Item 9 are closed, including the fresh

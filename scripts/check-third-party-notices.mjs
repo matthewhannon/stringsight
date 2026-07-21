@@ -5,6 +5,12 @@ const lock = JSON.parse(await readFile(new URL('package-lock.json', root), 'utf8
 const notices = await readFile(new URL('THIRD_PARTY_NOTICES.md', root), 'utf8');
 const distributedNotices = await readFile(new URL('public/THIRD_PARTY_LICENSES.txt', root), 'utf8');
 const modelInventory = await readFile(new URL('public/models/README.md', root), 'utf8');
+const alphaTabBaseline = JSON.parse(
+  await readFile(
+    new URL('docs/release/provenance/alphatab-1.8.4-license-audit-baseline.json', root),
+    'utf8',
+  ),
+);
 
 const permittedProductionLicenses = new Set([
   '0BSD',
@@ -22,6 +28,7 @@ const installedPackages = Object.entries(lock.packages ?? {})
   .filter(([path]) => path.startsWith('node_modules/'))
   .map(([path, metadata]) => ({
     dev: metadata.dev === true,
+    integrity: metadata.integrity,
     license: metadata.license,
     name: path.slice('node_modules/'.length),
     version: metadata.version,
@@ -39,8 +46,14 @@ if (missingLicenseMetadata.length > 0) {
 }
 
 const productionPackages = installedPackages.filter(({ dev }) => !dev);
+const isAcceptedProductionPackage = ({ integrity, license, name, version }) =>
+  permittedProductionLicenses.has(license) ||
+  (name === '@coderline/alphatab' &&
+    version === '1.8.4' &&
+    license === 'MPL-2.0' &&
+    integrity === alphaTabBaseline.alphaTab.integrity);
 const unapprovedProductionPackages = productionPackages.filter(
-  ({ license }) => !permittedProductionLicenses.has(license),
+  (packageMetadata) => !isAcceptedProductionPackage(packageMetadata),
 );
 if (unapprovedProductionPackages.length > 0) {
   throw new Error(

@@ -1,12 +1,17 @@
 # Practice System architecture plan
 
-- **Status:** Proposed; disposable spike execution approved, final acceptance pending
+- **Status:** Accepted invariant architecture; bounded hackathon technology profile accepted;
+  pre-commercial gates retained
 - **Updated:** 2026-07-20
 - **Product authority:** `01-product-requirements.md` and the accepted D1-D10 record in
   `desktop-practice-product-decisions.md`
 - **Decision record:** `../decisions/0006-practice-document-audio-runtime-and-notation-adapters.md`
 - **Synchronization research:** `../research/practice-transport-and-timed-media-sync.md`
 - **Disposable spike:** `11-notation-audio-video-feasibility-spike.md`
+- **Post-spike decision:**
+  `../decisions/0007-bounded-hackathon-practice-technology-profile.md`
+- **Post-spike review:**
+  `../verification/11-practice-post-spike-acceptance-independent-review.md`
 
 ## 1. Outcome and limits
 
@@ -16,12 +21,13 @@ one transport, record an immutable take, replay it, and optionally use synchroni
 video. The same sources later support assessment without mutating authored intent or observed
 evidence.
 
-This plan is deliberately **Proposed**. It defines invariants and the evidence the disposable spike
-must collect. On 2026-07-20, the owner approved the spike-only evaluation authorization, candidate
-order, desktop evidence matrix, and invariant disqualifications recorded in the spike specification.
-That approval does not approve alphaTab or alphaSynth for production, `@tonejs/midi`, any
-codec/container, a database schema, synchronized video for release, or final performance/storage
-budgets. No production implementation or storage migration is authorized by this document.
+This invariant architecture is **Accepted**. ADR 0007 separately accepts a narrow hackathon
+technology profile from the completed disposable spike: alphaTab 1.8.4 behind a replaceable adapter
+for bounded notation/import, no alphaSynth or sound bank, fixture-backed import claims only,
+optional/muted timed media, and Chrome on Windows 11 as the primary target. That decision does not
+approve a schema, broad format fidelity, a codec/container/export path, exact take-video alignment,
+Edge background/resume support, universal performance/storage budgets, or any placeholder UI as a
+completed implementation. Production work proceeds in checklist dependency order.
 
 The committed Practice Workspace is integration evidence only. Its score, transport, video, MIDI,
 persistence, and assessment placeholders are not domain authority. The former rack presentation is
@@ -285,20 +291,18 @@ separate adapters and user promises.
 MIDI files and alphaSynth never own a runtime clock. Authored MIDI/reference events project from an
 immutable document and schedule beneath `PracticeTransport`/`AudioRuntime`.
 
-### 6.5 Candidate order, pending owner/spike approval
+### 6.5 Accepted hackathon adapter profile
 
-Evaluate, without pre-accepting:
+Use alphaTab 1.8.4 behind notation/import adapters without making its graph canonical. Initialize
+it with player mode disabled and no soundfont. Accept only the exact fixture-backed semantics in ADR
+0007: GP8 basic is the strongest bounded path; broad MusicXML D4 and the tested GP7 effects path are
+rejected; GP5 effects are parsing-only/approximate; raw SMF support is limited to the declared
+Type-1 and 960-to-480 PPQ cases with explicit loss. Import preflight and loss reporting remain
+mandatory.
 
-1. alphaTab 1.8.4 behind notation/import/reference adapters, only after explicit MPL evaluation
-   authorization.
-2. Permissive notation/import candidates such as VexFlow/OpenSheetMusicDisplay for the narrower
-   capabilities they actually provide.
-3. A bounded custom canonical renderer/import or playback component where measured gaps justify it.
-
-For reference synthesis, preferred alphaSynth must prove public subordinate output and protocol.
-If it cannot, evaluate bounded rendered PCM scheduled by StringSight; if that fails range, speed,
-tail, memory, or edit latency, evaluate a StringSight-owned shared-context reference renderer; if
-that fails or is not funded, omit synthesized reference playback. Two clocks/private APIs are not
+Omit alphaSynth and synthesized reference playback from the initial hackathon release. A future
+renderer, importer, or synthesis candidate remains replaceable and must be re-evaluated within the
+same canonical/adapter and single-authority boundaries. Two clocks or a private output API are not
 a fallback.
 
 ## 7. `AudioRuntime`
@@ -391,10 +395,11 @@ assessment, and reference/take alignment claims are disabled for this phase. Ent
 the generation and rejects stale callbacks; exiting restores the frozen score tick. This is preview,
 not a score/media mapping or a second transport.
 
-Reference-video audio is one explicit reference source with gain/mute/solo under the runtime. The
-spike compares media-element routing, separate decode/schedule, and omission. Take-video embedded
-audio is muted/excluded by default. Camera capture requests `audio: false` and verifies zero audio
-tracks.
+Reference-video audio is muted or omitted in the initial profile. A later accepted path is one
+explicit reference source with gain/mute/solo under the runtime; the spike did not establish its
+isolation, device lifecycle, or pitch quality. Take-video embedded audio is muted/excluded by
+default. Camera capture requests `audio: false`; the bounded privacy fixture verified a finalized
+container with one video track and no audio track.
 
 Synchronized local review is independent of later downloadable mux/export. Export container and
 codec are not selected here.
@@ -470,10 +475,10 @@ fully enumerated.
 | D9 retention/export              | Mutable availability/tombstones, previewed deletion, structured default, private media opt-in      |
 | D10 deferred intelligence        | Live vision/fusion/GPT are outside this architecture's P0/P1 implementation order                  |
 
-## 14. Implementation sequence after final acceptance
+## 14. Implementation sequence after bounded acceptance
 
-1. Architecture/spike gate and final technology/license/budget acceptance.
-2. Canonical guitar model.
+1. Accepted architecture and bounded hackathon technology/license profile (complete).
+2. Canonical guitar model (next).
 3. Versioned practice contracts, hashes, maps, and golden fixtures.
 4. Renderer-independent editor and native round trip.
 5. Accepted notation/import and authored-MIDI adapters.
@@ -487,9 +492,11 @@ fully enumerated.
 13. Optional live vision/fusion/GPT only through later gates.
 14. Release hardening.
 
-No production stage starts merely because this Proposed plan exists.
+Each stage still satisfies its own implementation, test, accessibility, performance, and release
+gates. Architecture acceptance does not make the current score, transport, import, MIDI, video, or
+assessment placeholders functional.
 
-## 15. Provisional decisions and unresolved owner choices
+## 15. Accepted decisions and retained gates
 
 Architecture alternatives already disqualified because they violate accepted invariants:
 
@@ -503,33 +510,18 @@ Architecture alternatives already disqualified because they violate accepted inv
 - silent media retarget/relink/deletion cascade; and
 - video failure that weakens ordinary P0 audio/tab/take work.
 
-Owner decisions recorded on 2026-07-20 for disposable spike execution:
+ADR 0007 records the accepted alphaTab/MPL profile, synthesis omission, import/SMF limits, optional
+video policy, primary browser target, and budget posture. Exact PPQ/hash/schema details, count-in
+capture mapping, database mechanics, codec/container/export strategy, a reference-video audio path,
+and numeric budgets remain decisions for their implementing checklist items.
 
-1. Evaluation of alphaTab 1.8.4 under MPL-2.0 and its exact source/notice/release obligations is
-   authorized without approving production adoption.
-2. The proposed candidate/fallback order is approved.
-3. The staged Windows 11 desktop hardware, Chrome/Edge, score/media fixture, recording-duration, and
-   simultaneous-workload matrix in the spike specification is approved. Exact available devices are
-   inventoried per run; unavailable Windows hardware coverage is recorded and must be obtained or
-   removed from the final supported claim. macOS portability remains desirable but unvalidated and
-   outside the current support and release gate.
-4. The invariant-based disqualification list above is confirmed.
+## 16. Post-spike acceptance boundary
 
-Post-spike decisions include package/adapter selection, license policy, exact PPQ/hash projections,
-import/version claims, count-in capture mapping, codec/container/capture strategy, retention
-mechanics, reference-video audio path, synchronized-video ship decision, and measured budgets.
+The disposable spike's full commercial-quality exit criterion was not met. The retained report
+separates bounded passes from failed and inconclusive claims. Architecture acceptance rests on the
+coherence of the invariant model plus the bounded implementation/fallback decisions, not on a claim
+that one application-wide runtime, broad imports, exact physical A/V sync, Edge lifecycle recovery,
+full accessibility, representative hardware, repeated soaks, or percentile budgets passed.
 
-## 16. Provisional architecture direction gate — passed for spike execution
-
-This plan is ready to define the disposable spike when:
-
-- the companion ADR/research/spike plan are consistent and still Proposed;
-- every clock/map/follower/capture timestamp claim maps to a repeatable measurement;
-- D1-D10 are preserved;
-- no production code/dependency changed; and
-- an independent architecture review finds no blocking competing-clock, state-leakage, identity,
-  stale-map, correction-feedback, recorder-timestamp, deletion, license, accessibility, gate, or
-  circular-dependency contradiction.
-
-Passing this gate does not accept technology or budgets. The next branch is disposable spike work
-and is not merged wholesale into production.
+The next production item is the canonical guitar model. The disposable spike worktrees remain
+evidence sources and are never merged wholesale.

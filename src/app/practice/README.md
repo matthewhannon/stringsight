@@ -27,4 +27,8 @@ tab-centered practice design and connects directly to the existing local audio c
   and review markers are placeholders.
 - The setlist, imports, new document, and save controls are placeholders.
 
+Architecture acceptance did not connect these surfaces. alphaTab is not installed or connected,
+and the initial hackathon profile omits alphaSynth/reference synthesis and sound banks. The next
+production work is the renderer-independent canonical guitar model, not notation UI integration.
+
 Placeholder UI is labelled in-product with an amber outlined badge or explanatory helper copy.

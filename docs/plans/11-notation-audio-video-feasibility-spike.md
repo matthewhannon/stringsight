@@ -1,6 +1,7 @@
 # Disposable notation, audio, MIDI, and video feasibility spike
 
-- **Status:** Approved for disposable execution; owner decisions recorded in section 3
+- **Status:** Executed; full specification exit not met; bounded hackathon decisions recorded in
+  ADR 0007
 - **Prepared:** 2026-07-20
 - **Owner approval recorded:** 2026-07-20
 - **Owner support-scope amendment:** 2026-07-20; Windows 11 is the sole current validation target
@@ -8,6 +9,10 @@
 - **Architecture:** `10-practice-system-architecture.md`
 - **Synchronization research:** `../research/practice-transport-and-timed-media-sync.md`
 - **Decision record:** `../decisions/0006-practice-document-audio-runtime-and-notation-adapters.md`
+- **Authoritative report:**
+  `../verification/11-notation-audio-video-feasibility-spike-report.md`
+- **Post-spike decision:**
+  `../decisions/0007-bounded-hackathon-practice-technology-profile.md`
 
 ## 1. Purpose and non-goals
 
@@ -521,7 +526,31 @@ approved narrower/omitted fallback. Before handoff:
 - obtain an independent review for authority, timing claims, media identity, licensing,
   accessibility, measurement validity, and circular pass criteria.
 
-The next gate explicitly accepts or rejects technology, MPL procedure, supported format claims,
-codec/container/capture strategy, count-in mapping, fallbacks, and numeric budgets. Only then may
-the Proposed architecture/ADR become Accepted and production implementation begin in checklist
-order.
+The original next gate was required to accept or reject technology, MPL procedure, supported format
+claims, codec/container/capture strategy, count-in mapping, fallbacks, and numeric budgets before
+the Proposed architecture/ADR could become Accepted. The addendum below records the narrower gate
+that was actually accepted.
+
+## 12. Execution addendum and disposition
+
+The disposable work completed on `codex/spike-practice-integration@7b3c5f9`. Eight authoritative
+runs and 170 retained evidence hashes were independently recomputed with no missing or mismatched
+files. Thirteen harness tests and the retained authority/license/lint/format/diff checks passed, but
+those test counts do not mean this specification's full exit gate passed.
+
+Bounded controls passed for retained reference-map arithmetic and rounding, deterministic causal
+follower policy, isolated PCM/canary protection, two canonical-detachment paths, declared Type-1
+SMF and 960-to-480 PPQ cases, GP8 basic rows, the retained MusicXML/MXL rows, and video-only capture
+privacy. Broad MusicXML D4 fidelity and the tested GP7 effects fixture failed. The Edge same-context
+audio heartbeat failed after the injected freeze/resume sequence.
+
+Application-wide runtime/coexistence, general SMF and GP5 effects fidelity, alphaSynth behavior and
+quality, renderer editing/zoom/accessibility, reference-video audio, exact take-map/physical A/V
+timing, device loss/relink/storage pressure, low-tier hardware, human Narrator completion, repeated
+soaks, and percentile budgets remain missing or inconclusive.
+
+Accordingly, the original commercial-quality exit condition in section 11 was not met. ADR 0007
+accepts a narrower hackathon implementation/fallback profile without relabeling the spike as a full
+pass. The raw harness, candidate adapters, generated media, package manifests, and result bulk stay
+on the disposable branch; only the final report and selected integrity/compliance records are
+retained in the architecture line.

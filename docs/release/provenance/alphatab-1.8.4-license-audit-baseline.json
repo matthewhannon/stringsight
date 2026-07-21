@@ -1,0 +1,206 @@
+{
+  "schema": "stringsight-practice-license-audit-baseline/v2",
+  "observedAt": "2026-07-20",
+  "authorityCommit": "f6124f4935372234492232b6b463c709ef64604e",
+  "alphaTab": {
+    "spec": "@coderline/alphatab@1.8.4",
+    "license": "MPL-2.0",
+    "registryTarball": "https://registry.npmjs.org/@coderline/alphatab/-/alphatab-1.8.4.tgz",
+    "integrity": "sha512-VN5rfTZZWgA63Ny1aDKCp02k3Qm9CHhg4Q9AnK0kHm7G+fNDNZo36TeToPDFoJ6VpB9+AHcCrHwHFUP1tKqdsw==",
+    "shasum": "4b6874b056f54a0271348f5f6ed8ee5d9b8dfc95",
+    "sha256": "70b2c77abc9698a055d90a11d77308b6b41247936476e969d85770e3d4db4602",
+    "packedSize": 4651280,
+    "unpackedSize": 13672165,
+    "fileCount": 35,
+    "gitHead": "022a45c8e42370f9e12e68949d11eada370da83d",
+    "tag": "v1.8.4",
+    "tagObject": "accc60f5e9a3ff1e92008295bdb54dcf619c020c",
+    "tagCommit": "022a45c8e42370f9e12e68949d11eada370da83d",
+    "source": {
+      "repository": "https://github.com/CoderLine/alphaTab.git",
+      "tree": "a13f13b60ea8b16b654a8c472c1b5826ef6b4c8f",
+      "archiveFormat": "git-archive-tar",
+      "archiveBytes": 92037120,
+      "archiveSha256": "7cd6442dfaff5de12cb4bd621d626c60369ce65217ab5ed8276bdd7288387214",
+      "lockfilePath": "package-lock.json",
+      "lockfileBytes": 239849,
+      "lockfileSha256": "40169c8fc2728bf3652e95dd7484e747bfe5191ceef79d398cc11fd2578ef632",
+      "publisherNodeVersion": "24.18.0",
+      "publisherNpmVersion": "11.16.0",
+      "publisherBuildNumber": "34"
+    },
+    "soundfontOmission": {
+      "defaultPlayerMode": "PlayerMode.Disabled",
+      "defaultSoundFont": null,
+      "separateExport": "./dist/soundfont/*",
+      "forbiddenCompiledReferences": ["sonivox", "dist/soundfont", "soundfont/sonivox"]
+    },
+    "bravura": {
+      "version": "1.38",
+      "license": "OFL-1.1",
+      "reservedFontName": "Bravura",
+      "upstreamCommit": "f97d82af70bbbfde5808b4119018dbe5553e620c",
+      "upstreamRepository": "https://github.com/steinbergmedia/bravura.git",
+      "exactUpstreamBlobMatches": [
+        "Bravura-FONTLOG.txt",
+        "Bravura.eot",
+        "Bravura.otf",
+        "Bravura.svg",
+        "Bravura.woff",
+        "Bravura.woff2"
+      ]
+    },
+    "integratedLibraries": [
+      {
+        "name": "TinySoundFont",
+        "license": "MIT",
+        "alphaTabIntroductionCommit": "d6fb0df5530da2280f0b14156de71400a7e0c918",
+        "boundedUpstreamCandidate": "d4ffcdc8a34d3f61f22e4b283b4c100f5adf4b82",
+        "upstreamRevisionConfirmed": false,
+        "licenseBlob": "714dae68540c7c1573ef23d98ab4f67b805152ea"
+      },
+      {
+        "name": "SFZero",
+        "license": "MIT",
+        "alphaTabIntroductionCommit": "d6fb0df5530da2280f0b14156de71400a7e0c918",
+        "boundedUpstreamCandidate": "90ee4819988345299f73a6fb6076dfc13f2d4200",
+        "upstreamRevisionConfirmed": false,
+        "licenseBlob": "e825d4dd3fcbb7bccd67a16ab6ec9f507b41392c"
+      },
+      {
+        "name": "Haxe Standard Library",
+        "license": "MIT",
+        "alphaTabIntroductionCommits": [
+          "6b84a47ca52be8dc2b0beb9183d9d907d99213cf",
+          "a15680687214b4f9d85832a4152e98f4feeb5590"
+        ],
+        "boundedUpstreamCandidate": "4ab1546158e00445fee178318dd0e843e6b49974",
+        "upstreamRevisionConfirmed": false,
+        "licenseBlob": "b4142af748da6420ab697e7485b105c8e6689486"
+      },
+      {
+        "name": "SharpZipLib",
+        "license": "MIT",
+        "alphaTabIntroductionCommit": "7e5a7a5039426a1bbbd4d49694c32ac998fa758e",
+        "boundedUpstreamCandidate": "fec479c2e1a2c7cd58ba8319450901fe40eb070f",
+        "upstreamRevisionConfirmed": false,
+        "licenseBlob": "f4597ac929a3206971bb0f8549cf937916082266"
+      },
+      {
+        "name": "NVorbis",
+        "license": "MIT",
+        "alphaTabIntroductionCommit": "a489bd2cdc26d1dd153c478f47d735b660e24453",
+        "boundedUpstreamCandidate": "432d100f83ee9322b40c0ba25daed2fe72fbbdd2",
+        "upstreamRevisionConfirmed": false,
+        "licenseBlob": "4334cbb674dacf35f524541882a0a2420a05f1ec"
+      },
+      {
+        "name": "libvorbis",
+        "license": "BSD-3-Clause",
+        "alphaTabIntroductionCommit": "a489bd2cdc26d1dd153c478f47d735b660e24453",
+        "boundedUpstreamCandidate": "bb4047de4c05712bf1fd49b9584c360b8e4e0adf",
+        "upstreamRevisionConfirmed": false,
+        "licenseBlob": "fb456a87bdfafe2cab7de982e8ce11204933ec5c"
+      }
+    ],
+    "assets": [
+      {
+        "path": "dist/font/Bravura.eot",
+        "bytes": 409551,
+        "sha256": "67f0f9985e14d3c8b50886cbf02bc33c39e41f44ed93ae4f830d99776bff15f3"
+      },
+      {
+        "path": "dist/font/Bravura.otf",
+        "bytes": 507976,
+        "sha256": "883a86a8cfe77db6597b8ef56b9cf6efb079b0631a283a323945a41f976fb483"
+      },
+      {
+        "path": "dist/font/Bravura.svg",
+        "bytes": 1842740,
+        "sha256": "c8d841b64e65b032c19f4e4a77625fca3baf16a0a4e0371041ddb34965bb4d70"
+      },
+      {
+        "path": "dist/font/Bravura.woff",
+        "bytes": 550388,
+        "sha256": "22a46a8480b8eecaa43ece95ec63b45599c8ef6d1ab24f0621834a8be01d4dd9"
+      },
+      {
+        "path": "dist/font/Bravura.woff2",
+        "bytes": 313348,
+        "sha256": "181e0e7c4889f9ad57dde0a11988fa61b941617aa499ecdb9dfd4713896c2b19"
+      },
+      {
+        "path": "dist/soundfont/sonivox.sf2",
+        "bytes": 1351896,
+        "sha256": "4978cf37e7164206f2d22dc4fdf4020ffe040787210bf781e31bdc79961f59ef"
+      },
+      {
+        "path": "dist/soundfont/sonivox.sf3",
+        "bytes": 977208,
+        "sha256": "d39beb7cd349278455b44e7689e35e3c1f5ed9ef80118485846537929df8f7c0"
+      }
+    ],
+    "requiredPackageFiles": [
+      "LICENSE",
+      "LICENSE.header",
+      "dist/font/Bravura-FONTLOG.txt",
+      "dist/font/Bravura-OFL-FAQ.txt",
+      "dist/font/Bravura-OFL.txt",
+      "dist/soundfont/LICENSE",
+      "dist/soundfont/README.md",
+      "package.json"
+    ]
+  },
+  "candidateSnapshots": [
+    {
+      "spec": "vexflow@5.0.0",
+      "license": "MIT",
+      "integrity": "sha512-rjB7TV4ygKE5Fl3W5OlG+0dHv22CFufUJdMG6oNgvcn0zp34u+sOboZsadQXnF1O3tZ3myXThaUIaLkJlpNM2Q==",
+      "shasum": "4307c84979657c6f733facd1aed60c99be56ed88",
+      "gitHead": "0ca6f889545c33cce851b420c24945f6eb685aeb"
+    },
+    {
+      "spec": "opensheetmusicdisplay@2.0.0",
+      "license": "BSD-3-Clause",
+      "integrity": "sha512-CjrZammDK1VpTPv1zkLzYfX8L66xHOfN9FdOBHr83TAgKadztmEsDfAoh44lyFnDL2UACU0rBv+XmSs5wVr98Q==",
+      "shasum": "96bcb540500fdea2585dad9de9c87c39009143d1",
+      "gitHead": "e1b20d8dc19af06e8e30700c031581715f75e176"
+    },
+    {
+      "spec": "@tonejs/midi@2.0.28",
+      "license": "MIT",
+      "integrity": "sha512-RII6YpInPsOZ5t3Si/20QKpNqB1lZ2OCFJSOzJxz38YdY/3zqDr3uaml4JuCWkdixuPqP1/TBnXzhQ39csyoVg==",
+      "shasum": "2fad0f62aa9a95ab0b5f151a6dcf03408f8d5442",
+      "gitHead": "6f9f7057d0aa76e471a944a999a5c72004a40dd5"
+    },
+    {
+      "spec": "midi-file@1.2.4",
+      "license": "MIT",
+      "integrity": "sha512-B5SnBC6i2bwJIXTY9MElIydJwAmnKx+r5eJ1jknTLetzLflEl0GWveuBB6ACrQpecSRkOB6fhTx1PwXk2BVxnA==",
+      "shasum": "e5803a8fc79cdd1692ac6ef6b1491043b397eb87",
+      "gitHead": "f97a02956bdf09b2b72b9f900a82393973681f02"
+    },
+    {
+      "spec": "mp4box@2.4.1",
+      "license": "BSD-3-Clause",
+      "integrity": "sha512-0HGX7nXoDIX6FKLVl4a3wtYjBlwqsN3xuQC3GXzNtKp98FXUOhDSq623azsz8DG5ptd9ZXcXodDkgbdMZOjWvw==",
+      "shasum": "9a3e9527de7fbf80208c8c3a766bc125ca01c34b",
+      "gitHead": "8ad48af874c0499a786fbfab4bda2c0b36f27ebe"
+    },
+    {
+      "spec": "webm-muxer@5.1.4",
+      "license": "MIT",
+      "integrity": "sha512-ditzgFVFbfqPaugkIr4mGhAdob5K9HY6Rzlh7TRsA368yA1sp/m5O7nQCcMLdgFDeNGtFPg8B+MeXLtpzKWX6Q==",
+      "shasum": "9fa307bad3fb6e836c2a24d8fb729e4982ea88bc",
+      "gitHead": "87eac7ad734b7ad3090cf0c3ca19d26ac129b4a3",
+      "deprecated": "This library is superseded by Mediabunny. Please migrate to it."
+    },
+    {
+      "spec": "mediabunny@1.50.9",
+      "license": "MPL-2.0",
+      "integrity": "sha512-dkv2xPuW7WxmiZrhV4yDzgqhdQcHdQ9g5xRyVIDNoxe8Bo+jnK71bdKMYj12LzJf5YV9hcsufBG9R41TFKfg9g==",
+      "shasum": "48afd385f37faa9d594aca8428aa315555745877",
+      "gitHead": "794b84884f1e23cb6241689b3563190d138bbd9a"
+    }
+  ]
+}

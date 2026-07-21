@@ -2,6 +2,16 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  // The browser evaluation dynamically imports the model surface. Pre-bundle its bare TensorFlow
+  // imports so a cold Vite optimizer cannot invalidate the first Playwright module context.
+  optimizeDeps: {
+    include: [
+      '@tensorflow/tfjs-backend-cpu',
+      '@tensorflow/tfjs-backend-wasm',
+      '@tensorflow/tfjs-converter',
+      '@tensorflow/tfjs-core',
+    ],
+  },
   plugins: [react()],
   server: {
     host: '127.0.0.1',

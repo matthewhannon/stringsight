@@ -78,8 +78,10 @@ loss, never as equivalent to guitar tab import.
 **Alternative:** Expose only native new/open for a smaller first release, at the cost of adoption by
 guitarists with existing tabs. Giving MIDI equal primary weight misrepresents its guitar semantics.
 
-**Owner decision:** Accepted as recommended on 2026-07-20. The entry hierarchy is fixed; exact
-Guitar Pro and MusicXML versions remain subject to spike evidence and final technology acceptance.
+**Owner decision:** Accepted as recommended on 2026-07-20. The entry hierarchy is fixed. ADR 0007
+now limits the hackathon implementation to fixture-backed claims: GP8 basic is the strongest tested
+path; the tested GP7 effects path and broad MusicXML D4 fidelity are rejected; GP5 effects are
+parsing-only/approximate; and MIDI is limited to declared SMF fixtures with explicit loss.
 
 ### D4. Initial score/editor technique breadth
 
@@ -212,11 +214,11 @@ principles, one-authority invariant, or local-first/evidence-preservation rules.
 
 | Deliverable                                      | Status                               | Evidence                                                                                       |
 | ------------------------------------------------ | ------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| Desktop Practice Workspace product requirements  | Draft complete                       | `01-product-requirements.md`                                                                   |
-| Desktop information and interaction architecture | Draft complete                       | `desktop-practice-workspace-ux.md`                                                             |
-| Lifecycle wireframes                             | Draft complete                       | `desktop-practice-workspace-wireframes.md`                                                     |
-| Independent-region state/action map              | Draft complete                       | `desktop-practice-workspace-state-actions.md`                                                  |
-| Active checklist dependency order                | Draft complete                       | `BUILD_CHECKLIST.md`                                                                           |
+| Desktop Practice Workspace product requirements  | Accepted 2026-07-20                  | `01-product-requirements.md`                                                                   |
+| Desktop information and interaction architecture | Accepted 2026-07-20                  | `desktop-practice-workspace-ux.md`                                                             |
+| Lifecycle wireframes                             | Accepted 2026-07-20                  | `desktop-practice-workspace-wireframes.md`                                                     |
+| Independent-region state/action map              | Accepted 2026-07-20                  | `desktop-practice-workspace-state-actions.md`                                                  |
+| Active checklist dependency order                | Accepted 2026-07-20                  | `BUILD_CHECKLIST.md`                                                                           |
 | Production code/dependency changes               | None authorized or required          | Documentation-only branch                                                                      |
 | Owner acceptance                                 | Accepted 2026-07-20                  | D1–D10 accepted as recommended; structured export with private media opt-in                    |
 | Focused independent product review               | Complete; blocking findings resolved | Count-in capture remains policy-neutral and unsynchronized video still uses the sole transport |
@@ -226,5 +228,6 @@ principles, one-authority invariant, or local-first/evidence-preservation rules.
 On 2026-07-20, the owner accepted D1–D10 as recommended, selected synchronized video as a gated
 first-release enhancement, and selected structured export with private PCM/video media opt-in.
 
-This acceptance approves product behavior and UX structure. It does not approve the low-level
-technology, license, codec, synchronization, schema, or measured-budget choices in section 3.
+This acceptance approves product behavior and UX structure. ADRs 0006 and 0007 separately accept
+the invariant architecture and bounded hackathon profile. They do not change D1–D10, make current
+placeholders functional, or satisfy the full P0 and pre-commercial gates.

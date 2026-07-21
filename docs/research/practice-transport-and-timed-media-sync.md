@@ -1,12 +1,14 @@
 # Practice transport and timed-media synchronization research
 
-- **Status:** Proposed architecture research; raw spike evidence pending
+- **Status:** Accepted architecture research; bounded spike evidence recorded; implementation and
+  pre-commercial gates retained
 - **Prepared:** 2026-07-20
 - **Scope:** Canonical score/MIDI time, application audio time, microphone evidence, reference
   video, take video, presentation observations, and their explicit mappings
 - **Related:** `../plans/10-practice-system-architecture.md`,
   `../plans/11-notation-audio-video-feasibility-spike.md`, and
-  `../decisions/0006-practice-document-audio-runtime-and-notation-adapters.md`
+  `../decisions/0006-practice-document-audio-runtime-and-notation-adapters.md`, and
+  `../verification/11-notation-audio-video-feasibility-spike-report.md`
 
 ## 1. Conclusion
 
@@ -727,5 +729,23 @@ The dedicated spike must demonstrate:
 7. Recorder chunk timing is never reported as per-frame audio alignment.
 8. Missing/stale/deleted media changes availability, not immutable document/take identity.
 
-Final thresholds, codecs, containers, capture strategy, alphaTab adoption, and playback fallback
-remain decisions for the post-spike acceptance gate.
+Final thresholds, codecs, containers, exact capture strategy, and reference-video audio remain
+decisions for their implementation/release gates. ADR 0007 records the bounded alphaTab adoption
+and initial playback omission.
+
+## 13. Post-spike evidence addendum
+
+The retained spike passed bounded reference-map arithmetic, inverse mapping, explicit gaps,
+ties-to-even rounding, and one persisted conversion. Reversed/non-monotonic and stale hash/revision
+controls were retained only as historical observations and remain inconclusive for acceptance. The
+deterministic follower policy passed causal latest-preceding selection, stale generation, stall,
+discontinuity, hysteresis, and bounded correction-rate controls. Browser drift is measured
+single-machine evidence with no accepted budget, and the full mapless preview replacement/disposal
+workflow remains inconclusive.
+
+Video-only capture produced a container with one video track and no audio in the bounded privacy
+fixture. The spike did not establish physical camera-to-microphone offset, immutable take-map
+binding in the authoritative browser path, device loss, relink, storage pressure, or repeated
+hardware distributions. Therefore take-video alignment remains approximate and reference/take
+media remain optional. These limits constrain implementation and claims; they do not weaken the
+accepted one-transport, one-audio-runtime, explicit-map architecture.

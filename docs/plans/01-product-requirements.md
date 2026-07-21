@@ -151,9 +151,9 @@ must never be presented as the same file or fidelity promise.
 - One active guitar practice document with a collapsible library/navigation rail.
 - Native new/open/save/save-as behavior with explicit clean, dirty, saving, saved, and failed
   states; no false “saved” status.
-- At least one approved guitar-aware score import route with a pre-commit fidelity report. Exact
-  formats are finalized after the isolated spike; native StringSight JSON remains the only lossless
-  editable round trip.
+- At least one approved guitar-aware score import route with a pre-commit fidelity report. ADR 0007
+  bounds the initial hackathon claims to fixture-backed behavior; native StringSight JSON remains
+  the only lossless editable round trip.
 - Guitar tab as the primary score representation, with optional standard notation where supported.
 - A documented initial technique profile. Unsupported source semantics are rejected, converted, or
   reported explicitly rather than stored opaquely.
@@ -178,6 +178,12 @@ must never be presented as the same file or fidelity promise.
 - Explicit import/export scope, deletion impact previews, and recovery from missing local media.
 - Desktop Chrome/Edge, keyboard, browser zoom, screen-reader, contrast, focus, and reduced-motion
   support described in section 9.
+
+The bounded hackathon profile in ADR 0007 is narrower than this complete P0 definition. It omits
+reference synthesis and does not claim completed score editing, Edge background/resume recovery,
+full accessibility, or representative performance budgets. That is an explicit demo/release
+narrowing, not completion or redefinition of P0; these P0 rows remain open until implemented and
+verified.
 
 ### 6.2 P1: gated first-release enhancements
 
@@ -330,9 +336,10 @@ the P0 journey misleading or unusable.
 - Direct interface/microphone input or a reasonably quiet room.
 - Desktop layout only. Phone and tablet layouts are not release targets.
 
-Final bundle, long-score, memory, storage, camera, and simultaneous-runtime budgets are accepted
-only after the isolated spike measures the candidate stack. A product requirement may not invent a
-budget before evidence exists.
+The isolated spike produced single-machine observations, not universal budgets. Each implementing
+item may define prospective bounded hackathon smoke thresholds before enablement. Representative
+hardware, repeated distributions, percentile budgets, and broader support claims remain
+pre-commercial gates. A product requirement may not relabel an observation as an accepted budget.
 
 ### 9.2 Desktop resize and zoom
 
@@ -382,7 +389,7 @@ budget before evidence exists.
 - Missing or evicted bytes are never reported as available. A hash-verified relink may restore
   media availability without changing immutable take identity.
 - Native bundle export previews included, external, omitted, unavailable, or unsupported media.
-  Private PCM/video is opt-in under the recommended policy pending owner acceptance.
+  Private PCM/video is opt-in under the accepted D9 policy.
 - Observed-session JSON/MIDI export and authored-document export remain clearly separated.
 - Remote interpretation, if ever approved, is explicit, minimized, cancellable, and never required
   for the local product.
@@ -437,8 +444,8 @@ The P0 release is acceptable only when all applicable checks pass on the declare
 11. No microphone/camera request or raw-media network request occurs without explicit user action.
     Deletion and export previews accurately enumerate affected objects and media.
 12. A clean checkout passes formatting, lint, type checking, unit/integration tests, supported
-    browser tests, dependency/license checks, and a production build. Measured post-spike budgets
-    are recorded and pass before the associated technology becomes P0.
+    browser tests, dependency/license checks, and a production build. Item-specific measured budgets
+    are recorded and pass before the associated technology becomes complete P0.
 
 P1 video and assessment each have separate acceptance gates. Failing either must degrade to the
 complete P0 journey rather than weakening it.
@@ -462,6 +469,5 @@ complete P0 journey rather than weakening it.
 
 The choices and consequences are recorded in `desktop-practice-product-decisions.md`. On 2026-07-20,
 the owner accepted D1–D10 as recommended, including gated first-release synchronized video and
-structured export with private PCM/video media opt-in. Architecture-specific package, license,
-codec, synchronization, storage, and measured-budget decisions remain deliberately outside this
-product document.
+structured export with private PCM/video media opt-in. Architecture-specific choices remain in ADR 0006. ADR 0007 records the narrower post-spike hackathon package, license, format, media, browser,
+and budget posture without changing D1–D10 or declaring the complete P0 journey implemented.
