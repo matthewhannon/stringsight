@@ -1,145 +1,123 @@
-import userEvent from '@testing-library/user-event';
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { App } from './App';
 
 describe('App', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/');
+    window.localStorage.clear();
   });
 
-  it('opens into the tab-centered practice workspace', async () => {
+  it('opens with the required rack modules and compact module management', () => {
     render(<App />);
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Untitled guitar tab' }),
+      screen.getByRole('heading', { level: 1, name: /stringsight rack workspace/i }),
     ).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Tab + Video' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(screen.getByRole('heading', { name: 'Technique reference' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Microphone disconnected — Connect' })).toBeVisible();
-    expect(screen.getByText('Recording starts from the microphone controls')).toBeVisible();
-    expect(screen.queryByRole('button', { name: /play/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('meter', { name: 'Input level 0 percent' })).toHaveAttribute(
-      'aria-valuenow',
-      '0',
-    );
+    expect(screen.getByRole('heading', { name: /session control/i })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /audio input/i })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: /pitch analysis/i })).not.toBeInTheDocument();
+    expect(screen.getByText('00 installed')).toBeVisible();
+    expect(screen.getByRole('button', { name: '+ Add module' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Edit rack' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Input' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('combobox', { name: 'Source' })).toBeEnabled();
+    expect(screen.queryByText(/rack stack concepts/i)).not.toBeInTheDocument();
   });
 
-  it('presents a single document state and exposes real input controls', async () => {
+  it('adds, reorders, removes, re-adds, and persists optional modules', async () => {
+    const user = userEvent.setup();
+    const view = render(<App />);
+
+    await user.click(screen.getByRole('button', { name: '+ Add module' }));
+    expect(screen.getByRole('region', { name: 'Module library' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Add Pitch analysis' }));
+    await user.click(screen.getByRole('button', { name: 'Add Chord analysis' }));
+    await user.click(screen.getByRole('button', { name: 'Close library' }));
+
+    let pitch = screen.getByRole('heading', { name: 'Pitch analysis' });
+    let chord = screen.getByRole('heading', { name: 'Chord analysis' });
+    expect(pitch.compareDocumentPosition(chord) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'Edit rack' }));
+    expect(screen.getAllByText('Required')).toHaveLength(2);
+    await user.click(screen.getByRole('button', { name: 'Move Chord analysis up' }));
+    pitch = screen.getByRole('heading', { name: 'Pitch analysis' });
+    chord = screen.getByRole('heading', { name: 'Chord analysis' });
+    expect(chord.compareDocumentPosition(pitch) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'Remove Pitch analysis from rack' }));
+    expect(screen.queryByRole('heading', { name: 'Pitch analysis' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    await user.click(screen.getByRole('button', { name: '+ Add module' }));
+    await user.click(screen.getByRole('button', { name: 'Add Pitch analysis' }));
+    await user.click(screen.getByRole('button', { name: 'Close library' }));
+    expect(screen.getByRole('heading', { name: 'Pitch analysis' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /Move .* up/ })).not.toBeInTheDocument();
+
+    view.unmount();
+    render(<App />);
+    chord = screen.getByRole('heading', { name: 'Chord analysis' });
+    pitch = screen.getByRole('heading', { name: 'Pitch analysis' });
+    expect(chord.compareDocumentPosition(pitch) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('reorders optional modules with the drag handle', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    expect(await screen.findByText('Working copy — not saved')).toBeVisible();
-    expect(screen.queryByRole('button', { name: /save unavailable/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Import score' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Export MIDI' })).toBeEnabled();
-    expect(screen.queryByText(/timeline placeholder/i)).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Input and recording' }));
-    expect(screen.getByRole('heading', { name: 'Microphone and recording' })).toBeVisible();
-    expect(screen.getByRole('combobox', { name: 'Input device' })).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Connect microphone' })).not.toBeInTheDocument();
-    expect(screen.getByText('Signal and transport diagnostics')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '+ Add module' }));
+    await user.click(screen.getByRole('button', { name: 'Add Pitch analysis' }));
+    await user.click(screen.getByRole('button', { name: 'Add Chord analysis' }));
+    await user.click(screen.getByRole('button', { name: 'Close library' }));
+    await user.click(screen.getByRole('button', { name: 'Edit rack' }));
+
+    const pitchHandle = screen.getByRole('button', { name: 'Drag Pitch analysis to reorder' });
+    const pitchWrapper = document.querySelector('[data-rack-module="analysis"]')?.parentElement;
+    const chordWrapper = document.querySelector(
+      '[data-rack-module="polyphonic-analysis"]',
+    )?.parentElement;
+    if (
+      pitchWrapper === undefined ||
+      pitchWrapper === null ||
+      chordWrapper === undefined ||
+      chordWrapper === null
+    ) {
+      throw new Error('Expected optional module wrappers');
+    }
+
+    const dataTransfer = {
+      dropEffect: 'none',
+      effectAllowed: 'none',
+      setData: vi.fn(),
+    };
+    fireEvent.dragStart(pitchHandle, { dataTransfer });
+    fireEvent.dragOver(pitchWrapper, { clientY: 1, dataTransfer });
+    fireEvent.dragOver(chordWrapper, { clientY: 1, dataTransfer });
+    fireEvent.drop(chordWrapper, { clientY: 1, dataTransfer });
+    fireEvent.dragEnd(pitchHandle, { dataTransfer });
+
+    const pitch = screen.getByRole('heading', { name: 'Pitch analysis' });
+    const chord = screen.getByRole('heading', { name: 'Chord analysis' });
+    expect(chord.compareDocumentPosition(pitch) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('switches between edit, practice, and review modes', async () => {
+  it('exits edit mode when the final optional module is removed', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: 'Edit' }));
-    expect(screen.getByRole('heading', { name: 'Edit score' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Add open E note' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '+ Add module' }));
+    await user.click(screen.getByRole('button', { name: 'Add Pitch analysis' }));
+    await user.click(screen.getByRole('button', { name: 'Close library' }));
+    await user.click(screen.getByRole('button', { name: 'Edit rack' }));
+    await user.click(screen.getByRole('button', { name: 'Remove Pitch analysis from rack' }));
 
-    await user.click(screen.getByRole('button', { name: 'Review' }));
-    expect(screen.getByRole('heading', { name: 'Recording review' })).toBeVisible();
-    expect(screen.getByText('Nothing to review yet')).toBeVisible();
-  });
-
-  it('closes a settings drawer with Escape and restores trigger focus', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    const trigger = screen.getByRole('button', { name: 'Input and recording' });
-
-    await user.click(trigger);
-    expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('button', { name: 'Close audio input' })).toHaveFocus();
-
-    await user.keyboard('{Escape}');
-    expect(trigger).toHaveAttribute('aria-expanded', 'false');
-    expect(trigger).toHaveFocus();
-  });
-
-  it('exposes drawers as nonmodal side panels and keeps the workspace interactive', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(screen.getByRole('button', { name: 'Input and recording' }));
-    expect(screen.getByRole('dialog', { name: 'Microphone and recording' })).toHaveAttribute(
-      'aria-modal',
-      'false',
-    );
-
-    await user.click(screen.getByRole('button', { name: 'Edit' }));
-    expect(screen.getByRole('heading', { name: 'Edit score' })).toBeVisible();
-  });
-
-  it('keeps live analysis, advanced analysis, and input in one mutually exclusive drawer slot', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(screen.getByRole('button', { name: 'Live analysis' }));
-    expect(screen.getByRole('dialog', { name: 'What StringSight hears' })).toBeVisible();
-
-    await user.click(screen.getByRole('button', { name: 'Advanced analysis' }));
-    expect(
-      screen.queryByRole('dialog', { name: 'What StringSight hears' }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole('dialog', { name: 'Evidence and interpretations' })).toBeVisible();
-
-    await user.click(screen.getByRole('button', { name: 'Input and recording' }));
-    expect(
-      screen.queryByRole('dialog', { name: 'Evidence and interpretations' }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole('dialog', { name: 'Microphone and recording' })).toBeVisible();
-  });
-
-  it('does not expose or trigger placeholder playback from the Space key', () => {
-    render(<App />);
-    const editable = document.createElement('div');
-    editable.setAttribute('contenteditable', 'true');
-    document.body.append(editable);
-    editable.focus();
-
-    fireEvent.keyDown(editable, { code: 'Space', key: ' ' });
-
-    expect(screen.queryByRole('button', { name: /play/i })).not.toBeInTheDocument();
-    editable.remove();
-  });
-
-  it('resizes the tab and video split with the keyboard', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    const splitter = screen.getByRole('separator', { name: 'Resize tab and video panels' });
-
-    splitter.focus();
-    await user.keyboard('{ArrowRight}');
-
-    expect(splitter).toHaveAttribute('aria-valuenow', '60');
-  });
-
-  it('removes the splitter from every non-split composition', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(screen.getByRole('button', { name: 'Video Focus' }));
-    expect(screen.queryByRole('separator', { name: 'Resize tab and video panels' })).toBeNull();
-
-    await user.click(screen.getByRole('button', { name: 'Tab Focus' }));
-    expect(screen.queryByRole('separator', { name: 'Resize tab and video panels' })).toBeNull();
-
-    await user.click(screen.getByRole('button', { name: 'Edit' }));
-    expect(screen.queryByRole('separator', { name: 'Resize tab and video panels' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Pitch analysis' })).not.toBeInTheDocument();
+    expect(screen.getByText('00 installed')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Edit rack' })).toBeDisabled();
+    expect(screen.queryByText('Open rack bay')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
   });
 });

@@ -5,5 +5,3 @@ package-lock.json
 playwright-report
 test-results
 public/models/basic-pitch/model.json
-archive
-mockups

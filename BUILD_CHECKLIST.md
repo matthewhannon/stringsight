@@ -31,9 +31,7 @@ optional synchronized reference and take video, and optional live fretboard/hand
 
 ### Initial supported environment
 
-- Current stable desktop Chrome and Edge on Windows 11
-- macOS remains desirable best-effort portability, but it is unvalidated, carries no current support
-  claim, and does not block the release gate
+- Desktop Chrome and Edge
 - Desktop layout only for the planned release; mobile layouts are not a target
 - Resizable desktop windows, browser zoom, keyboard operation, semantic reflow, and accessibility
   remain required even though phone/tablet composition is not
@@ -65,22 +63,15 @@ An item is complete only when:
 
 **Planning:** Create `docs/plans/01-product-requirements.md`.
 
-- [x] Rewrite the product around the score-centered desktop Practice Workspace instead of the old
-      transcription/vision-first shell.
-- [x] Define the headline create/import, practice, record, and review journey plus a useful P0
-      boundary that does not depend on video, assessment, vision, fusion, or GPT.
-- [x] Separate authored intent, observed evidence, immutable takes, mutable media availability, and
-      derived assessment in product language.
-- [x] Define P0, P1, P2, explicit non-goals, desktop resize/zoom/accessibility, local-first media,
-      errors, lifecycle, and measurable acceptance criteria.
-- [x] Create implementation-neutral desktop UX architecture, lifecycle wireframes, and independent
-      state/action regions.
-- [x] Record explicit owner acceptance of the consequential product decisions in
-      `docs/plans/desktop-practice-product-decisions.md`.
+- [x] Define the primary user journeys: live recognition, recorded-session review, and export.
+- [x] Define the first-release distinction between measured facts, model predictions, and musical interpretations.
+- [x] Define supported note, chord, scale, and tablature outputs.
+- [x] Define expected behavior when no camera is present or vision confidence is low.
+- [x] Define explicit non-goals for the first release.
+- [x] Establish target latency, accuracy, frame-rate, and startup-time budgets.
+- [x] Establish privacy, browser-support, and accessibility requirements.
 
-**Done when:** The requirements and UX artifacts are testable, internally consistent, owner
-accepted, and sufficient to make implementation tradeoffs without redefining the product during
-each subsystem build.
+**Done when:** The requirements are testable, internally consistent, and sufficient to make implementation tradeoffs without redefining the product during each subsystem build.
 
 ### 2. Establish the repository and developer workflow
 
@@ -226,119 +217,67 @@ accepted 18/19 common-chord and 10/10 power/inversion results without fixture-sp
 
 ## Phase 3: Practice Workspace foundations
 
-### Provisional product and architecture direction gate
+### Product and architecture approval gate
 
 **Planning:** Update `docs/plans/01-product-requirements.md`,
-the desktop UX artifacts, `docs/plans/10-practice-system-architecture.md`, and ADR 0006. This gate
-approves what the spike may test; it does not pre-approve a dependency or invent final budgets.
+`docs/plans/10-practice-system-architecture.md`, and ADR 0006 before production implementation.
 
-- [x] Replace the rack-primary product framing with the desktop-first tab and practice workspace.
-- [x] Mark the rack shell as superseded presentation work without discarding implemented audio
-      behavior, tests, accessibility, or reusable presentation logic.
-- [x] Define implementation-neutral information architecture, lifecycle wireframes, independent
-      state/action regions, desktop resize/zoom/accessibility, and first-release exclusions.
-- [x] Record owner acceptance of the consequential product decisions in
-      `docs/plans/desktop-practice-product-decisions.md`.
-- [x] Add optional `ReferenceVideo`, `TakeVideo`, separately stored timed-media assets, a versioned
-      multi-anchor `ReferenceScoreMediaSyncMap` bound to the exact immutable `PracticeDocument`
-      revision/hash it was authored against, and a distinct `TakeCaptureMediaSyncMap` bound to one
-      immutable take and its capture/audio epochs. Define stale reference-map detection plus explicit
-      validated rebase or re-author behavior after score edits; never silently retarget either map.
-- [x] Preserve `PracticeTransport` and the application audio clock as the sole command/time authority
+- [ ] Replace the rack-primary product framing with the desktop-first tab and practice workspace.
+- [ ] Mark the current rack shell and remaining rack styling as superseded presentation work without
+      discarding its implemented audio behavior, tests, accessibility, or reusable components.
+- [ ] Add optional `ReferenceVideo`, `TakeVideo`, separately stored timed-media assets, and a
+      versioned multi-anchor `ScoreMediaSyncMap` bound to the exact immutable `PracticeDocument`
+      revision ID and content hash it was authored against. Define stale detection on revision/hash
+      mismatch and explicit validated rebase or re-author behavior after score edits; never silently
+      retarget a map.
+- [ ] Preserve `PracticeTransport` and the application audio clock as the sole command/time authority
       for notation playback, metronome, capture, replay, cursor, and synchronized video.
-- [x] Define the spike questions, accepted invariants, candidate/fallback order, and provisional
-      policies without claiming technology, codec, or measured-budget acceptance.
-- [x] Independently review the product and architecture direction and resolve every blocking
-      contradiction before the spike.
-- [x] Record owner approval of the spike-only alphaTab/MPL evaluation, candidate/fallback order,
-      staged desktop evidence matrix, and invariant-based disqualifications.
+- [ ] Resolve the eleven recorded owner decisions plus video format/codec, retention/deletion,
+      sync-editing, and first-release export scope.
+- [ ] Keep the plan and ADR Proposed until an independent review finds no new blocking issue after
+      these changes; then record explicit owner acceptance.
 
-**Done when:** The owner has accepted the product boundary and a proposed architecture direction is
-coherent enough to define a safe disposable spike without claiming final technology or budgets.
+**Done when:** The product requirements, plan, ADR, and this checklist agree on the product, media
+model, supported desktop environment, implementation order, and owner-approved policy choices.
 
-### Disposable notation, playback, audio-runtime, and timed-video integration spike
+### Disposable notation, playback, and timed-video integration gate
 
 **Planning:** Use an isolated spike branch. Its code is evidence and must not be merged as production
 architecture.
 
-- [x] Pin and evaluate alphaTab 1.8.4 only after MPL-2.0 owner approval; record exact package,
+- [ ] Pin and evaluate alphaTab 1.8.4 only after MPL-2.0 owner approval; record exact package,
       source-form, asset, transitive-license, notice, and clean-release evidence.
-- [x] Exercise detached renderer/import projections and record exact bounded passes, semantic
-      failures, and inconclusive production behavior without persisting a third-party object graph.
-- [x] Evaluate alphaSynth authority and select omission as the initial single-authority fallback;
-      application-wide authority, cleanup, bank provenance, and audible quality remain inconclusive.
-- [x] Exercise browser runtime/coexistence probes and record the bounded isolated passes, the
-      production Basic Pitch/Vite coexistence gap, and the Edge same-context lifecycle failure.
-- [x] Exercise available map/follower, media, timestamp, seek, drift, capture, and browser/device
-      controls; record missing physical A/V, device-loss, relink, storage-pressure, and repeat data.
-- [x] Measure available simultaneous workload behavior as single-machine observations; do not
-      promote those observations to universal budgets or repeated distributions.
-- [x] Verify that camera video can be captured without opening a second microphone path and that the
+- [ ] Prove renderer/import behavior without persisting a third-party object graph.
+- [ ] Prove that alphaSynth is subordinate to the StringSight transport or select and re-test the
+      documented single-authority fallback; never ship two production clocks.
+- [ ] Verify Vite workers/worklets, Basic Pitch, microphone capture, notation, synthesis, metronome,
+      and existing tests coexist without path hacks or weakened isolation.
+- [ ] Measure camera permission/revocation, device loss, container/codec negotiation, imported-video
+      decode, timestamp precision, seeking, A/V drift, and multi-anchor sync editing.
+- [ ] Measure simultaneous notation, reference audio, metronome, guitar capture, analysis, camera
+      encoding, and video playback for dropouts, long tasks, CPU, memory, and storage growth.
+- [ ] Verify that camera video can be captured without opening a second microphone path and that the
       existing guitar-audio path remains authoritative evidence.
-- [x] Record the available bundle, long-score, memory, render, seek, drift, capture, and workload
-      observations plus every tested fallback and omission; explicitly retain quota pressure,
-      comprehensive edit-to-sound, continuity, and repeat gaps. Do not call a budget approved inside
-      the spike.
+- [ ] Record approved bundle, long-score, memory, quota, edit-to-render, edit-to-sound, seek, drift,
+      and capture-continuity budgets or select the documented fallback/omission.
 
-**Execution status:** Complete as an evidence exercise at
-`codex/spike-practice-integration@7b3c5f9`. The written report classifies bounded passes, failures,
-and inconclusive/missing coverage. Its original commercial-quality exit condition was not met. No
-spike UI or dependency is production-ready, and the disposable branch is not merged wholesale.
+**Done when:** A written spike report satisfies every blocking notation/audio/video/license gate or
+records the selected fallback and its repeated evidence. No spike UI or dependency is assumed to be
+production-ready.
 
-### Bounded hackathon technology, license, fallback, and claim acceptance gate
-
-- [x] Compare spike results with the owner-approved product boundary and one-authority invariant.
-- [x] Accept or reject the notation/import/playback candidates and the bounded MPL-2.0 distribution
-      policy;
-      amend the license ADR and release checks if approved.
-- [x] Select alphaTab 1.8.4 behind a replaceable notation/import adapter, omit initial synthesis,
-      and limit MIDI/import behavior to fixture-backed claims with explicit loss.
-- [x] Reject broad GP/MusicXML/SMF claims; retain GP8 basic as the strongest bounded import path and
-      preserve every failed or inconclusive semantic row.
-- [x] Treat single-machine measurements as observations, require prospective item-level hackathon
-      smoke thresholds, and retain formal percentile budgets as pre-commercial gates.
-- [x] Keep video optional, reference-video audio muted/omitted, take video approximate, and leave any
-      audible reference-video path plus codec/export/count-in/storage mechanics to their implementing
-      items.
-- [x] Move the Practice System plan and ADR 0006 from Proposed to Accepted only after an independent
-      review finds no blocking contradiction.
-
-**Done when:** The invariant architecture, bounded dependency/license profile, fallbacks, and honest
-supported claims are accepted without claiming unsupported budgets. Production implementation may
-then begin in dependency order at Item 10.
-
-**Independent review:** PASS with no blocking findings in
-`docs/verification/11-practice-post-spike-acceptance-independent-review.md`.
-
-### Pre-commercial evidence gates retained (not a blocker for Item 10)
-
-- [ ] Prove the application-wide shared runtime under full production Basic Pitch/notation/media
-      load, including lifecycle recovery and tail/cancellation behavior.
-- [ ] Complete renderer editing, page/continuous layout, 200% zoom/reflow, keyboard, and
-      human-observed Narrator workflows.
-- [ ] Close physical camera/microphone timing, device loss, relink, storage pressure, camera drops,
-      low/high hardware tiers, paired A/V rig, and three-run soak distributions.
-- [ ] Establish and pass formal bundle, latency, drift, continuity, memory, storage, and quota
-      percentile budgets before broader commercial support claims.
-
-### 10. Implement the canonical guitar model
+### 10. Implement the virtual guitar fretboard
 
 **Planning:** Direct implementation with an ADR for the canonical coordinate system.
 
-- [x] Represent strings, frets, scale length, handedness, capo, and tuning.
-- [x] Map every string/fret location to absolute pitch and pitch class.
-- [x] Enumerate physical locations capable of producing an audio candidate.
-- [x] Generate chord voicings and candidate fingerboard states.
-- [x] Model physical transition cost between sequential states.
-- [x] Support future alternate tunings without rewriting the inference engine.
-- [x] Add exhaustive mapping and invariance tests.
+- [ ] Represent strings, frets, scale length, handedness, capo, and tuning.
+- [ ] Map every string/fret location to absolute pitch and pitch class.
+- [ ] Enumerate physical locations capable of producing an audio candidate.
+- [ ] Generate chord voicings and candidate fingerboard states.
+- [ ] Model physical transition cost between sequential states.
+- [ ] Support future alternate tunings without rewriting the inference engine.
+- [ ] Add exhaustive mapping and invariance tests.
 
-**Done when:** Given any supported pitch set, the model returns all physically possible guitar
-locations and voicings within configured constraints without renderer or UI assumptions.
-
-**Independent review:** PASS after resolving bounded-search, barre-legality, transition-distance,
-and validated-boundary findings in
-`docs/verification/10-canonical-guitar-model-independent-review.md`.
+**Done when:** Given any detected pitch set, the engine can return all physically possible guitar locations and voicings within configured constraints.
 
 ## Phase 4: Practice document, editor, and interchange
 
@@ -347,120 +286,71 @@ and validated-boundary findings in
 **Planning:** Follow the accepted Practice System plan and ADR; do not overload the observed
 `Session` aggregate.
 
-- [x] Implement the accepted canonical `PracticeDocument` with integer musical time,
-      tempo/meter/key maps, tracks, voices, guitar events, validated ranges, revisions, and
-      qualified content identity.
-- [x] Keep authored intent, observed `Session` evidence, immutable `PracticeTake`, reference/take
-      video and mutable media availability, revision-bound sync maps, and derived
-      `PracticeAssessment` independently versioned.
-- [x] Implement expected-event projections, immutable observed-evidence/correction snapshots, exact
+- [ ] Implement a canonical `PracticeDocument` with 960 PPQ integer ticks, tempo/meter/key maps,
+      tracks, voices, guitar events, validated ranges, revisions, and qualified content hashes.
+- [ ] Keep authored intent, observed `Session` evidence, immutable `PracticeTake`, timed-media state,
+      and derived `PracticeAssessment` as independently versioned aggregates.
+- [ ] Implement expected-event projections, immutable observed-evidence/correction snapshots, exact
       media identities, and capture/score clock anchors.
-- [x] Add deterministic schema validation, canonical serialization, golden hashes, migrations, and
+- [ ] Add deterministic schema validation, canonical serialization, golden hashes, migrations, and
       adversarial boundary tests.
-- [x] Encode the owner-approved notation/technique support profile and stable import-loss codes.
+- [ ] Encode the owner-approved notation/technique support profile and stable import-loss codes.
 
 **Done when:** Authored scores, observed evidence, media, takes, and assessments can be validated,
 hashed, migrated, and referenced without converting one aggregate into another.
 
-**Independent review:** PASS after resolving canonical resource/accessor, import-claim, sync-history,
-capture-epoch, assessment-partition, media-binding, migration-fixture, and aggregate-integrity
-findings in `docs/verification/11-versioned-practice-contracts-independent-review.md`.
+### 12. Build the editor core and notation/import/MIDI adapters
 
-### 12. Build the renderer-independent editor core
+**Planning:** Keep all third-party types behind adapters and keep renderer layout out of document
+state.
 
-- [x] Implement pure validated edit commands and atomic transactions.
-- [x] Implement stable semantic selection, bounded undo/redo, monotonic revisions, and predictable
-      focus restoration.
-- [x] Implement native StringSight create/save/open round trips independently of a notation
-      renderer.
-- [x] Keep layout, zoom, active practice range, panel state, and playback position out of authored
-      document content.
-- [x] Implement accessible structured score inspection and keyboard editing independent of rendered
-      SVG/canvas glyph focus.
-- [x] Test every command, invalid-command atomicity, history bounds, save failure, and revision
-      behavior.
-
-**Done when:** A valid native score can be created, edited, undone/redone, saved, reopened, and
-inspected accessibly before notation/import adapters become authoritative dependencies.
-
-**Independent review:** PASS after resolving source-identity verification, aggregate transaction
-limits, accessor rejection, canonical undo/redo identity, false saved state, semantic workspace
-validation, collision-free UTF-16 row identities, and value-aware accessible labels in
-`docs/verification/12-renderer-independent-editor-core-independent-review.md`.
-
-### 13. Implement notation, score-import, and authored-MIDI adapters
-
-**Planning:** Keep all third-party types behind adapters and renderer layout out of document state.
-
-- [x] Implement the accepted notation adapter with stable event/tick/geometry mappings and semantic
+- [ ] Implement pure validated edit commands, transactions, stable selection, bounded undo/redo,
+      and native StringSight JSON round trips.
+- [ ] Implement the approved notation adapter with stable event/tick/geometry mappings and semantic
       focus, expanded, page, and continuous views.
-- [x] Use four bars per system only as a presentation default; dense/sparse reflow preserves
-      musical selections and loops.
-- [x] Import each approved native/guitar-aware format through deterministic draft-plus-report
-      boundaries; reject corrupt or resource-hostile files safely.
-- [x] Add raw-SMF preflight and explicit event accounting before high-level MIDI conversion; never
-      claim original string/fret or notation fidelity from MIDI.
-- [x] Keep observed-session MIDI export distinct from authored-document MIDI import/export.
-- [x] Fixture-test every preserved, converted, rejected, unsupported, or lost semantic and every
-      advertised format direction.
+- [ ] Use four bars per horizontal system as a presentation default only; reflow dense/sparse music
+      without changing tick selections or loops.
+- [ ] Import supported Guitar Pro, MusicXML/MXL, alphaTex/native, and MIDI through deterministic
+      draft-plus-report boundaries; reject corrupt or resource-hostile files safely.
+- [ ] Add raw-SMF preflight and explicit event accounting before any optional `@tonejs/midi`
+      conversion; never claim guitar string/fret fidelity from MIDI.
+- [ ] Implement accessible structured score inspection and keyboard editing independent of rendered
+      SVG/canvas glyph focus.
 
-**Done when:** Supported scores render and import/export through replaceable adapters, with every
-semantic disposition explicit and no third-party graph stored as document truth.
-
-**Acceptance:** Complete. The visible canonical editor drives the lazy alphaTab adapter without
-persisting renderer state; Chromium proves real multi-track, multi-voice, chord, reflow, focus, and
-viewport-pagination mappings. Exact GP8 and declared Type-1 SMF routes produce verified review
-bundles, GP5 remains parsing-only, GP7/MusicXML remain rejected, and authored MIDI export reports
-every preserved or lost field. Independent review and release evidence are recorded in
-`docs/verification/13-notation-score-import-authored-midi-independent-review.md`.
+**Done when:** A guitarist can create, edit, save, reopen, and safely import a supported score while
+every preserved, converted, rejected, or lost semantic is explicit and fixture-tested.
 
 ## Phase 5: Shared runtime, timed media, and persistence
 
-### 14. Implement the shared AudioRuntime
+### 13. Implement AudioRuntime, authoritative transport, metronome, and loops
 
 **Planning:** Preserve all existing capture behavior while moving context ownership to an
 application runtime.
 
-- [ ] Add one lazy application-owned audio context with isolated reference, metronome, count-in,
-      take-replay, and silent-capture buses plus explicit leases/generations.
-- [ ] Refactor microphone capture to consume runtime leases without changing monitoring/recording
-      separation, detector evidence, privacy, replay, duration safety, or hardware results.
-- [ ] Disconnect input-owned tracks/nodes without closing playback owned by other clients.
-- [ ] Prevent software output buses from entering the guitar capture graph.
-- [ ] Expose context/sample-rate/latency/state diagnostics and recover/reset without resource leaks.
-- [ ] Re-run all existing capture/analyzer tests and supported hardware verification.
-
-**Done when:** Capture and playback clients safely share one application audio runtime while every
-protected audio behavior remains intact.
-
-### 15. Implement PracticeTransport, reference playback, metronome, count-in, and loops
-
-- [ ] Implement one non-UI `PracticeTransport` for load, play/pause/stop/seek, speed, active range,
+- [ ] Refactor microphone capture to consume application-owned runtime leases without changing
+      detector evidence, privacy behavior, deterministic replay, or hardware results.
+- [ ] Implement one authoritative `PracticeTransport` for play/pause/seek/stop, range, speed,
       loop generation, count-in, and musical-time projection.
-- [ ] Schedule the accepted reference-playback path, metronome, count-in, take replay, and capture
-      anchors from the same runtime timeline; UI only submits commands and observes snapshots.
-- [ ] Implement tempo/meter changes, canonical beat grouping, arbitrary musical ranges, exact
-      note-off cleanup, and phase-aligned count-in behavior.
-- [ ] Persist/apply the accepted count-in, score-start, pause/resume, stop, and discontinuity anchors.
-- [ ] Pass accepted click, loop, speed, seek, capture-continuity, latency, drift, generation, and
-      long-run budgets.
+- [ ] Schedule reference playback, metronome, count-in, take replay, and silent capture buses from
+      the same audio-context timeline; React only submits commands and observes snapshots.
+- [ ] Implement tempo/meter changes, canonical downbeat/grouping, arbitrary half-open tick ranges,
+      phase-aligned count-in, and count-in/score-start sample epochs.
+- [ ] Pass the approved long-run click, loop, speed, capture-continuity, latency, and no-drift gates.
 
-**Done when:** Playback, click, cursor, loop, and capture remain sample/musical-time aligned under one
-authority across pauses, seeks, ranges, tempo maps, failures, and long runs.
+**Done when:** Playback, metronome, cursor, looping, and capture remain sample/tick aligned under one
+authority across pauses, seeks, range changes, tempo maps, and long runs.
 
-### 16. Implement the optional timed-media runtime
+### 14. Implement the optional timed-media runtime
 
 **Planning:** This is synchronized practice media, not live fretboard-analysis computer vision.
 
 - [ ] Store `ReferenceVideo` and `TakeVideo` as optional media records separate from the canonical
       score, observed evidence, and immutable take identity. Attach `ReferenceVideo` through its
-      revision-bound reference map, not directly to a mutable document; attach `TakeVideo` through
-      its immutable take/capture mapping.
-- [ ] Implement versioned `ReferenceScoreMediaSyncMap` records with one or multiple validated
-      score-tick/media-PTS anchors, deterministic interpolation/inverse behavior, provenance, gaps,
-      and edit history. Implement separate `TakeCaptureMediaSyncMap` records from take-video PTS to
-      capture/audio/logical frames and transport/capture generations. Never substitute one role for
-      the other.
+      revision-bound sync map, not directly to a mutable document.
+- [ ] Implement versioned `ScoreMediaSyncMap` records with one or multiple validated
+      score-tick/media-time anchors, deterministic interpolation, provenance, and edit history. Each
+      map binds the exact immutable `PracticeDocument` revision ID and content hash against which its
+      anchors were authored.
 - [ ] Detect a sync map as stale whenever its bound revision ID or content hash differs from the
       score revision being used. Score edits require an explicit validated rebase or re-author
       operation that preserves provenance; never silently retarget anchors to a new revision.
@@ -478,7 +368,7 @@ authority across pauses, seeks, ranges, tempo maps, failures, and long runs.
 supported reference and take video seek and review against the authoritative musical timeline within
 approved drift and performance budgets.
 
-### 17. Complete Practice System persistence, migrations, and media lifecycle
+### 15. Complete Practice System persistence, migrations, and media lifecycle
 
 **Planning:** Extend the existing validated IndexedDB repository model; do not add silent cascades.
 
@@ -500,14 +390,11 @@ relinking, migrations, and failures without losing provenance or silently changi
 
 ## Phase 6: Desktop Practice Workspace product
 
-### 18. Complete the production desktop Practice Workspace
+### 16. Replace the rack-primary shell with the desktop Practice Workspace
 
-**Planning:** Follow the accepted product requirements, UX architecture, wireframes, and state/action
-map. The dual-canvas shell committed at `0b23c6e` is approved direction and integration scaffolding,
-not proof that its explicitly labelled placeholders are complete.
+**Planning:** Create desktop wireframes and a state/action map before production JSX. The existing
+rack UI is superseded presentation work, not permission to discard working audio behavior.
 
-- [ ] Replace demo score, library, save, edit, import, shared transport, video, MIDI, and review
-      placeholders with accepted domain/runtime services in dependency order.
 - [ ] Center the score/tab and global transport in the primary workspace, with song/library,
       optional video, input/analysis, take, and assessment surfaces arranged around it.
 - [ ] Support focus, expanded, page, and continuous score views while selection and loop ranges
@@ -525,7 +412,7 @@ not proof that its explicitly labelled placeholders are complete.
 **Done when:** A first-time desktop user can open/create a score and complete the core practice flow
 without navigating a rack of utilities or losing any accepted audio functionality.
 
-### 19. Implement practice takes and synchronized audio/video review
+### 17. Implement practice takes and synchronized audio/video review
 
 **Planning:** Bind every take to an immutable document revision, range, speed, count-in, capture
 epochs, observed-evidence snapshot, media identity, and sync provenance.
@@ -545,7 +432,7 @@ epochs, observed-evidence snapshot, media identity, and sync provenance.
 **Done when:** A guitarist can record, replay, hear only their performance, compare it with the
 reference, and review optional synchronized video without corrupting source evidence.
 
-### 20. Add expected-versus-observed performance assessment
+### 18. Add expected-versus-observed performance assessment
 
 **Planning:** Begin only after editor, transport, take recording, media integrity, and alignment
 fixtures pass independently.
@@ -566,14 +453,13 @@ and cannot mutate or overstate either expected or observed evidence.
 
 ## Phase 7: Deferred optional intelligence
 
-### 21. Add live fretboard/hand computer vision when justified
+### 19. Add live fretboard/hand computer vision when justified
 
 This preserves the useful outcomes from the former Items 11-13 but deliberately moves them after the
 complete Practice Workspace. It is separate from reference/take video playback.
 
-- [ ] Implement permissioned camera capture with explicit camera/performance/audio/session timestamp
-      anchors, bounded off-main-thread transport, diagnostics, fixture replay, adaptive quality, and
-      audio-priority degradation.
+- [ ] Implement permissioned camera capture, shared-timebase frame timestamps, bounded off-main-thread
+      transport, diagnostics, fixture replay, adaptive quality, and audio-priority degradation.
 - [ ] Detect, rectify, index, and temporally track the fretboard with explicit uncertainty.
 - [ ] Detect the fretting hand and map landmarks to probabilistic string/fret regions without
       presenting inferred contacts as observations.
@@ -583,12 +469,11 @@ complete Practice Workspace. It is separate from reference/take video playback.
 **Done when:** Optional live vision produces calibrated time-aligned guitar-position evidence without
 interrupting the core practice/audio experience.
 
-### 22. Build guitar-aware audio/vision fusion and automatic visual indexing
+### 20. Build guitar-aware audio/vision fusion and automatic visual indexing
 
 This preserves the former Items 14-15 after the deferred vision gate.
 
-- [ ] Join audio and visual evidence through explicit versioned clock mappings and the canonical
-      guitar model; do not infer that camera and audio share a physical clock.
+- [ ] Join audio and visual evidence through the shared timebase and canonical guitar model.
 - [ ] Score physical candidate states over time while preserving unfused audio evidence.
 - [ ] Represent multiple plausible absolute fret alignments and use phrase-level audio evidence to
       resolve or reopen them.
@@ -598,7 +483,7 @@ This preserves the former Items 14-15 after the deferred vision gate.
 **Done when:** Fusion measurably improves held-out guitar-position or tablature inference and keeps
 uncertainty and source provenance inspectable.
 
-### 23. Add GPT-5.6 musical interpretation only for demonstrated user value
+### 21. Add GPT-5.6 musical interpretation only for demonstrated user value
 
 - [ ] Define value beyond deterministic theory and performance metrics.
 - [ ] Send only compact structured events and necessary context through a server boundary; raw audio
@@ -611,7 +496,7 @@ never blocks local score, practice, take, or assessment workflows.
 
 ## Phase 8: Quality, release, and submission
 
-### 24. Meet performance, privacy, security, accessibility, and license gates
+### 22. Meet performance, privacy, security, accessibility, and license gates
 
 - [ ] Instrument end-to-end audio, notation, video, encoding, analysis, assessment, render, memory,
       model, storage, and bundle behavior on representative desktop hardware.
@@ -627,7 +512,7 @@ never blocks local score, practice, take, or assessment workflows.
 **Done when:** Approved budgets and supported desktop-browser/hardware matrices pass with no blocking
 privacy, security, licensing, accessibility, migration, or reliability issue.
 
-### 25. Deploy and verify the production application
+### 23. Deploy and verify the production application
 
 - [ ] Choose an HTTPS host and any required server environment with explicit secret management.
 - [ ] Configure worker/model/notation/SoundFont assets, MIME types, cross-origin headers, caching,
@@ -638,7 +523,7 @@ privacy, security, licensing, accessibility, migration, or reliability issue.
 **Done when:** A reviewer can open a stable URL and complete the primary desktop practice workflow on
 the declared support matrix with documented recovery paths.
 
-### 26. Prepare documentation, demonstration, and submission
+### 24. Prepare documentation, demonstration, and submission
 
 - [ ] Write the README, architecture/data-flow explanation, setup, testing, license/source notices,
       sample data, privacy, supported formats, and honest limitations.
@@ -655,10 +540,10 @@ platform confirms a completed submission rather than a saved draft.
 ## Superseded roadmap reference — do not execute in this order
 
 The remaining sections below preserve the original transcription/vision roadmap for historical
-context. Their useful outcomes have been remapped into active Items 10-26 above. The former vision
-Items 11-15 are deferred to active Items 21-22; the former product Item 16 is split across active
-Items 12-20; former GPT Item 17 maps to active Item 23; and former persistence/release Items 18-22
-map to active Items 17 and 24-26. Their unchecked boxes are historical, not a second active queue.
+context. Their useful outcomes have been remapped into active Items 16-24 above. The former vision
+Items 11-15 are deferred to active Items 19-20; the former product Item 16 is split across active
+Items 16-18; former GPT Item 17 maps to active Item 21; and former persistence/release Items 18-22
+map to active Items 15 and 22-24. Their unchecked boxes are historical, not a second active queue.
 
 The realistic rack direction and remaining rack styling are specifically superseded. Existing audio
 behavior and completed UI commits are preserved for selective review/porting, not merged blindly.
@@ -849,7 +734,7 @@ behavior and completed UI commits are preserved for selective review/porting, no
 
 **Done when:** A reviewer can understand, run, and evaluate StringSight from the submitted materials, and Devpost confirms the project is submitted rather than merely saved as a draft.
 
-## Historical current-focus snapshot — non-authoritative
+## Current focus
 
 - [x] Complete item 1: product requirements and measurable targets.
 - [x] Complete item 2: repository and developer workflow.
@@ -859,29 +744,27 @@ behavior and completed UI commits are preserved for selective review/porting, no
 - [x] Complete item 6 real-guitar verification; automated implementation and corpus baseline pass.
 - [x] Complete item 7 polyphonic evaluation with reviewed power-chord and inversion coverage.
 - [x] Build items 5 through 9 as the first complete vertical slice.
-- [x] Update the Product/Architecture approval gate for the desktop Practice Workspace and optional
+- [ ] Update the Product/Architecture approval gate for the desktop Practice Workspace and optional
       synchronized timed media; resolve owner decisions and repeat independent review.
-- [x] Execute the disposable notation/playback/video evidence gate and record its bounded passes,
-      failures, inconclusive areas, and selected hackathon fallbacks without claiming the full exit
-      criterion passed.
-- [ ] Complete active Items 10-20 in order. Do not resume the superseded rack-primary UI roadmap or
+- [ ] Run the disposable notation/playback/video integration gate after approval.
+- [ ] Complete active Items 10-18 in order. Do not resume the superseded rack-primary UI roadmap or
       begin deferred live computer vision first.
 
-## Historical completion gates — non-authoritative
+## Major completion gates
 
 - [x] **Foundation gate:** Items 1-4 complete.
 - [x] **Audio gate:** Items 5-9 complete and evaluated.
-- [x] **Product/architecture direction gate:** Updated desktop/video product decisions and proposed
-      spike architecture approved after owner decisions and independent review.
-- [x] **Bounded disposable integration gate:** Evidence is classified; the alphaTab/MPL adapter
-      profile and explicit omissions/fallbacks are accepted; pre-commercial evidence remains open.
+- [ ] **Product/architecture gate:** Updated desktop/video plan and ADR accepted after owner decisions
+      and independent review.
+- [ ] **Disposable integration gate:** Notation, single-authority playback, timed video, capture
+      coexistence, licensing, and measured budgets pass or select documented fallbacks.
 - [ ] **Guitar-model gate:** Active Item 10 complete and independently reviewed.
-- [ ] **Practice-domain gate:** Active Items 11-13 complete.
-- [ ] **Runtime/media gate:** Active Items 14-17 complete with timing, drift, storage, and failure
+- [ ] **Practice-domain gate:** Active Items 11-12 complete.
+- [ ] **Runtime/media gate:** Active Items 13-15 complete with timing, drift, storage, and failure
       evidence.
-- [ ] **Desktop product gate:** Active Items 18-20 complete and evaluated.
-- [ ] **Optional vision/fusion gate:** Active Items 21-22 complete only if prioritized after the core
+- [ ] **Desktop product gate:** Active Items 16-18 complete and evaluated.
+- [ ] **Optional vision/fusion gate:** Active Items 19-20 complete only if prioritized after the core
       product.
-- [ ] **Optional GPT gate:** Active Item 23 adds evaluated value with a visible remote boundary.
-- [ ] **Release gate:** Active Items 24-25 complete.
-- [ ] **Submission gate:** Active Item 26 complete and Devpost confirms submission.
+- [ ] **Optional GPT gate:** Active Item 21 adds evaluated value with a visible remote boundary.
+- [ ] **Release gate:** Active Items 22-23 complete.
+- [ ] **Submission gate:** Active Item 24 complete and Devpost confirms submission.

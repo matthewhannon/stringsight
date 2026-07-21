@@ -88,6 +88,7 @@ export class MicrophoneCapture {
   private readonly maxRecordingSeconds: number;
   private readonly snapshotListeners = new Set<SnapshotListener>();
   private audioContext: AudioContext | null = null;
+  private connectionPromise: Promise<void> | null = null;
   private expectedSequence = 0;
   private expectedStartFrame: number | null = null;
   private finalizationReject: ((reason?: unknown) => void) | null = null;
@@ -105,6 +106,10 @@ export class MicrophoneCapture {
   private replayController: AbortController | null = null;
   private snapshot: CaptureSnapshot;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
+  private sourceSwitchPromise: Promise<void> | null = null;
+  private sourceSwitchReconnect = false;
+  private sourceSwitchRevision = 0;
+  private sourceSwitchTarget: string | undefined;
   private stopPromise: Promise<CapturedRecording> | null = null;
   private transportWorker: Worker | null = null;
   private workletNode: AudioWorkletNode | null = null;
@@ -144,13 +149,21 @@ export class MicrophoneCapture {
     return devices.filter((device) => device.kind === 'audioinput');
   }
 
-  async connect(deviceId?: string): Promise<void> {
+  connect(deviceId?: string): Promise<void> {
     if (!browserSupportsCapture()) {
       this.update({ connectionState: 'unsupported' });
-      return;
+      return Promise.resolve();
     }
-    if (this.snapshot.connectionState === 'monitoring') return;
-    if (this.snapshot.connectionState === 'connecting') return;
+    if (this.snapshot.connectionState === 'monitoring') return Promise.resolve();
+    if (this.connectionPromise !== null) return this.connectionPromise;
+    const connectionPromise = this.openConnection(deviceId).finally(() => {
+      if (this.connectionPromise === connectionPromise) this.connectionPromise = null;
+    });
+    this.connectionPromise = connectionPromise;
+    return connectionPromise;
+  }
+
+  private async openConnection(deviceId?: string): Promise<void> {
     this.update({ connectionState: 'connecting', error: null, warning: null });
     try {
       const audioConstraints: MediaTrackConstraints = {
@@ -214,6 +227,42 @@ export class MicrophoneCapture {
         connectionState: 'failed',
         error: captureError(error, this.snapshot.elapsedMs),
       });
+    }
+  }
+
+  switchInputDevice(deviceId?: string): Promise<void> {
+    this.sourceSwitchTarget =
+      deviceId === undefined || deviceId.length === 0 ? undefined : deviceId;
+    this.sourceSwitchRevision += 1;
+    this.sourceSwitchReconnect ||=
+      this.sourceSwitchPromise !== null ||
+      this.connectionPromise !== null ||
+      this.snapshot.connectionState === 'monitoring';
+
+    if (this.sourceSwitchPromise === null) {
+      const sourceSwitchPromise = this.runSourceSwitches().finally(() => {
+        if (this.sourceSwitchPromise === sourceSwitchPromise) {
+          this.sourceSwitchPromise = null;
+          this.sourceSwitchReconnect = false;
+        }
+      });
+      this.sourceSwitchPromise = sourceSwitchPromise;
+    }
+    return this.sourceSwitchPromise;
+  }
+
+  private async runSourceSwitches(): Promise<void> {
+    let handledRevision = 0;
+    while (handledRevision < this.sourceSwitchRevision) {
+      const pendingConnection = this.connectionPromise;
+      if (pendingConnection !== null) await pendingConnection;
+
+      if (this.snapshot.connectionState === 'monitoring') await this.disconnect();
+
+      const revisionToConnect = this.sourceSwitchRevision;
+      const targetToConnect = this.sourceSwitchTarget;
+      if (this.sourceSwitchReconnect) await this.connect(targetToConnect);
+      handledRevision = revisionToConnect;
     }
   }
 

@@ -1,1 +1,0 @@
-export { PracticeApp } from './PracticeApp';

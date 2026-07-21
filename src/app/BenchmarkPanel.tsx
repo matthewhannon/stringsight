@@ -10,7 +10,7 @@ import {
   type BenchmarkConditions,
   type RecordingFixtureOptions,
 } from '../evaluation';
-import { toolEmbeddedClassNames } from '../ui/toolSurfaceClasses';
+import { rackEmbeddedClassNames } from '../ui/rack';
 import {
   defaultAudioAnalysis,
   defaultMicrophoneCapture,
@@ -187,7 +187,7 @@ export function BenchmarkPanel({
     <section
       aria-label={embedded ? 'Evaluation fixture controls' : undefined}
       aria-labelledby={embedded ? undefined : 'benchmark-title'}
-      className={`benchmark-section ${embedded ? toolEmbeddedClassNames.section : ''}`.trim()}
+      className={`benchmark-section ${embedded ? rackEmbeddedClassNames.section : ''}`.trim()}
       id="benchmark"
     >
       {!embedded && (
@@ -203,7 +203,7 @@ export function BenchmarkPanel({
 
       <div className="benchmark-grid">
         <article
-          className={`benchmark-protocol ${embedded ? toolEmbeddedClassNames.surface : ''}`.trim()}
+          className={`benchmark-protocol ${embedded ? rackEmbeddedClassNames.surface : ''}`.trim()}
         >
           <span className="stage-status">
             {benchmarkMode === 'notes' ? 'First take · Open strings' : 'Chord take · Open position'}
@@ -235,7 +235,7 @@ export function BenchmarkPanel({
         </article>
 
         <div
-          className={`benchmark-conditions ${embedded ? toolEmbeddedClassNames.surface : ''}`.trim()}
+          className={`benchmark-conditions ${embedded ? rackEmbeddedClassNames.surface : ''}`.trim()}
           aria-label="Recording conditions"
         >
           <label>
@@ -310,7 +310,7 @@ export function BenchmarkPanel({
         </div>
       </div>
 
-      <div className={`benchmark-review ${embedded ? toolEmbeddedClassNames.surface : ''}`.trim()}>
+      <div className={`benchmark-review ${embedded ? rackEmbeddedClassNames.surface : ''}`.trim()}>
         <div>
           <h3>Suggested labels</h3>
           <span>

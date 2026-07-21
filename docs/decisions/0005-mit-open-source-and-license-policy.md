@@ -2,7 +2,6 @@
 
 **Status:** Accepted  
 **Date:** 2026-07-18
-**Amended:** 2026-07-20 by ADR 0007 for the bounded alphaTab 1.8.4 hackathon profile
 
 ## Context
 
@@ -25,11 +24,7 @@ license.
 Every distributed third-party component must retain its own license. Production code is accepted by
 default only under MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, MIT-0, BlueOak-1.0.0, or
 CC0-1.0. CC-BY assets may be accepted when attribution is practical and preserved. MPL-2.0 may be
-used for isolated development tooling. ADR 0007 accepts one focused production exception: exact
-alphaTab 1.8.4 behind a replaceable adapter for the bounded hackathon profile, subject to the
-retained source, notice, modification, provenance, and final-artifact controls in
-`../research/practice-spike-license-release-resolution.md`. No other MPL package is accepted by
-that exception.
+used for isolated development tooling, or after a focused review of source-availability duties.
 
 GPL, LGPL, AGPL, SSPL, BSL, non-commercial, research-only, custom, missing, or unknown terms require
 explicit owner approval and a new or amended ADR before entering a production bundle. This is a
@@ -47,16 +42,6 @@ The deployed application carries `THIRD_PARTY_LICENSES.txt`. Dependency checks r
 unapproved production license metadata and require notices for every production package in the lock
 file. Contributions are accepted under the repository's MIT License as described in
 `CONTRIBUTING.md`; no contributor license agreement is required for the hackathon.
-
-When alphaTab client code is distributed, the deployed legal/notices surface links to an immutable,
-versioned, StringSight-controlled, recipient-accessible, hash-verified source location (the selected
-convention is `/open-source/`). That location
-must publish the exact corresponding preferred-form alphaTab source, MPL-2.0 terms, received and
-reconstructed notices, Bravura OFL/FONTLOG material, checksums, modification status, and retention
-information. Modified covered files require their modified preferred form and corresponding build
-material. The final artifact must exclude the audited SONiVOX `.sf2`/`.sf3` names and hashes and all
-other unreviewed sound banks. These controls are checked again at release; installing a package or
-passing the ordinary lockfile notice check is insufficient.
 
 ## Goal
 

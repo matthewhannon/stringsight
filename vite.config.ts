@@ -1,16 +1,17 @@
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  // The browser evaluation dynamically imports the model surface. Pre-bundle its bare TensorFlow
-  // imports so a cold Vite optimizer cannot invalidate the first Playwright module context.
-  optimizeDeps: {
-    include: [
-      '@tensorflow/tfjs-backend-cpu',
-      '@tensorflow/tfjs-backend-wasm',
-      '@tensorflow/tfjs-converter',
-      '@tensorflow/tfjs-core',
-    ],
+  build: {
+    rollupOptions: {
+      input: {
+        audioInputPrototype: fileURLToPath(
+          new URL('./audio-input-prototype.html', import.meta.url),
+        ),
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+      },
+    },
   },
   plugins: [react()],
   server: {

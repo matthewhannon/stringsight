@@ -1,0 +1,30 @@
+:root {
+  --rack-color-canvas: #070a10;
+  --rack-color-frame: #101317;
+  --rack-color-panel-top: #353a3e;
+  --rack-color-panel-mid: #171a1d;
+  --rack-color-panel-bottom: #202428;
+  --rack-color-panel-inset: #080b10;
+  --rack-color-border: #050607;
+  --rack-color-border-highlight: #62676b;
+  --rack-color-text: #f0f3f1;
+  --rack-color-text-muted: #9fa4ad;
+  --rack-color-accent: #a8d8c3;
+  --rack-color-accent-strong: #8ff0c6;
+  --rack-color-warning: #d6b47a;
+  --rack-color-danger: #f19c8f;
+  --rack-font-control: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  --rack-space-1: 4px;
+  --rack-space-2: 8px;
+  --rack-space-3: 12px;
+  --rack-space-4: 16px;
+  --rack-space-5: 24px;
+  --rack-space-6: 32px;
+  --rack-radius-control: 7px;
+  --rack-radius-panel: 5px;
+  --rack-radius-frame: 24px;
+  --rack-shadow-panel:
+    inset 0 1px rgb(255 255 255 / 13%), inset 0 -1px #000, 0 4px 8px rgb(0 0 0 / 48%);
+  --rack-motion-fast: 160ms;
+  --rack-motion-standard: 240ms;
+}

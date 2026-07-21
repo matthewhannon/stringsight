@@ -1,7 +1,6 @@
 export * from './audio-event-evidence';
 export * from './chord';
 export * from './chord-interpretation';
-export * from './guitar';
 export * from './interval';
 export * from './key';
 export * from './pitch';

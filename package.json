@@ -17,7 +17,6 @@
     "corpus:generate": "tsx scripts/evaluation.ts generate",
     "corpus:validate": "tsx scripts/evaluation.ts validate",
     "dependencies:check": "node scripts/check-third-party-notices.mjs",
-    "docs:check": "node scripts/check-docs.mjs",
     "evaluate": "tsx scripts/evaluation.ts evaluate",
     "evaluate:monophonic": "tsx scripts/evaluation.ts monophonic-baseline",
     "evaluate:polyphonic-browser": "playwright test tests/e2e/polyphonic-evaluation.spec.ts --reporter=list",
@@ -25,7 +24,6 @@
     "evaluate:private-guitar": "tsx scripts/evaluation.ts private-monophonic",
     "evaluate:self-test": "tsx scripts/evaluation.ts self-test",
     "preview": "vite preview",
-    "release:check": "node scripts/check-alphatab-release.mjs",
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
@@ -34,10 +32,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run dependencies:check && npm run docs:check && npm run corpus:validate && npm run evaluate:self-test && npm run evaluate:monophonic && npm run test:coverage && npm run build && npm run release:check"
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run dependencies:check && npm run corpus:validate && npm run evaluate:self-test && npm run evaluate:monophonic && npm run test:coverage && npm run build"
   },
   "dependencies": {
-    "@coderline/alphatab": "1.8.4",
     "@tensorflow/tfjs-backend-cpu": "4.22.0",
     "@tensorflow/tfjs-backend-wasm": "4.22.0",
     "@tensorflow/tfjs-converter": "4.22.0",

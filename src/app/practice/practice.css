@@ -1,8 +1,0 @@
-@layer practice.shell, practice.media, practice.audio, practice.overlays, practice.review, practice.responsive;
-
-@import './styles/shell.css' layer(practice.shell);
-@import './styles/media.css' layer(practice.media);
-@import './styles/audio.css' layer(practice.audio);
-@import './styles/overlays.css' layer(practice.overlays);
-@import './styles/review.css' layer(practice.review);
-@import './styles/responsive.css' layer(practice.responsive);

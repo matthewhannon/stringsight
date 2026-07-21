@@ -1,100 +1,169 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Download, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
-test('opens directly into the truthful authored-score workspace', async ({ page }) => {
+async function readTextDownload(download: Download): Promise<string> {
+  const path = await download.path();
+  return readFile(path, 'utf8');
+}
+
+async function addRackModules(page: Page, titles: readonly string[]): Promise<void> {
+  await page.getByRole('button', { exact: true, name: '+ Add module' }).click();
+  for (const title of titles) {
+    await page.getByRole('button', { exact: true, name: `Add ${title}` }).click();
+  }
+  await page.getByRole('button', { exact: true, name: 'Close library' }).click();
+}
+
+async function showPitchDiagnostics(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Analysis details' }).click();
+  await expect(page.getByRole('region', { name: 'Analysis diagnostics' })).toBeVisible();
+}
+
+test('opens directly into the functional realistic rack', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page).toHaveTitle(/^StringSight/);
-  await expect(page.getByRole('heading', { name: 'Untitled guitar tab' })).toBeVisible();
-  await expect(page.getByText(/^Working copy/)).toHaveCount(1);
-  await expect(page.getByRole('heading', { name: 'Notation preview' })).toBeVisible();
-  await expect(page.getByRole('status').filter({ hasText: 'Score ready' })).toContainText(
-    '0 events',
-    { timeout: 15_000 },
+  await expect(page).toHaveTitle('StringSight');
+  await expect(page.getByRole('heading', { name: 'StringSight rack workspace' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Audio input' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Pitch analysis' })).toHaveCount(0);
+  await expect(page.getByText('00 installed', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { exact: true, name: 'Input' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Source' })).toBeEnabled();
+
+  await addRackModules(page, ['Pitch analysis', 'Evaluation bench']);
+  await expect(page.getByRole('heading', { name: 'Pitch analysis' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Evaluation bench' })).toBeVisible();
+});
+
+test('captures and replays audio through a simulated microphone', async ({ page }) => {
+  await page.goto('/#capture');
+  await addRackModules(page, ['Pitch analysis']);
+  await page.getByRole('button', { exact: true, name: 'Input' }).click();
+  const capturePanel = page.getByLabel('Audio capture controls');
+  await expect(capturePanel.getByText('Active', { exact: true })).toBeVisible();
+  await showPitchDiagnostics(page);
+  await expect(page.getByRole('region', { name: 'Analysis diagnostics' })).toContainText(
+    'monitoring-1',
   );
-  await expect(page.getByRole('tree', { name: 'Authored score structure' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Import score' })).toBeEnabled();
-  await expect(page.getByRole('button', { name: 'Export MIDI' })).toBeEnabled();
-  await expect(page.getByRole('button', { name: /^Microphone disconnected/ })).toBeEnabled();
-});
 
-test('captures audio through the integrated input and recording drawer', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Input and recording' }).click();
-  const inputDrawer = page.getByRole('dialog', { name: 'Microphone and recording' });
+  await page.getByRole('button', { exact: true, name: 'Device details' }).click();
+  await expect(capturePanel.getByText('Sample rate', { exact: true })).toBeVisible();
+  await expect(capturePanel.getByText(/Hz$/).filter({ hasNotText: '—' })).toBeVisible();
+  await page.getByRole('button', { exact: true, name: 'Device details' }).click();
+  await expect(page.getByLabel('Capture duration')).toBeVisible();
 
-  await expect(inputDrawer).toBeVisible();
-  await inputDrawer.getByRole('button', { name: 'Connect microphone' }).click();
-  await expect(inputDrawer.getByText('monitoring', { exact: true })).toBeVisible();
-
-  await inputDrawer.getByRole('button', { name: 'Record take' }).click();
-  await expect(inputDrawer.getByText('recording', { exact: true })).toBeVisible();
+  await page.getByRole('button', { exact: true, name: 'Record' }).click();
+  await expect(capturePanel.getByText('Recording', { exact: true })).toBeVisible();
   await expect
-    .poll(async () => {
-      const level = await page.getByRole('meter').getAttribute('aria-valuenow');
-      return Number(level ?? 0);
-    })
+    .poll(async () => Number(await page.getByRole('meter').getAttribute('aria-valuenow')))
     .toBeGreaterThan(0);
+  await expect(page.getByRole('region', { name: 'Analysis diagnostics' })).toContainText(
+    'microphone-1',
+  );
+  await page.getByRole('button', { name: 'Stop recording', exact: true }).click();
+  await expect(capturePanel.getByText('Ready', { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByLabel('Capture duration')).not.toHaveText('00:00.0');
 
-  await inputDrawer.getByRole('button', { name: 'Stop and save take' }).click();
-  await expect(inputDrawer.getByText('idle', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { exact: true, name: 'Replay' }).click();
+  await expect(page.getByRole('button', { exact: true, name: 'Stop replay' })).toBeVisible();
+  await expect(page.getByRole('button', { exact: true, name: 'Replay' })).toBeEnabled({
+    timeout: 15_000,
+  });
+
+  await page.getByRole('button', { exact: true, name: 'Record' }).click();
+  await expect(page.getByRole('region', { name: 'Analysis diagnostics' })).toContainText(
+    'microphone-3',
+  );
+  await page.getByRole('button', { name: 'Stop recording', exact: true }).click();
+  await expect(capturePanel.getByText('Ready', { exact: true })).toBeVisible();
 });
 
-test('keeps the authored-score workspace usable on a narrow screen', async ({ page }) => {
+test('loads a WAV through the normal replay analysis path', async ({ page }) => {
+  await page.goto('/#capture');
+  await addRackModules(page, ['Pitch analysis']);
+  const capturePanel = page.getByLabel('Audio capture controls');
+  await capturePanel
+    .locator('input[type="file"]')
+    .setInputFiles(path.resolve('tests/fixtures/audio/dev-open-e2-soft.wav'));
+
+  await expect(capturePanel.getByText(/Loaded and analyzed dev-open-e2-soft.wav/)).toBeVisible({
+    timeout: 5_000,
+  });
+  await showPitchDiagnostics(page);
+  await expect(page.getByRole('region', { name: 'Analysis diagnostics' })).toContainText(
+    'replay-1',
+  );
+  const pitchResults = page.getByRole('region', { name: 'Pitch analysis results' });
+  await expect(pitchResults.getByText('E2 detected', { exact: true })).toBeVisible();
+  await expect(
+    pitchResults.getByText('Target frequency', { exact: true }).locator('..'),
+  ).toContainText('82.41 Hz');
+  await expect(pitchResults.getByText('Lower pitch slightly', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Recent note history' })).toHaveCount(0);
+  await expect(page.getByRole('button', { exact: true, name: 'Replay' })).toBeEnabled();
+});
+
+test('finalizes a chord WAV with the real model and prepares a reviewed chord fixture', async ({
+  page,
+}) => {
+  await page.goto('/#capture');
+  await addRackModules(page, ['Chord analysis', 'Evaluation bench']);
+  const capturePanel = page.getByLabel('Audio capture controls');
+  await capturePanel
+    .locator('input[type="file"]')
+    .setInputFiles(path.resolve('tests/fixtures/audio/dev-c-major-loud.wav'));
+
+  const chordResults = page.getByLabel('Chord analysis results');
+  const chordDiagnostics = page.getByLabel('Chord analysis diagnostics');
+  await expect(chordDiagnostics).toContainText('ready', { timeout: 10_000 });
+  await expect(chordDiagnostics).toContainText(/WASM|CPU/);
+  await expect(chordResults.getByText('Finalized chord', { exact: true })).toBeVisible();
+  await expect(chordResults.locator('.chord-readout > strong')).toHaveText('C');
+  await expect(page.getByLabel('Latest chord events').getByRole('listitem')).toHaveCount(1);
+  const chromaBars = chordResults.locator('.chroma-strip i');
+  await expect(chromaBars).toHaveCount(12);
+  const firstChromaBar = chromaBars.nth(0);
+  expect(
+    await firstChromaBar.evaluate((element) => ({
+      height: getComputedStyle(element).height,
+      transitionProperty: getComputedStyle(element).transitionProperty,
+    })),
+  ).toEqual({ height: '86px', transitionProperty: 'transform' });
+  expect(await firstChromaBar.getAttribute('style')).toContain('--meter-scale');
+  expect(
+    await chordResults
+      .getByLabel('Chord match strength')
+      .locator('span')
+      .evaluate((element) => getComputedStyle(element).transitionProperty),
+  ).toBe('transform');
+
+  await page.getByLabel('Fixture type').selectOption('chords');
+  const reviewedChord = page.getByLabel('True chord for event 1');
+  await expect(reviewedChord).toHaveValue('C');
+  const labelsDownloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Accept suggestions & download labels' }).click();
+  const fixture = JSON.parse(await readTextDownload(await labelsDownloadPromise)) as {
+    groundTruth: { chords: { pitchClasses: number[]; symbol: string }[] };
+    source: { license: string };
+  };
+  expect(fixture.groundTruth.chords).toEqual([
+    expect.objectContaining({ pitchClasses: [0, 4, 7], symbol: 'C' }),
+  ]);
+  expect(fixture.source.license).toBe('private-evaluation-only');
+});
+
+test('keeps the rack usable without horizontal overflow on a narrow screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: 'Untitled guitar tab' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Notation preview' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Audio input' })).toBeVisible();
+  await expect(page.getByRole('button', { exact: true, name: 'Input' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Source' })).toBeEnabled();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(1);
-});
-
-test('keeps the authored score usable in the intermediate desktop band', async ({ page }) => {
-  await page.setViewportSize({ width: 1050, height: 800 });
-  await page.goto('/');
-
-  await expect(page.getByRole('heading', { name: 'Untitled guitar tab' })).toBeVisible();
-  await expect(page.getByRole('tree', { name: 'Authored score structure' })).toBeVisible();
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(overflow).toBeLessThanOrEqual(1);
-});
-
-test('does not overflow at responsive breakpoint edges', async ({ page }) => {
-  for (const width of [980, 981, 1100, 1101]) {
-    await page.setViewportSize({ width, height: 800 });
-    await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Untitled guitar tab' })).toBeVisible();
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow, `horizontal overflow at ${String(width)}px`).toBeLessThanOrEqual(1);
-  }
-});
-
-test('removes the practice splitter in edit mode while preserving the score', async ({ page }) => {
-  await page.goto('/');
-
-  await expect(page.getByRole('separator', { name: 'Resize tab and video panels' })).toHaveCount(1);
-  await page.getByRole('button', { name: 'Edit' }).click();
-  await expect(page.getByRole('separator', { name: 'Resize tab and video panels' })).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Notation preview' })).toBeVisible();
-});
-
-test('keeps primary score and input actions reachable at 125 percent page scale', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('/');
-  const devtools = await page.context().newCDPSession(page);
-  await devtools.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1.25 });
-
-  await expect(page.getByRole('heading', { name: 'Untitled guitar tab' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Import score' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Export MIDI' })).toBeVisible();
-  await page.getByRole('button', { name: 'Input and recording' }).click();
-  await expect(page.getByRole('dialog', { name: 'Microphone and recording' })).toBeVisible();
 });

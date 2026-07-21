@@ -1,20 +1,14 @@
 # StringSight project status
 
-**Updated:** July 20, 2026
+**Updated:** July 19, 2026
 **Project:** OpenAI Build Week
 
 ## Current product
 
-StringSight opens into the approved score/tab-centered desktop Practice Workspace. The visible
-workspace now creates and edits a canonical guitar score, renders replaceable notation, exposes a
-keyboard-navigable authored outline, reviews only exact fixture-backed score/MIDI imports, and
-exports authored-document MIDI with explicit loss reporting. Real microphone
-monitoring/recording/replay integration remains protected. Nonfunctional playback, seeking,
-markers, metronome, count-in, tempo, fake video, and fake assessment controls have been removed;
-the interface presents passive readiness instead of mock transport behavior. The former
-rack/hardware presentation remains archived.
+StringSight opens directly into a realistic rack workspace. The rack is the product shell during
+core development; a marketing site and onboarding experience are intentionally deferred.
 
-The protected implemented audio slice includes:
+The implemented vertical slice includes:
 
 - Device-neutral browser audio-input selection
 - Local PCM capture, input diagnostics, calibrated metering, recording, and replay
@@ -34,13 +28,11 @@ The protected implemented audio slice includes:
 - A promoted post-Stop boundary-region decoder that makes one pooled label decision per supported
   acoustic region, can recover a sustained missed live boundary, and prevents model note edges,
   partial attacks, or decay tails from becoming chord fragments
-- Reusable pitch-class meters, alternatives, diagnostics, and lifecycle presentation behavior from
-  the historical rack chord module
+- A rack chord module with pitch-class meters, alternatives, diagnostics, and lifecycle timeline
 - Bounded, non-scrolling six-card note and chord timelines with newest results first, plus private
   evaluation-fixture export with prefilled note or chord labels
 - Procedural development and held-out fixtures with deterministic evaluation
-- Historical rack accessibility and presentation patterns retained for selective reference, not as
-  the active product shell
+- A typed, reusable rack component library for future product modules
 - An ignored private-corpus manifest and batch evaluator for reusable real-guitar recordings
 
 The real-guitar verification process has produced 18 correct top-ranked pitches across 18 reviewed
@@ -52,50 +44,6 @@ Those three reviewed takes now form an ignored local regression corpus. Its batc
 public verification suite remains independent of these private files.
 
 ## Next implementation milestone
-
-The disposable Practice System feasibility spike executed on
-`codex/spike-practice-integration@7b3c5f9`. Its original commercial-quality exit criterion was not
-met. Bounded reference-map/follower, canonical-detachment, declared SMF/import, and video-only
-privacy controls passed; broad MusicXML D4 and the tested GP7 effects path failed; Edge lost the
-same-context audio heartbeat floor after injected freeze/resume. Application-wide runtime
-coexistence, synthesis, physical A/V/device/storage behavior, complete accessibility, hardware
-breadth, repeated distributions, and numeric budgets remain inconclusive or missing.
-
-ADRs 0006 and 0007 now accept the invariant Practice System architecture and a narrow hackathon
-profile. alphaTab 1.8.4 may be implemented behind a replaceable canonical adapter with the pinned
-MPL source/notice/release procedure. Import claims remain fixture-backed and loss-reporting. The
-initial release does not instantiate or enable alphaSynth/synthesized reference playback and omits
-the audited SONiVOX banks and all unreviewed sound banks. Reference/take video remains optional;
-reference-video audio is muted or omitted, any audible path remains gated, and take-video alignment
-is approximate until physical evidence exists.
-
-Current desktop Chrome on Windows 11 is the primary hackathon target. Edge is best effort, and
-users must not background an active Edge session until lifecycle recovery is fixed and repeated.
-macOS remains a portability goal without a current support claim. Single-machine numbers are
-observations; implementing items must define smoke thresholds, while formal percentile budgets stay
-pre-commercial.
-
-Checklist Items 10 through 13 are complete. The renderer-independent guitar model establishes stable
-coordinates, derived pitch/geometry, bounded voicing enumeration, fingering, and transition cost.
-The accepted Practice System contracts add PPQ-960 authored documents, immutable revisions,
-evidence snapshots, takes, media identities and availability, reference/take sync maps, assessments,
-deterministic import review, canonical hashes/goldens, trusted integrity verification, and explicit
-v1 migrations. The accepted editor core adds atomic authored commands, stable semantic selection,
-bounded history, monotonic canonical undo/redo revisions, native create/save/open, storage-failure
-safety, and accessible structured score inspection with renderer-independent keyboard navigation.
-Item 13 connects that workflow to the visible workspace through real notation, exact score/SMF
-review, and authored MIDI export. Renderer geometry remains ephemeral; imported candidates never
-replace the working score before explicit verified acceptance; observed-session and authored MIDI
-stay separate.
-
-The next production implementation milestone is Checklist Item 14, the shared application-owned
-AudioRuntime. Authoritative practice playback, synchronized video, durable persistence, alignment,
-and assessment remain future checklist work and are not presented as working controls.
-
-The executable dependency order is maintained in `BUILD_CHECKLIST.md`. Live computer vision,
-fusion, and GPT interpretation remain deferred until after the complete score/practice/take product.
-
-## Completed audio baseline detail
 
 Item 7's isolated-chord recognition matrix and finalization slice are accepted. A reviewed
 continuous G-to-D take exposed premature finalized lifecycle labels, transition fragments retained
@@ -187,11 +135,10 @@ events, while the power/inversion take emits exactly its ten intended events wit
 chords at top-1. No chord name, transition pair, recording timestamp, or guitar-specific rule is
 encoded in the correction.
 
-The completed audio slice includes review behavior for finalized notes and chords. The historical
-rack presentation showed immutable raw predictions beside the corrected projection, timing, match
-strength, ranked alternatives, and algorithm provenance; the new Practice Workspace must preserve
-that behavior without restoring the rack shell. Replacements and reverts append correction records
-rather than mutating detector output; invalid or orphaned history is reported explicitly.
+The rack now includes a session review module for finalized notes and chords. It shows immutable raw
+predictions beside the corrected projection, timing, match strength, ranked alternatives, and
+algorithm provenance. Replacements and reverts append correction records rather than mutating
+detector output; invalid or orphaned history is reported explicitly.
 
 Complete sessions can be saved, listed, loaded, replayed, and deleted through an injectable local
 repository. The browser implementation validates structured sessions and stores them atomically in
@@ -227,10 +174,9 @@ interpretation. Audio must remain useful without a camera.
 
 ## Verification baseline
 
-The current production baseline verification (separate from the disposable spike harness) passes
-formatting, linting, type checking, dependency-license checks, corpus validation, evaluation
-self-tests, coverage, and the production build. The suite contains
-349 unit/integration tests across 37 files with 90.50% statement and 80.30% branch coverage. The
+The current verification passes formatting, linting, type checking, dependency-license checks,
+corpus validation, evaluation self-tests, coverage, and the production build. The suite contains
+285 unit/integration tests across 34 files with 91.09% statement and 80.37% branch coverage. The
 public production browser matrix remains 100% chord top-1/top-3 on its two fixtures, and the private
 browser replay now asserts the supported labels and inversions on the real model/fusion path. Item
 7's reopened finalization checkbox and Item 9 are closed, including the fresh

@@ -10,8 +10,7 @@ import {
   projectReviewEvents,
 } from '../session';
 import { defaultAudioSession } from './audioCaptureController';
-import { ToolButton } from '../ui/toolSurface';
-import { toolEmbeddedClassNames } from '../ui/toolSurfaceClasses';
+import { RackButton, rackEmbeddedClassNames } from '../ui/rack';
 
 type SessionReviewController = Pick<
   AudioSessionController,
@@ -128,7 +127,7 @@ export function SessionReviewPanel({
   return (
     <section
       aria-label={embedded ? 'Session review and export' : undefined}
-      className={`session-review ${embedded ? toolEmbeddedClassNames.section : ''}`.trim()}
+      className={`session-review ${embedded ? rackEmbeddedClassNames.section : ''}`.trim()}
     >
       <div className="session-review-toolbar">
         <div>
@@ -140,14 +139,14 @@ export function SessionReviewPanel({
           </span>
         </div>
         <div className="session-review-actions">
-          <ToolButton
+          <RackButton
             disabled={!complete || snapshot.storageState !== 'idle'}
             onClick={() => void controller.saveSession()}
             variant="primary"
           >
             {snapshot.storageState === 'saving' ? 'Saving…' : 'Save locally'}
-          </ToolButton>
-          <ToolButton
+          </RackButton>
+          <RackButton
             disabled={!complete}
             onClick={() => {
               if (session !== null) {
@@ -160,8 +159,8 @@ export function SessionReviewPanel({
             }}
           >
             Export JSON
-          </ToolButton>
-          <ToolButton
+          </RackButton>
+          <RackButton
             disabled={!canExportSessionMidi(session)}
             onClick={() => {
               if (session !== null) {
@@ -174,8 +173,8 @@ export function SessionReviewPanel({
             }}
           >
             Export MIDI
-          </ToolButton>
-          <ToolButton onClick={() => importInput.current?.click()}>Import JSON</ToolButton>
+          </RackButton>
+          <RackButton onClick={() => importInput.current?.click()}>Import JSON</RackButton>
           <input
             accept=".json,application/json"
             aria-hidden="true"
@@ -304,19 +303,19 @@ export function SessionReviewPanel({
                 />
               </label>
               <div className="session-review-actions">
-                <ToolButton
+                <RackButton
                   disabled={replacement.trim() === ''}
                   onClick={applyCorrection}
                   variant="primary"
                 >
                   Apply correction
-                </ToolButton>
-                <ToolButton
+                </RackButton>
+                <RackButton
                   disabled={selected.state !== 'corrected'}
                   onClick={() => controller.revertCorrection(selected.rawEvent.id)}
                 >
                   Use original
-                </ToolButton>
+                </RackButton>
               </div>
             </>
           )}
@@ -341,18 +340,18 @@ export function SessionReviewPanel({
                   </small>
                 </span>
                 <time>{new Date(saved.updatedAt).toLocaleString()}</time>
-                <ToolButton
+                <RackButton
                   disabled={snapshot.storageState !== 'idle'}
                   onClick={() => void controller.loadSavedSession(saved.id)}
                 >
                   Load
-                </ToolButton>
-                <ToolButton
+                </RackButton>
+                <RackButton
                   disabled={snapshot.storageState !== 'idle'}
                   onClick={() => void controller.deleteSavedSession(saved.id)}
                 >
                   Delete
-                </ToolButton>
+                </RackButton>
               </li>
             ))}
           </ul>

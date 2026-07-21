@@ -1,0 +1,2148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>StringSight Studio — UI concept</title>
+    <style>
+      :root {
+        --bg: #080b10;
+        --surface: #0e131a;
+        --surface-2: #141b24;
+        --surface-3: #1a222d;
+        --border: #283341;
+        --border-soft: #1d2732;
+        --text: #f1f5f7;
+        --muted: #95a1b0;
+        --dim: #687585;
+        --mint: #75d8b6;
+        --mint-dark: #173e35;
+        --blue: #7e9fff;
+        --blue-dark: #202e5a;
+        --amber: #eab663;
+        --violet: #b79dff;
+        --red: #ff626d;
+        --radius: 14px;
+        --shadow: 0 16px 45px rgb(0 0 0 / 0.34);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        overflow: hidden;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 70% -20%, rgb(61 90 120 / 0.13), transparent 40%), var(--bg);
+        font-size: 14px;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        color: inherit;
+        border: 0;
+      }
+
+      button:focus-visible,
+      summary:focus-visible,
+      [tabindex]:focus-visible {
+        outline: 2px solid var(--blue);
+        outline-offset: 3px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .app {
+        height: 100dvh;
+        display: grid;
+        grid-template-rows: 64px minmax(0, 1fr) auto 78px;
+      }
+
+      .app-bar {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        min-width: 0;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--border-soft);
+        background: rgb(10 14 19 / 0.88);
+        backdrop-filter: blur(18px);
+        z-index: 10;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 148px;
+        font-weight: 720;
+        letter-spacing: -0.02em;
+      }
+
+      .brand-mark {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #355348;
+        border-radius: 9px;
+        background: linear-gradient(145deg, #1d3a32, #101d1a);
+        color: var(--mint);
+        box-shadow: inset 0 1px rgb(255 255 255 / 0.08);
+        font-size: 17px;
+      }
+
+      .session-name {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-width: 0;
+        margin-right: auto;
+        color: #dce3e8;
+      }
+
+      .session-name strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 590;
+      }
+
+      .session-name .separator {
+        color: #465261;
+      }
+
+      .save-state {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .save-state::before {
+        content: '';
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--mint);
+        box-shadow: 0 0 10px rgb(117 216 182 / 0.5);
+      }
+
+      .top-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .icon-button,
+      .chip-button,
+      .small-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-height: 40px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface-2);
+        cursor: pointer;
+        transition:
+          border-color 0.15s ease,
+          background 0.15s ease,
+          transform 0.15s ease;
+      }
+
+      .icon-button {
+        min-width: 40px;
+        font-size: 19px;
+      }
+      .chip-button {
+        padding: 0 13px;
+        color: #dce4e9;
+      }
+      .small-button {
+        min-height: 36px;
+        padding: 0 11px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      button:hover {
+        border-color: #415065;
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 88px minmax(460px, 1fr) 300px;
+      }
+
+      .view-rail {
+        padding: 14px 10px;
+        border-right: 1px solid var(--border-soft);
+        background: #0b1016;
+      }
+
+      .view-list {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .view-button {
+        width: 100%;
+        min-height: 62px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        border: 1px solid transparent;
+        border-radius: 11px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 11px;
+      }
+
+      .view-button .view-icon {
+        font-size: 18px;
+        line-height: 1;
+      }
+
+      .view-button[aria-selected='true'] {
+        color: var(--mint);
+        border-color: #27463d;
+        background: #11231f;
+      }
+
+      .mobile-view-nav {
+        display: none;
+      }
+
+      .stage {
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--surface);
+      }
+
+      .stage-header {
+        min-height: 72px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border-soft);
+      }
+
+      .stage-title {
+        min-width: 0;
+        margin-right: auto;
+      }
+
+      .eyebrow {
+        margin: 0 0 3px;
+        color: var(--mint);
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.04em;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 19px;
+        line-height: 1.25;
+        font-weight: 630;
+        letter-spacing: -0.025em;
+      }
+
+      .live-summary {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .now-chord {
+        display: flex;
+        align-items: baseline;
+        gap: 7px;
+        padding-right: 16px;
+        border-right: 1px solid var(--border);
+      }
+
+      .now-chord strong {
+        font-size: 22px;
+        color: var(--amber);
+      }
+      .now-chord span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .confidence {
+        width: 100px;
+      }
+      .confidence-line {
+        height: 4px;
+        margin-top: 5px;
+        overflow: hidden;
+        border-radius: 99px;
+        background: #28313a;
+      }
+      .confidence-line span {
+        display: block;
+        width: 88%;
+        height: 100%;
+        background: var(--mint);
+      }
+
+      .timeline-tools {
+        min-height: 50px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 16px;
+        border-bottom: 1px solid var(--border-soft);
+        background: #10161e;
+      }
+
+      .tool-spacer {
+        margin-left: auto;
+      }
+
+      .zoom-label {
+        color: var(--dim);
+        font:
+          11px ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+      }
+
+      .timeline-scroll {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        overscroll-behavior: contain;
+        scrollbar-color: #344253 #111820;
+        scrollbar-width: thin;
+      }
+
+      .timeline {
+        --label-width: 112px;
+        --music-width: 1050px;
+        position: relative;
+        min-width: calc(var(--label-width) + var(--music-width));
+        min-height: 100%;
+        background: #0d1218;
+      }
+
+      .time-ruler,
+      .track {
+        display: grid;
+        grid-template-columns: var(--label-width) var(--music-width);
+      }
+
+      .time-ruler {
+        position: sticky;
+        top: 0;
+        height: 34px;
+        z-index: 7;
+        border-bottom: 1px solid var(--border);
+        background: #111821;
+      }
+
+      .ruler-label,
+      .track-label {
+        position: sticky;
+        left: 0;
+        z-index: 8;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 0 12px;
+        border-right: 1px solid var(--border);
+        background: #101720;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .ruler-label {
+        background: #111821;
+      }
+
+      .ruler-marks {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(9, 1fr);
+        color: #768393;
+        font:
+          10px ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+      }
+
+      .ruler-marks span {
+        padding: 10px 0 0 7px;
+        border-left: 1px solid #26313e;
+      }
+
+      .track {
+        min-height: 82px;
+        border-bottom: 1px solid var(--border-soft);
+      }
+      .track.wave-track {
+        min-height: 110px;
+      }
+      .track.midi-track {
+        min-height: 148px;
+      }
+      .track.tab-track {
+        min-height: 112px;
+      }
+
+      .track-name {
+        color: #d5dde3;
+        font-weight: 580;
+      }
+      .track-meta {
+        color: var(--dim);
+        font-size: 10px;
+      }
+
+      .track-content {
+        position: relative;
+        min-width: 0;
+        overflow: hidden;
+        background-image:
+          linear-gradient(to right, #26313e 1px, transparent 1px),
+          linear-gradient(to right, #18212b 1px, transparent 1px);
+        background-size:
+          calc(100% / 8) 100%,
+          calc(100% / 32) 100%;
+      }
+
+      .waveform {
+        position: absolute;
+        inset: 12px 5px;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        opacity: 0.88;
+      }
+
+      .wave-bar {
+        flex: 1;
+        min-width: 2px;
+        height: calc(var(--h) * 1%);
+        border-radius: 2px;
+        background: linear-gradient(to bottom, #5eb495, #315e52);
+        box-shadow: 0 0 4px rgb(117 216 182 / 0.07);
+      }
+
+      .chord-block,
+      .midi-note,
+      .tab-event {
+        position: absolute;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition:
+          filter 0.15s ease,
+          border-color 0.15s ease;
+      }
+
+      .chord-block {
+        top: 14px;
+        bottom: 14px;
+        left: var(--left);
+        width: var(--width);
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        border-color: #65502c;
+        border-radius: 8px;
+        background: #2c271b;
+        color: #f0c87d;
+        font-weight: 650;
+      }
+
+      .chord-block:nth-child(even) {
+        background: #27251d;
+      }
+
+      .chord-block[aria-pressed='true'],
+      .midi-note[aria-pressed='true'],
+      .tab-event[aria-pressed='true'] {
+        border-color: #dfe7ff;
+        filter: brightness(1.22);
+        box-shadow:
+          0 0 0 2px rgb(126 159 255 / 0.28),
+          0 5px 18px rgb(0 0 0 / 0.28);
+        z-index: 5;
+      }
+
+      .midi-grid {
+        background-image:
+          repeating-linear-gradient(to bottom, transparent 0 20px, #202a35 20px 21px),
+          linear-gradient(to right, #26313e 1px, transparent 1px),
+          linear-gradient(to right, #18212b 1px, transparent 1px);
+        background-size:
+          auto,
+          calc(100% / 8) 100%,
+          calc(100% / 32) 100%;
+      }
+
+      .midi-note {
+        left: var(--left);
+        top: var(--top);
+        width: var(--width);
+        height: 16px;
+        border-color: #3c5fa9;
+        border-radius: 4px;
+        background: linear-gradient(90deg, #5378d2, #6f91ed);
+        color: white;
+        font:
+          9px ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        text-align: left;
+        padding: 1px 5px;
+        overflow: hidden;
+      }
+
+      .tab-lines {
+        background-image:
+          repeating-linear-gradient(to bottom, transparent 0 15px, #303c49 15px 16px),
+          linear-gradient(to right, #26313e 1px, transparent 1px),
+          linear-gradient(to right, #18212b 1px, transparent 1px);
+        background-size:
+          auto,
+          calc(100% / 8) 100%,
+          calc(100% / 32) 100%;
+        background-position-y: 6px, 0, 0;
+      }
+
+      .tab-event {
+        left: var(--left);
+        top: var(--top);
+        width: 24px;
+        height: 24px;
+        border-color: #765f9e;
+        border-radius: 50%;
+        background: #372b4e;
+        color: #d6c6ff;
+        font:
+          10px ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+      }
+
+      .future-badge {
+        margin-left: auto;
+        padding: 3px 6px;
+        border: 1px solid #3a4552;
+        border-radius: 6px;
+        color: var(--dim);
+        font-size: 9px;
+      }
+
+      .selection-overlay {
+        position: absolute;
+        top: 34px;
+        bottom: 0;
+        left: calc(var(--label-width) + var(--music-width) * 0.342);
+        width: calc(var(--music-width) * 0.236);
+        z-index: 4;
+        pointer-events: none;
+        border-left: 1px solid var(--blue);
+        border-right: 1px solid var(--blue);
+        background: rgb(87 122 219 / 0.13);
+        box-shadow:
+          inset 1px 0 rgb(255 255 255 / 0.08),
+          inset -1px 0 rgb(255 255 255 / 0.08);
+      }
+
+      .selection-handle {
+        position: absolute;
+        top: 5px;
+        width: 28px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--blue);
+        color: #0b1020;
+        box-shadow: var(--shadow);
+        pointer-events: auto;
+        cursor: ew-resize;
+        font-weight: 800;
+      }
+
+      .selection-handle.start {
+        left: -14px;
+      }
+      .selection-handle.end {
+        right: -14px;
+      }
+
+      .playhead {
+        position: absolute;
+        top: 34px;
+        bottom: 0;
+        left: calc(var(--label-width) + var(--music-width) * 0.463);
+        z-index: 6;
+        width: 1px;
+        background: var(--red);
+        pointer-events: none;
+        box-shadow: 0 0 8px rgb(255 98 109 / 0.35);
+      }
+
+      .playhead::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -5px;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 8px solid var(--red);
+      }
+
+      .inspector {
+        min-width: 0;
+        overflow-y: auto;
+        padding: 18px;
+        border-left: 1px solid var(--border-soft);
+        background: #0b1016;
+      }
+
+      .inspector-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+
+      .inspector h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 630;
+      }
+      .event-type {
+        color: var(--blue);
+        font-size: 11px;
+      }
+
+      .selected-event {
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: linear-gradient(145deg, #18212c, #111820);
+      }
+
+      .selected-event .pitch {
+        display: flex;
+        align-items: baseline;
+        gap: 7px;
+        margin: 6px 0 3px;
+      }
+
+      .selected-event .pitch strong {
+        font-size: 34px;
+        letter-spacing: -0.04em;
+      }
+      .selected-event .pitch span {
+        color: var(--muted);
+      }
+      .selected-event p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .property-list {
+        margin: 18px 0;
+        border-top: 1px solid var(--border-soft);
+      }
+
+      .property {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 42px;
+        border-bottom: 1px solid var(--border-soft);
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .property strong {
+        color: #dfe6eb;
+        font:
+          12px ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        font-weight: 520;
+      }
+
+      .confidence-pill {
+        padding: 4px 8px;
+        border-radius: 99px;
+        background: var(--mint-dark);
+        color: var(--mint) !important;
+      }
+
+      .correction-group {
+        display: flex;
+        gap: 7px;
+        margin-top: 10px;
+      }
+
+      details {
+        margin-top: 16px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      summary {
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+      }
+      details p {
+        margin: 8px 0;
+        color: var(--dim);
+        line-height: 1.55;
+      }
+
+      .selection-bar {
+        min-height: 54px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 16px 7px 104px;
+        border-top: 1px solid #31415c;
+        background: #151d2d;
+        box-shadow: 0 -12px 34px rgb(0 0 0 / 0.16);
+        z-index: 9;
+      }
+
+      .selection-copy {
+        margin-right: 6px;
+      }
+      .selection-copy strong {
+        display: block;
+        font-size: 12px;
+      }
+      .selection-copy span {
+        color: #a9b7cd;
+        font:
+          11px ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+      }
+      .selection-bar .small-button {
+        color: #d4def0;
+        border-color: #344662;
+        background: #1a2539;
+      }
+      .selection-bar .small-button.active {
+        color: #e7ecff;
+        border-color: #657fc5;
+        background: #273a6e;
+      }
+      .selection-bar .clear-selection {
+        margin-left: auto;
+      }
+
+      .transport {
+        display: grid;
+        grid-template-columns: minmax(190px, 1fr) auto minmax(260px, 1fr);
+        align-items: center;
+        gap: 18px;
+        padding: 9px 18px max(9px, env(safe-area-inset-bottom));
+        border-top: 1px solid var(--border);
+        background: rgb(12 17 23 / 0.96);
+        box-shadow: 0 -18px 45px rgb(0 0 0 / 0.25);
+        backdrop-filter: blur(20px);
+        z-index: 12;
+      }
+
+      .input-block {
+        display: grid;
+        grid-template-columns: auto minmax(90px, 190px) auto;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .input-source {
+        min-width: 0;
+        color: #dae2e8;
+        font-size: 12px;
+      }
+
+      .input-source span {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--dim);
+        font-size: 10px;
+      }
+
+      .input-meter {
+        height: 8px;
+        display: flex;
+        gap: 2px;
+      }
+
+      .input-meter i {
+        flex: 1;
+        border-radius: 2px;
+        background: #26303a;
+      }
+
+      .input-meter i.on {
+        background: var(--mint);
+      }
+      .input-meter i.hot {
+        background: var(--amber);
+      }
+
+      .transport-center {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .transport-button {
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #3a4755;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #222c37, #121820);
+        box-shadow:
+          inset 0 1px rgb(255 255 255 / 0.1),
+          0 4px 14px rgb(0 0 0 / 0.28);
+        cursor: pointer;
+        font-size: 16px;
+      }
+
+      .transport-button.primary {
+        width: 52px;
+        height: 52px;
+        border-color: #4d675f;
+        background: linear-gradient(145deg, #2f5147, #183129);
+        color: var(--mint);
+        font-size: 19px;
+      }
+
+      .transport-button.record {
+        color: var(--red);
+      }
+      .transport-button.record.recording {
+        color: white;
+        border-color: #8f3e46;
+        background: linear-gradient(145deg, #983944, #5d2027);
+        animation: recordPulse 1.35s ease-in-out infinite;
+      }
+
+      .transport-button.looping {
+        color: var(--blue);
+        border-color: #5269ad;
+        background: linear-gradient(145deg, #273d72, #19264a);
+      }
+
+      .timecode {
+        min-width: 114px;
+        text-align: center;
+        font:
+          13px ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .timecode span {
+        color: var(--dim);
+      }
+
+      .mix-block {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .mix-label {
+        margin-right: 3px;
+        color: var(--dim);
+        font-size: 11px;
+      }
+
+      .mix-toggle {
+        min-height: 38px;
+        padding: 0 12px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        background: #111821;
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .mix-toggle[aria-pressed='true'] {
+        color: #e4ebf2;
+        border-color: #3c5a53;
+        background: #172a26;
+      }
+
+      .state-toast {
+        position: fixed;
+        left: 50%;
+        bottom: 96px;
+        z-index: 20;
+        transform: translate(-50%, 12px);
+        padding: 9px 13px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        background: #1a222d;
+        color: #dbe3e9;
+        box-shadow: var(--shadow);
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 0.18s ease,
+          transform 0.18s ease;
+        font-size: 12px;
+      }
+
+      .state-toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
+      .empty-view {
+        display: none;
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding: 28px;
+      }
+
+      .empty-view.active {
+        display: block;
+      }
+
+      .focus-card {
+        max-width: 760px;
+        margin: 4vh auto;
+        padding: 28px;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: linear-gradient(145deg, #151e28, #0f151d);
+        box-shadow: var(--shadow);
+      }
+
+      .focus-card h2 {
+        margin: 0 0 8px;
+        font-size: 25px;
+        letter-spacing: -0.03em;
+      }
+      .focus-card > p {
+        max-width: 560px;
+        margin: 0 0 24px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .fretboard {
+        display: grid;
+        grid-template-columns: 58px repeat(7, 1fr);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: #111820;
+      }
+
+      .fret-cell {
+        min-height: 42px;
+        display: grid;
+        place-items: center;
+        border-right: 1px solid #34414e;
+        border-bottom: 1px solid #2b3540;
+        color: var(--dim);
+      }
+
+      .fret-cell.note {
+        background: #1c3b33;
+        color: var(--mint);
+        font-weight: 700;
+      }
+
+      .review-list {
+        display: grid;
+        gap: 9px;
+      }
+      .review-item {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        min-height: 56px;
+        padding: 10px 13px;
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        background: #111820;
+      }
+      .review-item strong {
+        margin-right: auto;
+      }
+      .review-item span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      @keyframes recordPulse {
+        50% {
+          box-shadow:
+            inset 0 1px rgb(255 255 255 / 0.12),
+            0 0 0 6px rgb(255 98 109 / 0.11);
+        }
+      }
+
+      @media (max-width: 1100px) {
+        .workspace {
+          grid-template-columns: 78px minmax(430px, 1fr) 250px;
+        }
+        .inspector {
+          padding: 14px;
+        }
+        .transport {
+          grid-template-columns: minmax(150px, 1fr) auto minmax(170px, 1fr);
+          gap: 10px;
+          padding-inline: 12px;
+        }
+        .mix-label,
+        .input-source span {
+          display: none;
+        }
+      }
+
+      @media (max-width: 860px) {
+        body {
+          font-size: 15px;
+        }
+
+        .app {
+          grid-template-rows: 56px 52px minmax(0, 1fr) auto 122px;
+        }
+
+        .app-bar {
+          grid-row: 1;
+          padding: 0 12px;
+          gap: 10px;
+        }
+
+        .brand {
+          min-width: 0;
+        }
+        .brand-mark {
+          width: 34px;
+          height: 34px;
+        }
+        .brand-text {
+          display: none;
+        }
+        .session-name {
+          gap: 7px;
+        }
+        .session-name .separator,
+        .save-state {
+          display: none;
+        }
+        .top-actions .chip-button {
+          display: none;
+        }
+        .icon-button {
+          min-width: 44px;
+          min-height: 44px;
+        }
+
+        .mobile-view-nav {
+          grid-row: 2;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 4px;
+          padding: 5px 8px;
+          border-bottom: 1px solid var(--border-soft);
+          background: #0b1016;
+        }
+
+        .mobile-view-button {
+          min-height: 42px;
+          border: 1px solid transparent;
+          border-radius: 9px;
+          background: transparent;
+          color: var(--muted);
+          cursor: pointer;
+          font-size: 12px;
+        }
+
+        .mobile-view-button[aria-selected='true'] {
+          border-color: #27463d;
+          background: #11231f;
+          color: var(--mint);
+        }
+
+        .workspace {
+          grid-row: 3;
+          display: block;
+          min-height: 0;
+        }
+
+        .view-rail,
+        .inspector {
+          display: none;
+        }
+        .stage {
+          height: 100%;
+        }
+        .stage-header {
+          min-height: 60px;
+          padding: 10px 12px;
+        }
+        .eyebrow {
+          font-size: 10px;
+        }
+        h1 {
+          font-size: 17px;
+        }
+        .live-summary {
+          gap: 8px;
+        }
+        .now-chord {
+          padding-right: 0;
+          border: 0;
+        }
+        .now-chord strong {
+          font-size: 20px;
+        }
+        .now-chord span,
+        .confidence {
+          display: none;
+        }
+        .timeline-tools {
+          padding: 5px 8px;
+          overflow-x: auto;
+        }
+        .timeline-tools .small-button {
+          min-height: 44px;
+          white-space: nowrap;
+        }
+
+        .timeline {
+          --label-width: 82px;
+          --music-width: 980px;
+        }
+        .track-label {
+          padding: 0 8px;
+        }
+        .track-meta {
+          display: none;
+        }
+        .track.wave-track {
+          min-height: 92px;
+        }
+        .track.midi-track {
+          min-height: 132px;
+        }
+        .track.tab-track {
+          min-height: 106px;
+        }
+        .selection-handle {
+          width: 44px;
+          height: 48px;
+        }
+        .selection-handle.start {
+          left: -22px;
+        }
+        .selection-handle.end {
+          right: -22px;
+        }
+
+        .selection-bar {
+          grid-row: 4;
+          min-height: 61px;
+          padding: 7px 8px;
+          gap: 6px;
+          overflow-x: auto;
+        }
+
+        .selection-copy {
+          flex: 0 0 auto;
+        }
+        .selection-bar .small-button {
+          min-width: 54px;
+          min-height: 44px;
+          flex: 0 0 auto;
+        }
+        .selection-bar .clear-selection {
+          margin-left: 2px;
+        }
+
+        .transport {
+          grid-row: 5;
+          grid-template-columns: 1fr auto 1fr;
+          grid-template-rows: 42px 58px;
+          gap: 4px 8px;
+          padding: 6px 10px max(8px, env(safe-area-inset-bottom));
+        }
+
+        .input-block {
+          grid-column: 1;
+          grid-row: 1;
+          display: flex;
+          gap: 7px;
+        }
+        .input-block .input-source {
+          display: none;
+        }
+        .input-block .input-meter {
+          width: 84px;
+        }
+        .input-block .small-button {
+          min-width: 44px;
+          min-height: 44px;
+          padding: 0;
+          font-size: 0;
+        }
+        .input-block .small-button::before {
+          content: 'Mic';
+          font-size: 11px;
+        }
+
+        .transport-center {
+          grid-column: 1 / -1;
+          grid-row: 2;
+          justify-content: center;
+        }
+
+        .transport-button {
+          width: 46px;
+          height: 46px;
+        }
+        .transport-button.primary {
+          width: 54px;
+          height: 54px;
+        }
+        .timecode {
+          min-width: 100px;
+          font-size: 12px;
+        }
+        .transport-button:nth-of-type(1) {
+          display: none;
+        }
+
+        .mix-block {
+          grid-column: 2 / 4;
+          grid-row: 1;
+          justify-content: flex-end;
+        }
+        .mix-toggle {
+          min-height: 44px;
+          padding: 0 10px;
+        }
+        .mix-block .small-button {
+          display: none;
+        }
+        .state-toast {
+          bottom: 132px;
+        }
+        .empty-view {
+          padding: 14px;
+        }
+        .focus-card {
+          margin: 2vh auto;
+          padding: 20px;
+        }
+        .focus-card h2 {
+          font-size: 22px;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .app {
+          grid-template-rows: 56px 50px minmax(0, 1fr) auto 118px;
+        }
+        .stage-header {
+          min-height: 56px;
+        }
+        .stage-title .eyebrow {
+          display: none;
+        }
+        .stage-header .chip-button {
+          display: none;
+        }
+        .selection-copy strong {
+          font-size: 11px;
+        }
+        .selection-copy span {
+          font-size: 10px;
+        }
+        .selection-bar .small-button[data-mobile-hide] {
+          display: none;
+        }
+        .mix-toggle {
+          font-size: 11px;
+        }
+        .timeline-tools .zoom-label {
+          display: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="app-bar">
+        <div class="brand" aria-label="StringSight Studio">
+          <span class="brand-mark" aria-hidden="true">S</span>
+          <span class="brand-text">StringSight</span>
+        </div>
+        <div class="session-name">
+          <span class="separator" aria-hidden="true">/</span>
+          <strong>Sunday progression</strong>
+          <span class="save-state">Saved locally</span>
+        </div>
+        <div class="top-actions">
+          <button
+            class="chip-button"
+            type="button"
+            data-toast="Everything in this session stays on this device."
+          >
+            Private on this device
+          </button>
+          <button
+            class="icon-button"
+            type="button"
+            aria-label="Session menu"
+            data-toast="Session actions: rename, duplicate, export"
+          >
+            •••
+          </button>
+        </div>
+      </header>
+
+      <nav class="mobile-view-nav" aria-label="Session views">
+        <button class="mobile-view-button" type="button" data-view="live" aria-selected="false">
+          Live
+        </button>
+        <button class="mobile-view-button" type="button" data-view="timeline" aria-selected="true">
+          Timeline
+        </button>
+        <button
+          class="mobile-view-button"
+          type="button"
+          data-view="fretboard"
+          aria-selected="false"
+        >
+          Fretboard
+        </button>
+        <button class="mobile-view-button" type="button" data-view="review" aria-selected="false">
+          Review
+        </button>
+      </nav>
+
+      <div class="workspace">
+        <nav class="view-rail" aria-label="Session views">
+          <ul class="view-list">
+            <li>
+              <button class="view-button" type="button" data-view="live" aria-selected="false">
+                <span class="view-icon" aria-hidden="true">●</span>Live
+              </button>
+            </li>
+            <li>
+              <button class="view-button" type="button" data-view="timeline" aria-selected="true">
+                <span class="view-icon" aria-hidden="true">≋</span>Timeline
+              </button>
+            </li>
+            <li>
+              <button class="view-button" type="button" data-view="fretboard" aria-selected="false">
+                <span class="view-icon" aria-hidden="true">⌗</span>Fretboard
+              </button>
+            </li>
+            <li>
+              <button class="view-button" type="button" data-view="review" aria-selected="false">
+                <span class="view-icon" aria-hidden="true">✓</span>Review
+              </button>
+            </li>
+          </ul>
+        </nav>
+
+        <main class="stage">
+          <section id="timeline-view" class="stage-view" aria-labelledby="timeline-title">
+            <div class="stage-header">
+              <div class="stage-title">
+                <p class="eyebrow">Timeline · take 03</p>
+                <h1 id="timeline-title">Audio, MIDI, and tab in one place</h1>
+              </div>
+              <div class="live-summary" aria-label="Current analysis">
+                <div class="now-chord"><strong>Am7</strong><span>current chord</span></div>
+                <div class="confidence">
+                  <span>88% confidence</span>
+                  <div class="confidence-line"><span></span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="timeline-tools" aria-label="Timeline tools">
+              <button
+                class="small-button active"
+                type="button"
+                data-toast="Range selection is active"
+              >
+                Select range
+              </button>
+              <button
+                class="small-button"
+                type="button"
+                data-toast="Playhead moved to the previous chord"
+              >
+                Previous chord
+              </button>
+              <button
+                class="small-button"
+                type="button"
+                data-toast="Playhead moved to the next chord"
+              >
+                Next chord
+              </button>
+              <span class="tool-spacer"></span>
+              <span class="zoom-label">Zoom 100%</span>
+              <button class="small-button" type="button" data-toast="Timeline zoomed out">−</button>
+              <button class="small-button" type="button" data-toast="Timeline zoomed in">＋</button>
+            </div>
+
+            <div
+              class="timeline-scroll"
+              tabindex="0"
+              aria-label="Scrollable synchronized session timeline"
+            >
+              <div class="timeline">
+                <div class="time-ruler">
+                  <div class="ruler-label">Time</div>
+                  <div class="ruler-marks" aria-hidden="true">
+                    <span>0:00</span><span>0:04</span><span>0:08</span><span>0:12</span
+                    ><span>0:16</span><span>0:20</span><span>0:24</span><span>0:28</span
+                    ><span>0:32</span>
+                  </div>
+                </div>
+
+                <div class="track wave-track">
+                  <div class="track-label">
+                    <span
+                      ><span class="track-name">Audio</span><br /><span class="track-meta"
+                        >Mic · take 03</span
+                      ></span
+                    >
+                  </div>
+                  <div class="track-content">
+                    <div class="waveform" id="waveform" aria-hidden="true"></div>
+                  </div>
+                </div>
+
+                <div class="track">
+                  <div class="track-label">
+                    <span
+                      ><span class="track-name">Chords</span><br /><span class="track-meta"
+                        >Harmony</span
+                      ></span
+                    >
+                  </div>
+                  <div class="track-content">
+                    <button
+                      class="chord-block event"
+                      style="--left: 1%; --width: 11.5%"
+                      type="button"
+                      data-kind="Chord"
+                      data-name="Am7"
+                      data-detail="A · C · E · G"
+                      data-start="0:00.4"
+                      data-length="3.8 sec"
+                      data-confidence="94%"
+                    >
+                      Am7
+                    </button>
+                    <button
+                      class="chord-block event"
+                      style="--left: 13%; --width: 11%"
+                      type="button"
+                      data-kind="Chord"
+                      data-name="Fmaj7"
+                      data-detail="F · A · C · E"
+                      data-start="0:04.3"
+                      data-length="3.6 sec"
+                      data-confidence="91%"
+                    >
+                      Fmaj7
+                    </button>
+                    <button
+                      class="chord-block event"
+                      style="--left: 24.5%; --width: 11%"
+                      type="button"
+                      data-kind="Chord"
+                      data-name="C"
+                      data-detail="C · E · G"
+                      data-start="0:08.1"
+                      data-length="3.5 sec"
+                      data-confidence="96%"
+                    >
+                      C
+                    </button>
+                    <button
+                      class="chord-block event"
+                      style="--left: 36%; --width: 10.5%"
+                      type="button"
+                      data-kind="Chord"
+                      data-name="G"
+                      data-detail="G · B · D"
+                      data-start="0:11.8"
+                      data-length="3.4 sec"
+                      data-confidence="88%"
+                    >
+                      G
+                    </button>
+                    <button
+                      class="chord-block event"
+                      style="--left: 47%; --width: 11%"
+                      type="button"
+                      data-kind="Chord"
+                      data-name="Am7"
+                      data-detail="A · C · E · G"
+                      data-start="0:15.4"
+                      data-length="3.7 sec"
+                      data-confidence="88%"
+                      aria-pressed="true"
+                    >
+                      Am7
+                    </button>
+                    <button
+                      class="chord-block event"
+                      style="--left: 58.5%; --width: 11.5%"
+                      type="button"
+                      data-kind="Chord"
+                      data-name="Fmaj7"
+                      data-detail="F · A · C · E"
+                      data-start="0:19.2"
+                      data-length="3.8 sec"
+                      data-confidence="90%"
+                    >
+                      Fmaj7
+                    </button>
+                    <button
+                      class="chord-block event"
+                      style="--left: 70.5%; --width: 11%"
+                      type="button"
+                      data-kind="Chord"
+                      data-name="C"
+                      data-detail="C · E · G"
+                      data-start="0:23.1"
+                      data-length="3.6 sec"
+                      data-confidence="95%"
+                    >
+                      C
+                    </button>
+                    <button
+                      class="chord-block event"
+                      style="--left: 82%; --width: 16%"
+                      type="button"
+                      data-kind="Chord"
+                      data-name="G / E"
+                      data-detail="G · B · D · E"
+                      data-start="0:26.9"
+                      data-length="5.2 sec"
+                      data-confidence="76%"
+                    >
+                      G / E
+                    </button>
+                  </div>
+                </div>
+
+                <div class="track midi-track">
+                  <div class="track-label">
+                    <span
+                      ><span class="track-name">MIDI</span><br /><span class="track-meta"
+                        >Clean guitar</span
+                      ></span
+                    >
+                  </div>
+                  <div class="track-content midi-grid" id="midi-lane"></div>
+                </div>
+
+                <div class="track tab-track">
+                  <div class="track-label">
+                    <span
+                      ><span class="track-name">Tab</span><br /><span class="track-meta"
+                        >Probable position</span
+                      ></span
+                    ><span class="future-badge">Preview</span>
+                  </div>
+                  <div class="track-content tab-lines" id="tab-lane"></div>
+                </div>
+
+                <div
+                  class="selection-overlay"
+                  id="selection-overlay"
+                  aria-label="Selected time range 11.8 to 19.2 seconds"
+                >
+                  <button
+                    class="selection-handle start"
+                    type="button"
+                    aria-label="Adjust selection start"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    class="selection-handle end"
+                    type="button"
+                    aria-label="Adjust selection end"
+                  >
+                    ›
+                  </button>
+                </div>
+                <div class="playhead" aria-hidden="true"></div>
+              </div>
+            </div>
+          </section>
+
+          <section id="live-view" class="empty-view stage-view" aria-labelledby="live-title">
+            <div class="focus-card">
+              <p class="eyebrow">Live input · listening</p>
+              <h2 id="live-title">Am7</h2>
+              <p>
+                StringSight is tracking the chord under your fingers. The session timeline continues
+                building while you play.
+              </p>
+              <div class="selected-event">
+                <span class="event-type">Likely note</span>
+                <div class="pitch"><strong>E4</strong><span>329.6 Hz</span></div>
+                <p>1st string · open, or 2nd string · fret 5</p>
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="fretboard-view"
+            class="empty-view stage-view"
+            aria-labelledby="fretboard-title"
+          >
+            <div class="focus-card">
+              <p class="eyebrow">Position evidence</p>
+              <h2 id="fretboard-title">Probable fingering for Am7</h2>
+              <p>
+                Audio and session context narrow the playable positions. Tap a candidate to correct
+                the result.
+              </p>
+              <div
+                class="fretboard"
+                id="fretboard-grid"
+                aria-label="Guitar fretboard position candidates"
+              ></div>
+            </div>
+          </section>
+
+          <section id="review-view" class="empty-view stage-view" aria-labelledby="review-title">
+            <div class="focus-card">
+              <p class="eyebrow">Review · 2 items need attention</p>
+              <h2 id="review-title">Confirm the uncertain moments</h2>
+              <p>
+                Only low-confidence or corrected events are surfaced here, so review stays quick.
+              </p>
+              <div class="review-list">
+                <div class="review-item">
+                  <span>0:26.9</span><strong>G / E</strong><span>76% · alternate Em7</span
+                  ><button class="small-button" type="button" data-toast="Opened event at 0:26.9">
+                    Review
+                  </button>
+                </div>
+                <div class="review-item">
+                  <span>0:30.4</span><strong>F♯3</strong><span>72% · fret position</span
+                  ><button class="small-button" type="button" data-toast="Opened event at 0:30.4">
+                    Review
+                  </button>
+                </div>
+                <div class="review-item">
+                  <span>0:08.1</span><strong>C major</strong
+                  ><span style="color: var(--mint)">Confirmed</span
+                  ><button class="small-button" type="button" data-toast="Confirmation removed">
+                    Undo
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <aside class="inspector" aria-labelledby="inspector-title">
+          <div class="inspector-head">
+            <h2 id="inspector-title">Inspector</h2>
+            <span class="event-type" id="event-kind">Chord event</span>
+          </div>
+          <div class="selected-event">
+            <span class="event-type">Selected</span>
+            <div class="pitch"><strong id="event-name">Am7</strong></div>
+            <p id="event-detail">A · C · E · G</p>
+          </div>
+          <div class="property-list">
+            <div class="property"><span>Starts</span><strong id="event-start">0:15.4</strong></div>
+            <div class="property">
+              <span>Length</span><strong id="event-length">3.7 sec</strong>
+            </div>
+            <div class="property">
+              <span>Confidence</span
+              ><strong class="confidence-pill" id="event-confidence">88%</strong>
+            </div>
+            <div class="property"><span>Source</span><strong>Audio + context</strong></div>
+          </div>
+          <span class="event-type">Correct result</span>
+          <div class="correction-group">
+            <button class="small-button" type="button" data-toast="Am7 confirmed">Confirm</button>
+            <button class="small-button" type="button" data-toast="Correction choices opened">
+              Change…
+            </button>
+          </div>
+          <details>
+            <summary>Analysis details</summary>
+            <p>
+              Primary harmony model v0.8. Audio evidence is strong; fret position is inferred from
+              the previous phrase.
+            </p>
+          </details>
+          <details>
+            <summary>Alternatives</summary>
+            <p>Am (7%), C6 (3%), Fmaj9/A (2%).</p>
+          </details>
+        </aside>
+      </div>
+
+      <section class="selection-bar" id="selection-bar" aria-label="Time selection controls">
+        <div class="selection-copy"><strong>Selection</strong><span>0:11.8–0:19.2</span></div>
+        <button
+          class="small-button"
+          type="button"
+          data-mobile-hide
+          data-toast="Selection start set at the playhead"
+        >
+          Set in
+        </button>
+        <button
+          class="small-button"
+          type="button"
+          data-mobile-hide
+          data-toast="Selection end set at the playhead"
+        >
+          Set out
+        </button>
+        <button class="small-button active selection-loop" type="button" aria-pressed="true">
+          Loop range
+        </button>
+        <button class="small-button clear-selection" type="button">Clear</button>
+      </section>
+
+      <footer class="transport" aria-label="Playback and recording controls">
+        <div class="input-block">
+          <button class="small-button" type="button" data-toast="Input setup: built-in microphone">
+            Input
+          </button>
+          <div class="input-source">Built-in microphone<span>Monitoring · good level</span></div>
+          <div class="input-meter" aria-label="Input level, good">
+            <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i
+            ><i class="on"></i><i class="on"></i><i class="on"></i><i class="hot"></i><i></i><i></i>
+          </div>
+        </div>
+
+        <div class="transport-center">
+          <button
+            class="transport-button"
+            type="button"
+            aria-label="Previous event"
+            data-toast="Previous event"
+          >
+            │‹
+          </button>
+          <button
+            class="transport-button primary"
+            id="play-button"
+            type="button"
+            aria-label="Play"
+            aria-pressed="false"
+          >
+            ▶
+          </button>
+          <button
+            class="transport-button record"
+            id="record-button"
+            type="button"
+            aria-label="Record"
+            aria-pressed="false"
+          >
+            ●
+          </button>
+          <div class="timecode">
+            <strong id="time-current">0:15.4</strong> <span>/ 0:32.1</span>
+          </div>
+          <button
+            class="transport-button looping"
+            id="loop-button"
+            type="button"
+            aria-label="Loop selection"
+            aria-pressed="true"
+          >
+            ↻
+          </button>
+        </div>
+
+        <div class="mix-block" aria-label="Playback mix">
+          <span class="mix-label">Playback</span>
+          <button class="mix-toggle" type="button" data-channel="Audio" aria-pressed="true">
+            Audio
+          </button>
+          <button class="mix-toggle" type="button" data-channel="MIDI" aria-pressed="true">
+            MIDI
+          </button>
+          <button class="small-button" type="button" data-toast="Playback and device settings">
+            Mix
+          </button>
+        </div>
+      </footer>
+    </div>
+
+    <div class="state-toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      (() => {
+        const $ = (selector, root = document) => root.querySelector(selector);
+        const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+        const waveform = $('#waveform');
+        for (let i = 0; i < 174; i += 1) {
+          const bar = document.createElement('i');
+          bar.className = 'wave-bar';
+          const phrase = 26 + Math.abs(Math.sin(i * 0.31)) * 56;
+          const breath = 13 * Math.sin(i * 0.067 + 1.2);
+          const accent = i % 22 < 4 ? 15 : 0;
+          bar.style.setProperty(
+            '--h',
+            Math.max(10, Math.min(96, Math.round(phrase + breath + accent))),
+          );
+          waveform.appendChild(bar);
+        }
+
+        const midiData = [
+          ['A3', 1, 91, 8],
+          ['C4', 3, 70, 7],
+          ['E4', 5, 52, 8],
+          ['G4', 6, 30, 7],
+          ['A3', 13, 90, 8],
+          ['C4', 15, 70, 8],
+          ['E4', 18, 50, 6],
+          ['F4', 20, 41, 5],
+          ['C4', 25, 70, 8],
+          ['E4', 28, 51, 7],
+          ['G4', 31, 30, 6],
+          ['B3', 36, 81, 7],
+          ['G3', 38, 111, 8],
+          ['B3', 41, 81, 6],
+          ['D4', 44, 61, 8],
+          ['G4', 48, 31, 6],
+          ['A3', 50, 91, 8],
+          ['C4', 53, 71, 7],
+          ['E4', 56, 51, 6],
+          ['G4', 59, 31, 8],
+          ['F3', 62, 112, 8],
+          ['A3', 66, 92, 6],
+          ['C4', 69, 72, 8],
+          ['E4', 73, 52, 7],
+          ['C4', 77, 72, 8],
+          ['E4', 80, 52, 6],
+          ['G4', 84, 32, 8],
+          ['D4', 90, 62, 7],
+        ];
+
+        const midiLane = $('#midi-lane');
+        midiData.forEach(([name, left, top, width], index) => {
+          const note = document.createElement('button');
+          note.type = 'button';
+          note.className = 'midi-note event';
+          note.style.setProperty('--left', `${left}%`);
+          note.style.setProperty('--top', `${top}px`);
+          note.style.setProperty('--width', `${width}%`);
+          note.textContent = width > 6 ? name : '';
+          note.dataset.kind = 'MIDI note';
+          note.dataset.name = name;
+          note.dataset.detail = `Velocity ${72 + ((index * 7) % 24)}`;
+          note.dataset.start = `0:${String((left * 0.321).toFixed(1)).padStart(4, '0')}`;
+          note.dataset.length = `${(0.45 + width * 0.08).toFixed(2)} sec`;
+          note.dataset.confidence = `${84 + (index % 13)}%`;
+          note.setAttribute('aria-label', `${name} MIDI note`);
+          midiLane.appendChild(note);
+        });
+
+        const tabData = [
+          [3, 1, 10],
+          [5, 13, 26],
+          [7, 24, 42],
+          [3, 35, 58],
+          [0, 47, 10],
+          [1, 52, 26],
+          [3, 58, 42],
+          [2, 65, 58],
+          [0, 72, 74],
+          [3, 78, 42],
+          [5, 85, 58],
+          [7, 92, 74],
+        ];
+        const tabLane = $('#tab-lane');
+        tabData.forEach(([fret, left, top], index) => {
+          const event = document.createElement('button');
+          event.type = 'button';
+          event.className = 'tab-event event';
+          event.style.setProperty('--left', `${left}%`);
+          event.style.setProperty('--top', `${top}px`);
+          event.textContent = fret;
+          event.dataset.kind = 'Tab position';
+          event.dataset.name = `Fret ${fret}`;
+          event.dataset.detail = `String ${1 + (index % 6)} · probable position`;
+          event.dataset.start = `0:${String((left * 0.321).toFixed(1)).padStart(4, '0')}`;
+          event.dataset.length = '0.42 sec';
+          event.dataset.confidence = `${74 + (index % 17)}%`;
+          event.setAttribute('aria-label', `Fret ${fret}, string ${1 + (index % 6)}`);
+          tabLane.appendChild(event);
+        });
+
+        const fretboard = $('#fretboard-grid');
+        for (let string = 1; string <= 6; string += 1) {
+          for (let fret = -1; fret <= 6; fret += 1) {
+            const cell = document.createElement('div');
+            cell.className = 'fret-cell';
+            if (fret === -1) cell.textContent = `S${7 - string}`;
+            else if (
+              (string === 2 && fret === 1) ||
+              (string === 3 && fret === 2) ||
+              (string === 4 && fret === 2)
+            ) {
+              cell.classList.add('note');
+              cell.textContent = fret;
+            } else if (fret === 0 && (string === 1 || string === 5)) {
+              cell.classList.add('note');
+              cell.textContent = '0';
+            } else cell.textContent = fret;
+            fretboard.appendChild(cell);
+          }
+        }
+
+        let toastTimer;
+        const toast = $('#toast');
+        function showToast(message) {
+          toast.textContent = message;
+          toast.classList.add('show');
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+        }
+
+        $$('[data-toast]').forEach((button) => {
+          button.addEventListener('click', () => showToast(button.dataset.toast));
+        });
+
+        function switchView(view) {
+          $$('.stage-view').forEach((panel) => panel.classList.remove('active'));
+          $('#timeline-view').style.display = view === 'timeline' ? 'flex' : 'none';
+          if (view !== 'timeline') $(`#${view}-view`).classList.add('active');
+          $$('[data-view]').forEach((button) =>
+            button.setAttribute('aria-selected', String(button.dataset.view === view)),
+          );
+          showToast(`${view[0].toUpperCase()}${view.slice(1)} view`);
+        }
+
+        $('#timeline-view').style.display = 'flex';
+        $('#timeline-view').style.flexDirection = 'column';
+        $('#timeline-view').style.flex = '1';
+        $('#timeline-view').style.minHeight = '0';
+        $$('[data-view]').forEach((button) =>
+          button.addEventListener('click', () => switchView(button.dataset.view)),
+        );
+
+        $$('.event').forEach((event) => {
+          event.addEventListener('click', () => {
+            $$('.event').forEach((other) => other.setAttribute('aria-pressed', 'false'));
+            event.setAttribute('aria-pressed', 'true');
+            $('#event-kind').textContent = event.dataset.kind;
+            $('#event-name').textContent = event.dataset.name;
+            $('#event-detail').textContent = event.dataset.detail;
+            $('#event-start').textContent = event.dataset.start;
+            $('#event-length').textContent = event.dataset.length;
+            $('#event-confidence').textContent = event.dataset.confidence;
+            showToast(`${event.dataset.name} selected`);
+          });
+        });
+
+        const playButton = $('#play-button');
+        let playing = false;
+        let elapsed = 15.4;
+        let playTimer = null;
+        const timeCurrent = $('#time-current');
+
+        function renderTime() {
+          const seconds = Math.min(elapsed, 32.1).toFixed(1).padStart(4, '0');
+          timeCurrent.textContent = `0:${seconds}`;
+        }
+
+        function stopPlayback() {
+          playing = false;
+          clearInterval(playTimer);
+          playTimer = null;
+          playButton.textContent = '▶';
+          playButton.setAttribute('aria-label', 'Play');
+          playButton.setAttribute('aria-pressed', 'false');
+        }
+
+        playButton.addEventListener('click', () => {
+          playing = !playing;
+          playButton.textContent = playing ? 'Ⅱ' : '▶';
+          playButton.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+          playButton.setAttribute('aria-pressed', String(playing));
+          if (playing) {
+            showToast('Playing audio and MIDI');
+            playTimer = setInterval(() => {
+              elapsed += 0.1;
+              if (elapsed >= 19.2 && $('#loop-button').getAttribute('aria-pressed') === 'true')
+                elapsed = 11.8;
+              else if (elapsed >= 32.1) {
+                elapsed = 32.1;
+                stopPlayback();
+              }
+              renderTime();
+            }, 100);
+          } else {
+            clearInterval(playTimer);
+            playTimer = null;
+            showToast('Playback paused');
+          }
+        });
+
+        const recordButton = $('#record-button');
+        recordButton.addEventListener('click', () => {
+          const recording = recordButton.getAttribute('aria-pressed') !== 'true';
+          recordButton.setAttribute('aria-pressed', String(recording));
+          recordButton.setAttribute('aria-label', recording ? 'Stop recording' : 'Record');
+          recordButton.textContent = recording ? '■' : '●';
+          recordButton.classList.toggle('recording', recording);
+          showToast(recording ? 'Recording take 04' : 'Recording stopped · processing locally');
+        });
+
+        const loopButton = $('#loop-button');
+        const selectionLoop = $('.selection-loop');
+        function setLoop(looping) {
+          loopButton.setAttribute('aria-pressed', String(looping));
+          loopButton.classList.toggle('looping', looping);
+          selectionLoop.setAttribute('aria-pressed', String(looping));
+          selectionLoop.classList.toggle('active', looping);
+          showToast(looping ? 'Selection loop on' : 'Loop off');
+        }
+        loopButton.addEventListener('click', () =>
+          setLoop(loopButton.getAttribute('aria-pressed') !== 'true'),
+        );
+        selectionLoop.addEventListener('click', () =>
+          setLoop(selectionLoop.getAttribute('aria-pressed') !== 'true'),
+        );
+
+        $$('.mix-toggle').forEach((toggle) => {
+          toggle.addEventListener('click', () => {
+            const enabled = toggle.getAttribute('aria-pressed') !== 'true';
+            toggle.setAttribute('aria-pressed', String(enabled));
+            showToast(`${toggle.dataset.channel} playback ${enabled ? 'on' : 'muted'}`);
+          });
+        });
+
+        $('.clear-selection').addEventListener('click', () => {
+          $('#selection-overlay').hidden = true;
+          $('#selection-bar').hidden = true;
+          setLoop(false);
+          showToast('Selection cleared');
+        });
+
+        $$('.selection-handle').forEach((handle) => {
+          handle.addEventListener('click', () =>
+            showToast('Drag to adjust the selection boundary'),
+          );
+        });
+
+        document.addEventListener('keydown', (event) => {
+          if (event.code === 'Space' && !event.target.matches('button, input, summary')) {
+            event.preventDefault();
+            playButton.click();
+          }
+          if (event.key.toLowerCase() === 'l' && !event.target.matches('input')) loopButton.click();
+          if (event.key === 'Escape' && !$('#selection-bar').hidden) $('.clear-selection').click();
+        });
+      })();
+    </script>
+  </body>
+</html>

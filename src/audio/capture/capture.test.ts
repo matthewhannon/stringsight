@@ -657,6 +657,61 @@ describe('microphone capture orchestration', () => {
     await capture.dispose();
   });
 
+  it('finalizes an active take before switching the connected input', async () => {
+    const capture = new MicrophoneCapture();
+    await capture.connect('first-input');
+    await capture.startRecording();
+
+    await capture.switchInputDevice('second-input');
+
+    expect(capture.currentRecording).not.toBeNull();
+    expect(capture.currentSnapshot).toMatchObject({
+      connectionState: 'monitoring',
+      device: { requestedDeviceId: 'second-input' },
+      operationState: 'idle',
+    });
+    expect(getUserMedia).toHaveBeenCalledTimes(2);
+    expect(getUserMedia.mock.calls[1]?.[0].audio).toMatchObject({
+      deviceId: { exact: 'second-input' },
+    });
+  });
+
+  it('serializes source changes during connection and finishes on the latest choice', async () => {
+    let resolveInitialConnection: ((stream: MediaStream) => void) | undefined;
+    getUserMedia
+      .mockImplementationOnce(
+        () =>
+          new Promise<MediaStream>((resolve) => {
+            resolveInitialConnection = resolve;
+          }),
+      )
+      .mockResolvedValue(fakeStream);
+    const capture = new MicrophoneCapture();
+    const initialConnection = capture.connect('first-input');
+
+    const firstSwitch = capture.switchInputDevice('second-input');
+    const latestSwitch = capture.switchInputDevice('final-input');
+    resolveInitialConnection?.(fakeStream);
+    await Promise.all([initialConnection, firstSwitch, latestSwitch]);
+
+    expect(capture.currentSnapshot).toMatchObject({
+      connectionState: 'monitoring',
+      device: { requestedDeviceId: 'final-input' },
+    });
+    expect(getUserMedia).toHaveBeenCalledTimes(2);
+    expect(getUserMedia.mock.calls[1]?.[0].audio).toMatchObject({
+      deviceId: { exact: 'final-input' },
+    });
+  });
+
+  it('keeps a disconnected source choice passive until the input is powered on', async () => {
+    const capture = new MicrophoneCapture();
+    await capture.switchInputDevice('second-input');
+
+    expect(capture.currentSnapshot.connectionState).toBe('disconnected');
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['NotFoundError', 'microphone-unavailable', 'select-device'],
     ['NotReadableError', 'microphone-not-readable', 'retry'],

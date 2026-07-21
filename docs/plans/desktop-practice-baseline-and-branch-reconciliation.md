@@ -2,17 +2,14 @@
 
 - **Status:** Accepted working baseline
 - **Recorded:** 2026-07-20
-- **Scope:** Record the protected audio baseline, classify isolated rack/UI work, and identify the
-  accepted dual-canvas Practice Workspace checkpoint used by later domain implementation.
+- **Scope:** Establish the production baseline and classify the isolated rack/UI work before the
+  Practice Workspace architecture or implementation begins.
 
 ## 1. Decision
 
-The current implementation baseline for the Practice Workspace is `main` at `0b23c6e`
-(`Replace rack UI with desktop practice workspace`). It is a deliberately accepted descendant of
-the fully tested audio/evidence baseline at `1198365a5ec07f2b96ed7e15a9fac115e3766fed` (`Smooth live
-chord meter rendering`). The dual-canvas shell is approved product direction and working
-integration scaffolding; its explicitly labelled score, document, shared-transport, video, MIDI,
-and assessment placeholders are not completed domain functionality.
+The tested production baseline for the Practice Workspace is `main` at
+`1198365a5ec07f2b96ed7e15a9fac115e3766fed` (`Smooth live chord meter rendering`). The new product
+work must start from that baseline or a later deliberately accepted descendant of `main`.
 
 The branch `codex/audio-input-rack-ui` is not the new product base. It contains two committed UI
 exploration commits plus additional uncommitted UI work:
@@ -45,9 +42,7 @@ This verification claim applies only to the exact `main` baseline. It does not c
 commits or the current dirty rack worktree. A future port must rerun verification appropriate to its
 scope and the full suite before integration.
 
-The `1198365` verification is a behavior and evidence baseline, not a claim about the later UI
-composition. The `0b23c6e` checkpoint replaces the active presentation while retaining and
-reconnecting valuable audio behavior. In particular,
+The baseline is a behavior and evidence baseline, not a UI composition baseline. In particular,
 `MicrophoneCapture` currently owns and closes its own `AudioContext`; the accepted Practice System
 will deliberately refactor that ownership behind the future shared `AudioRuntime` while preserving
 observable capture behavior.

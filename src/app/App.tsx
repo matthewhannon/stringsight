@@ -1,5 +1,5 @@
-import { PracticeApp } from './practice';
+import { RackWorkspace } from './RackWorkspace';
 
 export function App() {
-  return <PracticeApp />;
+  return <RackWorkspace />;
 }

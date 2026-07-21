@@ -5,7 +5,7 @@ import {
   type PolyphonicAnalysisSnapshot,
   type PolyphonicAnalysisState,
 } from '../audio/polyphonic';
-import { toolEmbeddedClassNames } from '../ui/toolSurfaceClasses';
+import { rackEmbeddedClassNames } from '../ui/rack';
 import { defaultDisplayedPolyphonicAnalysis } from './audioCaptureController';
 
 type PolyphonicAnalysisPanelProps = {
@@ -109,7 +109,7 @@ export function PolyphonicAnalysisPanel({
     <section
       aria-label={embedded ? 'Chord analysis results' : undefined}
       aria-labelledby={embedded ? undefined : 'polyphonic-analysis-title'}
-      className={`analysis-section polyphonic-section ${embedded ? toolEmbeddedClassNames.section : ''}`.trim()}
+      className={`analysis-section polyphonic-section ${embedded ? rackEmbeddedClassNames.section : ''}`.trim()}
     >
       {!embedded && (
         <div className="section-heading analysis-heading">
@@ -146,7 +146,7 @@ export function PolyphonicAnalysisPanel({
       </div>
 
       <div
-        className={`analysis-console ${embedded ? toolEmbeddedClassNames.clippedSurface : ''}`.trim()}
+        className={`analysis-console ${embedded ? rackEmbeddedClassNames.clippedSurface : ''}`.trim()}
       >
         <div className="current-note current-chord" aria-live="polite">
           <span className={`analysis-state analysis-state--${snapshot.state}`}>{stateLabel}</span>
@@ -269,7 +269,7 @@ export function PolyphonicAnalysisPanel({
       </div>
 
       <div
-        className={`note-timeline chord-timeline ${embedded ? toolEmbeddedClassNames.surface : ''}`.trim()}
+        className={`note-timeline chord-timeline ${embedded ? rackEmbeddedClassNames.surface : ''}`.trim()}
         aria-labelledby="chord-timeline-title"
       >
         <div>
