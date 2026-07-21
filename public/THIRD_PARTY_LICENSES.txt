@@ -6,6 +6,7 @@ Development-only packages are recorded in package-lock.json and are not part of 
 bundle. Versions below are locked by package-lock.json.
 
 Production package inventory:
+- @coderline/alphatab@1.8.4 (MPL-2.0)
 - @tensorflow/tfjs-backend-cpu@4.22.0 (Apache-2.0)
 - @tensorflow/tfjs-backend-wasm@4.22.0 (Apache-2.0)
 - @tensorflow/tfjs-converter@4.22.0 (Apache-2.0)
@@ -32,6 +33,10 @@ Model and runtime binary inventory:
 
 Full Apache-2.0 and BSD license texts are distributed in public/licenses/. Model checksums and exact
 provenance are recorded in public/models/README.md.
+
+alphaTab 1.8.4 corresponding source, MPL-2.0 terms, integrated-library notices, SBOM, and exact
+Bravura 1.38 OFL/FONTLOG are distributed at /open-source/alphatab-1.8.4/. The alphaTab player is
+disabled and no synthesis sound bank ships.
 
 React 19.2.7, React DOM 19.2.7, and Scheduler 0.27.0
 Source: https://github.com/facebook/react

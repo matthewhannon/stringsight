@@ -1,69 +1,42 @@
-# Candidate alphaTab 1.8.4 release notice
+# Candidate alphaTab 1.8.4 release verification record
 
-> Template only. Replace every bracketed field, verify all copied files and URLs, and obtain the
-> owner approvals recorded in the release-gate resolution before shipping.
+> Internal template only. The hosted notice is generated separately and must contain no template
+> fields. A release remains gated until every post-deploy field below is populated from the hosted
+> objects, not copied from the build manifest.
 
-## alphaTab
+## Fixed release identity
 
-This product includes alphaTab 1.8.4.
-
-- Copyright: Daniel Kuschny and contributors
+- Package: `@coderline/alphatab@1.8.4`
 - License: Mozilla Public License 2.0
 - Exact upstream commit: `022a45c8e42370f9e12e68949d11eada370da83d`
 - Source tree: `a13f13b60ea8b16b654a8c472c1b5826ef6b4c8f`
-- Preferred Source Code Form: `[IMMUTABLE_PUBLIC_SOURCE_URL]`
-- Source archive SHA-256:
+- Covered Software modification status: unmodified
+- Sanitized source archive bytes: `67636224`
+- Sanitized source archive SHA-256:
+  `04766fe8ac5228889dfc5519fb17e2ed2af6eee4657dbce1cb05f4c56a88d518`
+- Canonical member manifest SHA-256:
+  `2eff922935df9f5a5566e042f71edcef093203f6d42996a1e1ed2f14d599d6bf`
+- Received archive provenance SHA-256 only:
   `7cd6442dfaff5de12cb4bd621d626c60369ce65217ab5ed8276bdd7288387214`
-- Modification status: `[UNMODIFIED | MODIFIED—SEE MODIFICATION MANIFEST URL]`
-- MPL-2.0 text: `[SHIPPED_RELATIVE_PATH_OR_IMMUTABLE_URL]`
+- Source sanitization: 30 members removed, all and only under
+  `packages/alphatab/font/sonivox/**` and `packages/alphatab/test-data/audio/**`
+- Runtime audio policy: `PlayerMode.Disabled`, `soundFont: null`, no sound bank distributed
 
-The alphaTab executable is distributed as part of a Larger Work. The alphaTab Covered Software is
-available under MPL-2.0 at the Source Code Form location above.
+The public bundle must include the exact alphaTab MPL text, notices for TinySoundFont, SFZero, Haxe
+Standard Library, SharpZipLib, NVorbis, and libvorbis, and the exact Bravura 1.38 OFL, FONTLOG, and
+WOFF2 asset. No SONiVOX bank, audio fixture, nested archive, or renamed excluded hash may appear.
 
-## Integrated code notices
+## Post-deploy verification gate
 
-The alphaTab executable incorporates or adapts these works. The release notice bundle must include
-the complete license text, not only this table.
+- Status: `[GATED | VERIFIED]`
+- Product version/build: `[PRODUCT_VERSION_AND_BUILD]`
+- Immutable hosted source URL: `[IMMUTABLE_HOSTED_URL]`
+- Fetched source byte count: `[FETCHED_BYTES]`
+- Fetched source SHA-256: `[FETCHED_SHA256]`
+- Fetched member-manifest SHA-256: `[FETCHED_MEMBER_MANIFEST_SHA256]`
+- Verification timestamp: `[UTC_TIMESTAMP]`
+- Verification job or owner: `[RELEASE_JOB_OR_OWNER]`
+- Final artifact release-policy result: `[PASS]`
 
-| Work                  | Notice                                                      | License      | Full-text file in release |
-| --------------------- | ----------------------------------------------------------- | ------------ | ------------------------- |
-| TinySoundFont         | Copyright (C) 2017-2018 Bernhard Schelling; based on SFZero | MIT          | `[PATH]`                  |
-| SFZero                | Copyright (C) 2012 Steve Folta                              | MIT          | `[PATH]`                  |
-| Haxe Standard Library | Copyright (C) 2005-2025 Haxe Foundation                     | MIT          | `[PATH]`                  |
-| SharpZipLib           | Copyright © 2000-2018 SharpZipLib Contributors              | MIT          | `[PATH]`                  |
-| NVorbis               | Copyright (c) 2020 Andrew Ward                              | MIT          | `[PATH]`                  |
-| libvorbis             | Copyright (c) 2002-2020 Xiph.org Foundation                 | BSD-3-Clause | `[PATH]`                  |
-
-The authoritative received source is the adapted source in the exact alphaTab commit above.
-Original upstream revision candidates are recorded in
-`license-audit-baseline.json`; alphaTab did not record confirmed original upstream commit IDs.
-
-## Bravura font
-
-This product bundles unmodified Bravura 1.38 font files from upstream commit
-`f97d82af70bbbfde5808b4119018dbe5553e620c`.
-
-- Copyright © 2015, Steinberg Media Technologies GmbH
-- License: SIL Open Font License 1.1
-- Reserved Font Name: `Bravura`
-- OFL text: `[SHIPPED_PATH_TO_BRAVURA_OFL.txt]`
-- FONTLOG: `[SHIPPED_PATH_TO_BRAVURA_FONTLOG.txt]`
-
-No endorsement by Steinberg Media Technologies GmbH is stated or implied.
-
-## Explicit exclusions
-
-This release does **not** distribute alphaTab's packaged SONiVOX `sonivox.sf2` or `sonivox.sf3`
-files. `[IDENTIFY_ANY_SEPARATELY_AUDITED_REPLACEMENT_BANK_OR_STATE_NO_SYNTHESIS_BANK_SHIPS]`.
-
-## Release verification record
-
-- Product version/build: `[PRODUCT_VERSION]`
-- Browser artifact SHA-256: `[SHA256]`
-- SBOM URL/path: `[SBOM]`
-- Third-party notice bundle SHA-256: `[SHA256]`
-- Source URL availability checked at: `[UTC_TIMESTAMP]`
-- Source URL response hash verified by: `[RELEASE_JOB_OR_OWNER]`
-- Final artifact SONiVOX scan result: `[PASS]`
-- Final Bravura hash scan result: `[PASS]`
-- alphaTab clean-build comparison result: `[PASS_WITH_ONLY_DOCUMENTED_TIMESTAMP_VARIANCE]`
+Do not mark the status `VERIFIED` unless the fetched values exactly match the fixed identities
+above and the immutable URL is recipient-accessible without a developer login.

@@ -47,11 +47,18 @@ accepted. Native StringSight data remains the only lossless editable round trip.
 
 ### License and release profile
 
-Accept MPL-2.0 distribution of the exact alphaTab 1.8.4 received source at commit
+Accept MPL-2.0 distribution of the alphaTab 1.8.4 preferred source at commit
 `022a45c8e42370f9e12e68949d11eada370da83d` as part of a Larger Work, subject to ADR 0005 and the
 release checklist in the retained license resolution. The bounded upstream candidates for embedded
 TinySoundFont, SFZero, Haxe, SharpZipLib, NVorbis, and libvorbis are provenance leads, not confirmed
 origins; the received alphaTab source and reconstructed notices are the release baseline.
+
+The public source tar is a deterministic sanitized form of the exact received archive. It removes
+all and only `packages/alphatab/font/sonivox/**` and `packages/alphatab/test-data/audio/**`, records
+all 30 removed tar members, and publishes a canonical manifest for every one of the 2,521 retained
+members. Retained source members are byte-exact upstream content; no Covered Software source is
+modified. The full received archive hash is retained as provenance evidence only and is not the
+public download identity.
 
 When client-side alphaTab executable code is distributed, the release must publish an immutable,
 versioned, StringSight-controlled, recipient-accessible, hash-verified source-and-notice location

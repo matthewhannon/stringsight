@@ -1,10 +1,12 @@
 import type { CSSProperties } from 'react';
 
 import type { PracticeAudioModel } from '../usePracticeAudio';
+import { Icon } from './Icon';
 
 type InputHudProps = {
   audio: PracticeAudioModel;
   detailsOpen: boolean;
+  onConnect: () => void;
   onDetailsToggle: () => void;
   onSettingsToggle: () => void;
   settingsOpen: boolean;
@@ -20,10 +22,10 @@ const captureLabel = (audio: PracticeAudioModel): string => {
   if (capture.warning === 'device-ended') return 'Microphone disconnected';
   if (capture.warning === 'silence') return 'No clear input detected';
   if (capture.warning === 'maximum-duration-reached') return 'Recording limit reached';
-  if (capture.operationState === 'recording') return 'Recording locally';
+  if (capture.operationState === 'recording') return 'Recording on this device';
   if (capture.operationState === 'paused') return 'Recording paused';
-  if (capture.operationState === 'finalizing') return 'Finalizing take';
-  if (capture.operationState === 'replaying') return 'Replaying take';
+  if (capture.operationState === 'finalizing') return 'Saving take';
+  if (capture.operationState === 'replaying') return 'Reviewing take';
   if (capture.connectionState === 'monitoring') return 'Connected';
   if (capture.connectionState === 'connecting') return 'Connecting';
   if (capture.connectionState === 'failed') return 'Needs attention';
@@ -34,6 +36,7 @@ const captureLabel = (audio: PracticeAudioModel): string => {
 export function InputHud({
   audio,
   detailsOpen,
+  onConnect,
   onDetailsToggle,
   onSettingsToggle,
   settingsOpen,
@@ -48,24 +51,54 @@ export function InputHud({
       : reportedDeviceName;
   const peak = Math.round(Math.min(1, audio.capture.peak) * 100);
   const confidence = chord === null ? null : Math.round(chord.confidence * 100);
+  const connected = audio.capture.connectionState === 'monitoring';
 
   return (
     <section className="practice-input-hud" aria-label="Live guitar input and analysis">
       <div className="practice-hud-block is-input">
-        <div>
-          <span>Input</span>
-          <strong>{deviceName}</strong>
-          <small
-            className={
-              audio.capture.error !== null || audio.capture.warning !== null
-                ? 'is-warning'
-                : undefined
-            }
-            role={audio.capture.error !== null ? 'alert' : 'status'}
-          >
-            {captureLabel(audio)}
-          </small>
-        </div>
+        {connected ? (
+          <div>
+            <span>Microphone</span>
+            <strong>{deviceName}</strong>
+            <small
+              className={
+                audio.capture.error !== null || audio.capture.warning !== null
+                  ? 'is-warning'
+                  : undefined
+              }
+              role={audio.capture.error !== null ? 'alert' : 'status'}
+            >
+              {captureLabel(audio)}
+            </small>
+          </div>
+        ) : (
+          <div className="practice-connect-input">
+            <span>Audio input</span>
+            <button
+              className="practice-control is-primary"
+              disabled={!audio.capabilities.canConnect}
+              onClick={onConnect}
+              type="button"
+            >
+              <Icon name="microphone" />
+              Microphone disconnected — Connect
+            </button>
+            {(audio.actionError !== null ||
+              audio.capture.error !== null ||
+              audio.capture.warning !== null ||
+              audio.capture.operationState !== 'idle' ||
+              audio.capture.connectionState !== 'disconnected') && (
+              <small
+                className="is-warning"
+                role={
+                  audio.actionError !== null || audio.capture.error !== null ? 'alert' : 'status'
+                }
+              >
+                {captureLabel(audio)}
+              </small>
+            )}
+          </div>
+        )}
         <div
           aria-label={`Input level ${String(peak)} percent`}
           aria-valuemax={100}
@@ -85,12 +118,14 @@ export function InputHud({
           <strong>Live observation</strong>
         </div>
         <div className="practice-heard-reading">
-          <strong>{chord?.symbol ?? note?.noteName ?? 'Listening…'}</strong>
+          <strong>
+            {chord?.symbol ?? note?.noteName ?? (connected ? 'Listening…' : 'No input')}
+          </strong>
           <p>
             {chordEvent === null
-              ? audio.capture.connectionState === 'monitoring'
-                ? 'Waiting for stable evidence'
-                : 'Connect input to begin'
+              ? connected
+                ? 'Waiting for a clear, stable sound'
+                : 'Connect your microphone to start'
               : `${chordEvent.lifecycle} · ${confidence === null ? 'confidence unavailable' : `${String(confidence)}% match strength`}`}
           </p>
         </div>
@@ -119,18 +154,20 @@ export function InputHud({
         <button
           aria-controls="practice-analysis-details"
           aria-expanded={detailsOpen}
+          className="practice-control is-quiet"
           onClick={onDetailsToggle}
           type="button"
         >
-          {detailsOpen ? 'Hide analysis' : 'Analysis details'}
+          {detailsOpen ? 'Close live analysis' : 'Live analysis'}
         </button>
         <button
           aria-controls="practice-input-settings"
           aria-expanded={settingsOpen}
+          className="practice-control is-secondary"
           onClick={onSettingsToggle}
           type="button"
         >
-          Input settings
+          Input and recording
         </button>
       </div>
     </section>

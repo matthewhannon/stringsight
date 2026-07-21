@@ -30,28 +30,6 @@
   color: var(--color-paper-quiet);
   font-size: var(--type-label);
 }
-.practice-video-source {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: var(--radius-control);
-  background: var(--color-surface);
-}
-.practice-video-source button {
-  height: 24px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--color-text-quiet);
-  cursor: pointer;
-  font-size: var(--type-label);
-  font-weight: 650;
-}
-.practice-video-source button[aria-pressed='true'] {
-  background: var(--color-surface-hover);
-  color: var(--color-text);
-}
 .practice-video-body {
   display: grid;
   place-items: center;
@@ -80,10 +58,6 @@
 .practice-video-frame.is-fill img {
   object-fit: cover;
 }
-.practice-video-frame.is-take img {
-  filter: saturate(0.72) brightness(0.78) contrast(1.05) hue-rotate(150deg);
-  transform: scaleX(-1);
-}
 .practice-video-shade {
   position: absolute;
   inset: 0;
@@ -94,67 +68,6 @@
     transparent 66%,
     var(--video-vignette-end)
   );
-}
-.practice-video-placeholder {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-}
-.practice-video-sync {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  padding: 6px 8px;
-  border-radius: 5px;
-  background: var(--video-status-surface);
-  color: var(--color-accent-strong);
-  font-family: var(--font-mono);
-  font-size: var(--type-micro);
-}
-.practice-video-sync i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-accent);
-}
-.practice-video-cue {
-  position: absolute;
-  bottom: 23%;
-  left: 51%;
-  max-width: 165px;
-  padding: 8px 10px;
-  border-left: 3px solid var(--color-warning);
-  border-radius: 4px;
-  background: var(--video-cue-surface);
-  font-size: var(--type-caption);
-  line-height: 1.35;
-}
-.practice-video-cue small {
-  display: block;
-  margin-top: 3px;
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--type-micro);
-}
-.practice-video-time {
-  position: absolute;
-  right: 12px;
-  bottom: 10px;
-  left: 12px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-}
-.practice-video-time strong {
-  font-size: var(--type-caption);
-  font-weight: 600;
-}
-.practice-video-time time {
-  font-family: var(--font-mono);
-  font-size: var(--type-heading);
 }
 .practice-video-panel > footer {
   display: flex;

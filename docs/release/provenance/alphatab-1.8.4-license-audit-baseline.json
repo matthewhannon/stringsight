@@ -20,11 +20,30 @@
       "repository": "https://github.com/CoderLine/alphaTab.git",
       "tree": "a13f13b60ea8b16b654a8c472c1b5826ef6b4c8f",
       "archiveFormat": "git-archive-tar",
-      "archiveBytes": 92037120,
-      "archiveSha256": "7cd6442dfaff5de12cb4bd621d626c60369ce65217ab5ed8276bdd7288387214",
+      "receivedArchive": {
+        "bytes": 92037120,
+        "sha256": "7cd6442dfaff5de12cb4bd621d626c60369ce65217ab5ed8276bdd7288387214"
+      },
       "lockfilePath": "package-lock.json",
-      "lockfileBytes": 239849,
-      "lockfileSha256": "40169c8fc2728bf3652e95dd7484e747bfe5191ceef79d398cc11fd2578ef632",
+      "lockfileBytes": 245744,
+      "lockfileSha256": "f80aac6590e1875c7a0abb04d85d2dca315f76be562ef44f3833d9deedc68717",
+      "sanitizedArchive": {
+        "bytes": 67636224,
+        "sha256": "04766fe8ac5228889dfc5519fb17e2ed2af6eee4657dbce1cb05f4c56a88d518",
+        "memberManifestSha256": "2eff922935df9f5a5566e042f71edcef093203f6d42996a1e1ed2f14d599d6bf",
+        "receivedMemberCount": 2551,
+        "excludedMemberCount": 30,
+        "distributedMemberCount": 2521,
+        "excludedPrefixes": [
+          "packages/alphatab/font/sonivox/",
+          "packages/alphatab/test-data/audio/"
+        ]
+      },
+      "license": {
+        "path": "LICENSE",
+        "bytes": 17284,
+        "sha256": "ab8d1dd6403cf2dadfd8046f1d8cd150e270a45bc98da8dc9600ffde110eabdc"
+      },
       "publisherNodeVersion": "24.18.0",
       "publisherNpmVersion": "11.16.0",
       "publisherBuildNumber": "34"

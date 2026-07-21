@@ -37,6 +37,7 @@
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run dependencies:check && npm run docs:check && npm run corpus:validate && npm run evaluate:self-test && npm run evaluate:monophonic && npm run test:coverage && npm run build && npm run release:check"
   },
   "dependencies": {
+    "@coderline/alphatab": "1.8.4",
     "@tensorflow/tfjs-backend-cpu": "4.22.0",
     "@tensorflow/tfjs-backend-wasm": "4.22.0",
     "@tensorflow/tfjs-converter": "4.22.0",

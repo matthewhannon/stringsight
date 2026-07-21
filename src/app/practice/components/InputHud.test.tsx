@@ -115,6 +115,7 @@ const renderHud = (audio: PracticeAudioModel, detailsOpen = false, settingsOpen 
     <InputHud
       audio={audio}
       detailsOpen={detailsOpen}
+      onConnect={() => void audio.connect()}
       onDetailsToggle={onDetailsToggle}
       onSettingsToggle={onSettingsToggle}
       settingsOpen={settingsOpen}
@@ -145,10 +146,10 @@ describe('InputHud', () => {
     [{ warning: 'device-ended' }, 'Microphone disconnected'],
     [{ warning: 'silence' }, 'No clear input detected'],
     [{ warning: 'maximum-duration-reached' }, 'Recording limit reached'],
-    [{ operationState: 'recording' }, 'Recording locally'],
+    [{ operationState: 'recording' }, 'Recording on this device'],
     [{ operationState: 'paused' }, 'Recording paused'],
-    [{ operationState: 'finalizing' }, 'Finalizing take'],
-    [{ operationState: 'replaying' }, 'Replaying take'],
+    [{ operationState: 'finalizing' }, 'Saving take'],
+    [{ operationState: 'replaying' }, 'Reviewing take'],
     [{ connectionState: 'monitoring' }, 'Connected'],
     [{ connectionState: 'connecting' }, 'Connecting'],
     [{ connectionState: 'failed' }, 'Needs attention'],
@@ -158,11 +159,16 @@ describe('InputHud', () => {
     expect(screen.getByText(label)).toBeVisible();
   });
 
-  it('prioritizes action errors and renders the disconnected empty state', () => {
-    renderHud(audioModel({ actionError: 'Action failed' }));
-    expect(screen.getByText('Action failed')).toHaveAttribute('role', 'status');
-    expect(screen.getByText('Connect input to begin')).toBeVisible();
-    expect(screen.getAllByText(/Listening|â€”/).length).toBeGreaterThan(0);
+  it('prioritizes action errors and renders the disconnected empty state', async () => {
+    const user = userEvent.setup();
+    const audio = audioModel({ actionError: 'Action failed' });
+    renderHud(audio);
+    expect(screen.getByText('Action failed')).toHaveAttribute('role', 'alert');
+    expect(screen.getByRole('button', { name: 'Microphone disconnected — Connect' })).toBeEnabled();
+    expect(screen.getByText('Connect your microphone to start')).toBeVisible();
+    expect(screen.queryByText('Listening…')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Microphone disconnected — Connect' }));
+    expect(audio.connect).toHaveBeenCalledOnce();
   });
 
   it('renders named-device note/chord evidence, clipping, and open-state actions', async () => {
@@ -203,8 +209,8 @@ describe('InputHud', () => {
       'aria-valuetext',
       '100 percent, clipping detected',
     );
-    await user.click(screen.getByRole('button', { name: 'Hide analysis' }));
-    await user.click(screen.getByRole('button', { name: 'Input settings' }));
+    await user.click(screen.getByRole('button', { name: 'Close live analysis' }));
+    await user.click(screen.getByRole('button', { name: 'Input and recording' }));
     expect(actions.onDetailsToggle).toHaveBeenCalledOnce();
     expect(actions.onSettingsToggle).toHaveBeenCalledOnce();
   });

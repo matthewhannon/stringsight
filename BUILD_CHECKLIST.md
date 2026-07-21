@@ -392,20 +392,27 @@ validation, collision-free UTF-16 row identities, and value-aware accessible lab
 
 **Planning:** Keep all third-party types behind adapters and renderer layout out of document state.
 
-- [ ] Implement the accepted notation adapter with stable event/tick/geometry mappings and semantic
+- [x] Implement the accepted notation adapter with stable event/tick/geometry mappings and semantic
       focus, expanded, page, and continuous views.
-- [ ] Use four bars per system only as a presentation default; dense/sparse reflow preserves
+- [x] Use four bars per system only as a presentation default; dense/sparse reflow preserves
       musical selections and loops.
-- [ ] Import each approved native/guitar-aware format through deterministic draft-plus-report
+- [x] Import each approved native/guitar-aware format through deterministic draft-plus-report
       boundaries; reject corrupt or resource-hostile files safely.
-- [ ] Add raw-SMF preflight and explicit event accounting before high-level MIDI conversion; never
+- [x] Add raw-SMF preflight and explicit event accounting before high-level MIDI conversion; never
       claim original string/fret or notation fidelity from MIDI.
-- [ ] Keep observed-session MIDI export distinct from authored-document MIDI import/export.
-- [ ] Fixture-test every preserved, converted, rejected, unsupported, or lost semantic and every
+- [x] Keep observed-session MIDI export distinct from authored-document MIDI import/export.
+- [x] Fixture-test every preserved, converted, rejected, unsupported, or lost semantic and every
       advertised format direction.
 
 **Done when:** Supported scores render and import/export through replaceable adapters, with every
 semantic disposition explicit and no third-party graph stored as document truth.
+
+**Acceptance:** Complete. The visible canonical editor drives the lazy alphaTab adapter without
+persisting renderer state; Chromium proves real multi-track, multi-voice, chord, reflow, focus, and
+viewport-pagination mappings. Exact GP8 and declared Type-1 SMF routes produce verified review
+bundles, GP5 remains parsing-only, GP7/MusicXML remain rejected, and authored MIDI export reports
+every preserved or lost field. Independent review and release evidence are recorded in
+`docs/verification/13-notation-score-import-authored-midi-independent-review.md`.
 
 ## Phase 5: Shared runtime, timed media, and persistence
 

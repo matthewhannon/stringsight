@@ -5,43 +5,24 @@ import { vi } from 'vitest';
 import { VideoPanel } from './VideoPanel';
 
 describe('VideoPanel', () => {
-  it('renders the reference fit state and submits source and fit changes', async () => {
+  it('renders one truthful still-image reference and changes its fit', async () => {
     const user = userEvent.setup();
     const onFitChange = vi.fn();
-    const onSourceChange = vi.fn();
-    render(
-      <VideoPanel
-        fit="fit"
-        onFitChange={onFitChange}
-        onSourceChange={onSourceChange}
-        source="reference"
-      />,
-    );
-    expect(screen.getByRole('heading', { name: 'Reference video' })).toBeVisible();
-    expect(screen.getByText(/shown without cropping/)).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'My Take 04' }));
+    render(<VideoPanel fit="fit" onFitChange={onFitChange} />);
+
+    expect(screen.getByRole('heading', { name: 'Technique reference' })).toBeVisible();
+    expect(screen.getByText('Still image')).toBeVisible();
+    expect(screen.queryByRole('button', { name: /reference|take/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Fill frame' }));
-    expect(onSourceChange).toHaveBeenCalledWith('take');
     expect(onFitChange).toHaveBeenCalledWith('fill');
   });
 
-  it('renders the take fill state and submits inverse changes', async () => {
+  it('offers the inverse fit action from the fill state', async () => {
     const user = userEvent.setup();
     const onFitChange = vi.fn();
-    const onSourceChange = vi.fn();
-    render(
-      <VideoPanel
-        fit="fill"
-        onFitChange={onFitChange}
-        onSourceChange={onSourceChange}
-        source="take"
-      />,
-    );
-    expect(screen.getByRole('heading', { name: 'My Take 04' })).toBeVisible();
-    expect(screen.getByText(/crop edges/)).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Reference' }));
-    await user.click(screen.getByRole('button', { name: 'Fit video' }));
-    expect(onSourceChange).toHaveBeenCalledWith('reference');
+    render(<VideoPanel fit="fill" onFitChange={onFitChange} />);
+
+    await user.click(screen.getByRole('button', { name: 'Show full image' }));
     expect(onFitChange).toHaveBeenCalledWith('fit');
   });
 });

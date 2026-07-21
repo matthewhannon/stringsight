@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { importBoundedScore } from '../importing';
+import gp8Base64 from '../importing/score/__fixtures__/gp8-basic.gp.base64?raw';
 import { createBlankPracticeDocument, savePracticeDocument } from './native';
 import {
+  acceptPracticeImportReviewBundle,
   applyPracticeEditorTransaction,
   createPracticeEditorWorkflow,
   openPracticeEditorWorkflow,
@@ -76,6 +79,37 @@ const expectUnifiedRevision = (state: PracticeEditorWorkflowState): void => {
 };
 
 describe('renderer-independent editor workflow', () => {
+  it('re-verifies an import review bundle and starts clean unsaved canonical history', async () => {
+    const imported = await importBoundedScore({
+      bytes: Uint8Array.from(atob(gp8Base64.trim()), (character) => character.charCodeAt(0)),
+      fileName: 'gp8-basic.gp',
+      fixtureId: 'gp8-basic',
+      importedAt: '2026-07-20T12:00:00Z',
+    });
+    if (imported.draft === null || imported.report === null) {
+      throw new Error('Expected a reviewable GP8 bundle.');
+    }
+    const bundle = { bundleVersion: 1 as const, draft: imported.draft, report: imported.report };
+    const state = await acceptPracticeImportReviewBundle(bundle);
+
+    expect(state.history).toMatchObject({ future: [], isDirty: true, past: [] });
+    expect(state.history.document.metadata.title).toBe('gp8-basic');
+    expect(state.history.document.importProvenance).toMatchObject({
+      adapterId: 'stringsight-alphatab-import',
+      sourceFormat: 'guitar-pro',
+    });
+    expect(state.inspection.rows.filter(({ kind }) => kind === 'event')).toHaveLength(4);
+
+    const tampered = structuredClone(bundle);
+    const mutableTampered = tampered as unknown as {
+      draft: { candidateDocument: { metadata: { title: string } } };
+    };
+    mutableTampered.draft.candidateDocument.metadata.title = 'Tampered after review';
+    await expect(acceptPracticeImportReviewBundle(tampered)).rejects.toThrow(
+      'candidate content does not match',
+    );
+  });
+
   it('creates a blank native score ready for editing without a renderer', async () => {
     const state = await createPracticeEditorWorkflow({
       createdAt: '2026-07-20T12:00:00Z',

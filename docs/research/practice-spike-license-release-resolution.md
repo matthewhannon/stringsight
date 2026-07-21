@@ -6,7 +6,9 @@
 - **Package:** `@coderline/alphatab@1.8.4`
 - **Source commit:** `022a45c8e42370f9e12e68949d11eada370da83d`
 - **Platform:** Windows/browser distribution only; macOS is out of scope
-- **Constraint:** No production code or manifest was changed
+- **Release correction:** The production package is pinned and the sanitized source/notice
+  manifests described below are now generated and checked; post-deploy URL verification remains
+  gated
 - **Not legal advice:** This is an engineering provenance and release-control record
 
 In the disposable spike, this document supplemented `practice-spike-license-provenance-audit.md`.
@@ -38,6 +40,11 @@ The release disposition is therefore:
 
 No primary evidence found supports distributing the packaged SONiVOX bytes. Their omission is a
 complete technical path for notation/import and is the recommended release baseline.
+
+The original received source tar was found to contain both SONiVOX banks and the complete
+`packages/alphatab/test-data/audio/**` fixture tree. It is therefore retained only as provenance
+evidence. The public source tar is deterministically regenerated with those two complete trees
+removed; its member manifest accounts for every retained and excluded tar member.
 
 ## 1. Soundfont-free alphaTab path
 
@@ -145,14 +152,19 @@ the exact received alphaTab source plus bounded origin evidence, or requires ups
 ## 5. Reproducible MPL Source Code Form and clean-build procedure
 
 The canonical Source Code Form is the Git tree at `022a45c...`, not the minified npm package.
-The deterministic archive record is:
+The received-archive and public sanitized-archive records are:
 
 | Field                            | Value                                                              |
 | -------------------------------- | ------------------------------------------------------------------ |
 | Git tree                         | `a13f13b60ea8b16b654a8c472c1b5826ef6b4c8f`                         |
-| `git archive --format=tar` bytes | `92,037,120`                                                       |
-| Archive SHA-256                  | `7cd6442dfaff5de12cb4bd621d626c60369ce65217ab5ed8276bdd7288387214` |
-| Root lockfile SHA-256            | `40169c8fc2728bf3652e95dd7484e747bfe5191ceef79d398cc11fd2578ef632` |
+| Received `git archive` bytes     | `92,037,120`                                                       |
+| Received archive SHA-256         | `7cd6442dfaff5de12cb4bd621d626c60369ce65217ab5ed8276bdd7288387214` |
+| Received root lockfile bytes     | `245,744`                                                          |
+| Received root lockfile SHA-256   | `f80aac6590e1875c7a0abb04d85d2dca315f76be562ef44f3833d9deedc68717` |
+| Public sanitized archive bytes   | `67,636,224`                                                       |
+| Public sanitized archive SHA-256 | `04766fe8ac5228889dfc5519fb17e2ed2af6eee4657dbce1cb05f4c56a88d518` |
+| Excluded / retained members      | `30` / `2,521`                                                     |
+| Member manifest SHA-256          | `2eff922935df9f5a5566e042f71edcef093203f6d42996a1e1ed2f14d599d6bf` |
 | Publisher-recorded Node/npm      | `24.18.0` / `11.16.0`                                              |
 | Publisher `GITHUB_RUN_NUMBER`    | `34`                                                               |
 
@@ -167,6 +179,7 @@ git -C alphatab-1.8.4 rev-parse HEAD^{tree}
 git -C alphatab-1.8.4 archive --format=tar --output=alphatab-v1.8.4-source.tar HEAD
 Get-FileHash alphatab-v1.8.4-source.tar -Algorithm SHA256
 Get-FileHash alphatab-1.8.4/package-lock.json -Algorithm SHA256
+node scripts/create-alphatab-source-bundle.mjs --input=alphatab-v1.8.4-source.tar
 Push-Location alphatab-1.8.4
 npm ci --ignore-scripts
 $env:GITHUB_RUN_NUMBER = '34'
@@ -189,11 +202,19 @@ plugin outputs. Run it only after all builds, on a disposable checkout. A second
 checkout requires restoring that manifest first. Record every command, stdout/stderr, exit code,
 tool version, environment value, output hash, and the timestamp-only normalization result.
 
+The generator verifies the exact received archive and its root lockfile, removes all and only
+`packages/alphatab/font/sonivox/**` and `packages/alphatab/test-data/audio/**`, preserves every
+retained tar record, and writes both the sanitized tar and canonical path/type/mode/size/SHA-256
+member manifest. The release checker rejects unsafe paths, duplicate or link members, bank/audio
+members or hashes, nested opaque archives, and incomplete manifests.
+
 Publication procedure:
 
-1. Upload the exact source tar to an immutable StringSight-controlled URL.
-2. Verify the uploaded object has the recorded SHA-256 and is downloadable without a developer
-   login by an ordinary recipient.
+1. Upload the sanitized source tar and canonical member manifest to an immutable
+   StringSight-controlled URL. Never upload the full received archive.
+2. Verify both uploaded objects are downloadable without a developer login by an ordinary
+   recipient, then record the immutable URL, fetched byte count, fetched archive SHA-256, fetched
+   member-manifest SHA-256, and verification timestamp.
 3. Publish the exact MPL-2.0 text, the candidate release notice, the embedded-library license texts,
    and Bravura OFL/FONTLOG beside it.
 4. Put the immutable source URL, source hash, alphaTab version/commit, and modification status in
@@ -202,7 +223,8 @@ Publication procedure:
    scripts and a modification manifest; do not point only to unmodified upstream source.
 6. Retain the source and notices for as long as the executable release is available.
 
-The source archive is reproducible from Git; the published npm gzip is not used as the source
+The received source archive is reproducible from Git, and the public archive is reproducible from
+that exact input with the repository generator. The published npm gzip is not used as the source
 artifact and need not be regenerated. The package tarball remains pinned separately by npm SRI and
 SHA-256.
 
@@ -217,10 +239,12 @@ SHA-256.
       recorded SONiVOX hash.
 - [ ] Bravura files match the baseline hashes and ship with exact OFL/FONTLOG.
 - [ ] Checkout used `core.autocrlf=false` before files were materialized.
-- [ ] Source archive tree, byte count, SHA-256, lockfile hash, Node/npm, and build number match this
-      record.
+- [x] Received archive tree, byte count, SHA-256, and root lockfile hash match this record.
+- [x] Sanitized archive and canonical member manifest match the recorded counts and hashes, with
+      only the two declared audio trees excluded.
 - [ ] Clean-build comparison has no difference other than the documented generated timestamp.
-- [ ] StringSight-controlled source URL is immutable, public to recipients, and hash-verified.
+- [ ] Post-deploy gate records an immutable recipient-accessible source URL, fetched byte count,
+      fetched archive SHA-256, fetched member-manifest SHA-256, and verification timestamp.
 - [ ] Shipped notices include MPL-2.0, alphaTab version/commit/source URL/modification status,
       TinySoundFont, SFZero, Haxe, SharpZipLib, NVorbis, libvorbis, and Bravura.
 - [ ] SBOM includes embedded code and Bravura even though alphaTab declares zero npm dependencies.

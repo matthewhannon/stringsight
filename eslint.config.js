@@ -77,6 +77,32 @@ export default defineConfig(
     rules: restrictLayers('app', 'audio', 'fusion', 'music', 'persistence', 'vision', 'workers'),
   },
   {
+    files: ['src/notation/**/*.{ts,tsx}'],
+    rules: restrictLayers(
+      'app',
+      'audio',
+      'fusion',
+      'importing',
+      'music',
+      'persistence',
+      'vision',
+      'workers',
+    ),
+  },
+  {
+    files: ['src/importing/**/*.{ts,tsx}'],
+    rules: restrictLayers(
+      'app',
+      'audio',
+      'fusion',
+      'music',
+      'notation',
+      'persistence',
+      'vision',
+      'workers',
+    ),
+  },
+  {
     files: ['src/audio/**/*.{ts,tsx}'],
     rules: restrictLayers('app', 'fusion', 'vision'),
   },

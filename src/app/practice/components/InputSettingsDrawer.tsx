@@ -69,7 +69,7 @@ export function InputSettingsDrawer({ audio, onClose, open }: InputSettingsDrawe
       id="practice-input-settings"
       onClose={onClose}
       open={open}
-      title="Microphone and take controls"
+      title="Microphone and recording"
     >
       {audio.actionError !== null && (
         <p className="practice-drawer-error" role="alert">
@@ -104,14 +104,15 @@ export function InputSettingsDrawer({ audio, onClose, open }: InputSettingsDrawe
             ))}
           </select>
         </label>
-        <button
-          className="practice-refresh-devices"
-          disabled={!capabilities.canConnect}
-          onClick={() => void audio.refreshDevices()}
-          type="button"
-        >
-          Refresh device list
-        </button>
+        {capabilities.canConnect && (
+          <button
+            className="practice-control is-quiet practice-refresh-devices"
+            onClick={() => void audio.refreshDevices()}
+            type="button"
+          >
+            Refresh device list
+          </button>
+        )}
         <dl>
           <div>
             <dt>Status</dt>
@@ -135,21 +136,24 @@ export function InputSettingsDrawer({ audio, onClose, open }: InputSettingsDrawe
           </div>
         </dl>
         <div className="practice-drawer-actions">
-          <button
-            className="is-primary"
-            disabled={!capabilities.canConnect}
-            onClick={() => void audio.connect()}
-            type="button"
-          >
-            Connect microphone
-          </button>
-          <button
-            disabled={!capabilities.canDisconnect}
-            onClick={() => void audio.disconnect()}
-            type="button"
-          >
-            Disconnect
-          </button>
+          {capabilities.canConnect && (
+            <button
+              className="practice-control is-primary"
+              onClick={() => void audio.connect()}
+              type="button"
+            >
+              Connect microphone
+            </button>
+          )}
+          {capabilities.canDisconnect && (
+            <button
+              className="practice-control is-secondary"
+              onClick={() => void audio.disconnect()}
+              type="button"
+            >
+              Disconnect
+            </button>
+          )}
         </div>
       </section>
       <section>
@@ -173,31 +177,42 @@ export function InputSettingsDrawer({ audio, onClose, open }: InputSettingsDrawe
           </div>
         </dl>
         <div className="practice-drawer-actions">
-          <button
-            className="is-primary"
-            disabled={!capabilities.canRecord && !capabilities.canStop}
-            onClick={() => void audio.toggleRecord()}
-            type="button"
-          >
-            {capabilities.canStop ? 'Stop and finalize' : 'Record take'}
-          </button>
-          <button
-            disabled={!capabilities.canPause && !capabilities.canResume}
-            onClick={() => void audio.pauseOrResume()}
-            type="button"
-          >
-            {capabilities.canResume ? 'Resume' : 'Pause'}
-          </button>
-          <button
-            disabled={!capabilities.canReplay}
-            onClick={() => void audio.replay()}
-            type="button"
-          >
-            Replay analysis
-          </button>
-          <button disabled={!capabilities.canStopReplay} onClick={audio.stopReplay} type="button">
-            Stop replay
-          </button>
+          {(capabilities.canRecord || capabilities.canStop) && (
+            <button
+              className={`practice-control ${capabilities.canStop ? 'is-destructive' : 'is-primary'}`}
+              onClick={() => void audio.toggleRecord()}
+              type="button"
+            >
+              {capabilities.canStop ? 'Stop and save take' : 'Record take'}
+            </button>
+          )}
+          {(capabilities.canPause || capabilities.canResume) && (
+            <button
+              className="practice-control is-secondary"
+              onClick={() => void audio.pauseOrResume()}
+              type="button"
+            >
+              {capabilities.canResume ? 'Resume' : 'Pause'}
+            </button>
+          )}
+          {capabilities.canReplay && (
+            <button
+              className="practice-control is-secondary"
+              onClick={() => void audio.replay()}
+              type="button"
+            >
+              Review take
+            </button>
+          )}
+          {capabilities.canStopReplay && (
+            <button
+              className="practice-control is-secondary"
+              onClick={audio.stopReplay}
+              type="button"
+            >
+              Stop review
+            </button>
+          )}
         </div>
       </section>
       <section>

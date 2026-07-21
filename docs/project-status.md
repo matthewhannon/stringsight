@@ -5,12 +5,14 @@
 
 ## Current product
 
-StringSight opens into the approved score/tab-centered desktop Practice Workspace at `main`
-`0b23c6e`. The active shell provides componentized Edit, Practice, and Review modes, dual
-score/video canvases with focus modes, real microphone monitoring/recording/replay integration, and
-explicitly labelled placeholders for the future score, document, shared-transport, video, MIDI,
-and assessment services. The former rack/hardware presentation is superseded and archived; its
-valuable audio behavior and evidence integrity remain protected.
+StringSight opens into the approved score/tab-centered desktop Practice Workspace. The visible
+workspace now creates and edits a canonical guitar score, renders replaceable notation, exposes a
+keyboard-navigable authored outline, reviews only exact fixture-backed score/MIDI imports, and
+exports authored-document MIDI with explicit loss reporting. Real microphone
+monitoring/recording/replay integration remains protected. Nonfunctional playback, seeking,
+markers, metronome, count-in, tempo, fake video, and fake assessment controls have been removed;
+the interface presents passive readiness instead of mock transport behavior. The former
+rack/hardware presentation remains archived.
 
 The protected implemented audio slice includes:
 
@@ -73,7 +75,7 @@ macOS remains a portability goal without a current support claim. Single-machine
 observations; implementing items must define smoke thresholds, while formal percentile budgets stay
 pre-commercial.
 
-Checklist Items 10 through 12 are complete. The renderer-independent guitar model establishes stable
+Checklist Items 10 through 13 are complete. The renderer-independent guitar model establishes stable
 coordinates, derived pitch/geometry, bounded voicing enumeration, fingering, and transition cost.
 The accepted Practice System contracts add PPQ-960 authored documents, immutable revisions,
 evidence snapshots, takes, media identities and availability, reference/take sync maps, assessments,
@@ -81,12 +83,14 @@ deterministic import review, canonical hashes/goldens, trusted integrity verific
 v1 migrations. The accepted editor core adds atomic authored commands, stable semantic selection,
 bounded history, monotonic canonical undo/redo revisions, native create/save/open, storage-failure
 safety, and accessible structured score inspection with renderer-independent keyboard navigation.
+Item 13 connects that workflow to the visible workspace through real notation, exact score/SMF
+review, and authored MIDI export. Renderer geometry remains ephemeral; imported candidates never
+replace the working score before explicit verified acceptance; observed-session and authored MIDI
+stay separate.
 
-This editor functionality is currently headless: it is tested and ready for UI consumption but is
-not yet connected to the visible score workspace. The next production implementation milestone is
-Checklist Item 13, which integrates the score UI through replaceable notation, approved import, and
-authored-MIDI adapters. Visible score editing/import, authoritative transport, video, alignment,
-and assessment surfaces remain placeholders until their implementing items.
+The next production implementation milestone is Checklist Item 14, the shared application-owned
+AudioRuntime. Authoritative practice playback, synchronized video, durable persistence, alignment,
+and assessment remain future checklist work and are not presented as working controls.
 
 The executable dependency order is maintained in `BUILD_CHECKLIST.md`. Live computer vision,
 fusion, and GPT interpretation remain deferred until after the complete score/practice/take product.

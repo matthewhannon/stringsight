@@ -12,54 +12,83 @@ import { AppHeader } from './components/AppHeader';
 import { EditInspector } from './components/EditInspector';
 import { InputHud } from './components/InputHud';
 import { InputSettingsDrawer } from './components/InputSettingsDrawer';
+import { ImportExportDialog } from './components/ImportExportDialog';
 import { ReviewPanel } from './components/ReviewPanel';
 import { ScorePanel } from './components/ScorePanel';
 import { SetlistSidebar } from './components/SetlistSidebar';
 import { Transport } from './components/Transport';
 import { VideoPanel } from './components/VideoPanel';
 import { WorkspaceToolbar } from './components/WorkspaceToolbar';
-import type { PracticeLayout, ScoreView, VideoSource, WorkspaceMode } from './types';
+import type { PracticeLayout, ScoreView, WorkspaceMode } from './types';
 import { usePracticeAudio } from './usePracticeAudio';
+import { usePracticeEditor } from './usePracticeEditor';
 
 type AppStyle = CSSProperties & { '--practice-score-width': string };
+type UtilityPanel = 'advanced' | 'analysis' | 'input' | null;
+type DocumentTransfer = 'export' | 'import' | null;
+
+type PracticeViewport = {
+  height: number;
+  scale: number;
+  width: number;
+};
+
+const readPracticeViewport = (): PracticeViewport | null => {
+  if (typeof window === 'undefined' || window.visualViewport == null) return null;
+  return {
+    height: window.visualViewport.height,
+    scale: window.visualViewport.scale,
+    width: window.visualViewport.width,
+  };
+};
 
 export function PracticeApp() {
   const audio = usePracticeAudio();
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [analysisOpen, setAnalysisOpen] = useState(false);
-  const [countIn, setCountIn] = useState(true);
-  const [inputSettingsOpen, setInputSettingsOpen] = useState(false);
+  const editor = usePracticeEditor();
+  const [utilityPanel, setUtilityPanel] = useState<UtilityPanel>(null);
+  const [documentTransfer, setDocumentTransfer] = useState<DocumentTransfer>(null);
   const [layout, setLayout] = useState<PracticeLayout>('split');
   const [libraryOpen, setLibraryOpen] = useState(true);
-  const [looping, setLooping] = useState(true);
-  const [metronome, setMetronome] = useState(true);
   const [mode, setMode] = useState<WorkspaceMode>('practice');
-  const [playing, setPlaying] = useState(false);
   const [scoreView, setScoreView] = useState<ScoreView>('combined');
   const [scoreWidth, setScoreWidth] = useState(58);
-  const [tempo, setTempo] = useState(86);
   const [videoFit, setVideoFit] = useState<'fill' | 'fit'>('fit');
-  const [videoSource, setVideoSource] = useState<VideoSource>('reference');
+  const [practiceViewport, setPracticeViewport] = useState(readPracticeViewport);
   const splitStage = useRef<HTMLDivElement>(null);
+  const activeDocument = editor.state?.history.document;
+  const documentTitle = activeDocument?.metadata.title ?? 'Creating blank score…';
+  const authoredEventCount =
+    activeDocument?.tracks.reduce(
+      (trackCount, track) =>
+        trackCount +
+        track.voices.reduce((voiceCount, voice) => voiceCount + voice.events.length, 0),
+      0,
+    ) ?? 0;
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target;
-      if (event.code !== 'Space' || !(target instanceof HTMLElement)) return;
-      if (['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName)) return;
-      if (target.isContentEditable || target.closest('[contenteditable]') !== null) return;
-      event.preventDefault();
-      setPlaying((value) => !value);
+    const viewport = window.visualViewport;
+    if (viewport == null) return;
+
+    const handleViewportResize = () => setPracticeViewport(readPracticeViewport());
+    viewport.addEventListener('resize', handleViewportResize);
+    viewport.addEventListener('scroll', handleViewportResize);
+    return () => {
+      viewport.removeEventListener('resize', handleViewportResize);
+      viewport.removeEventListener('scroll', handleViewportResize);
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const constrainedViewport =
+    practiceViewport !== null && practiceViewport.scale > 1 ? practiceViewport : null;
+  const compactVisualViewport =
+    constrainedViewport !== null &&
+    constrainedViewport.width > 980 &&
+    constrainedViewport.width <= 1100;
 
   const handleModeChange = (nextMode: WorkspaceMode) => {
     setMode(nextMode);
     setLayout('split');
-    setAdvancedOpen(false);
-    setInputSettingsOpen(false);
+    setUtilityPanel(null);
   };
 
   const setSplitFromPointer = (clientX: number) => {
@@ -86,15 +115,40 @@ export function PracticeApp() {
   return (
     <main
       className={`practice-app mode-${mode} layout-${layout} ${libraryOpen ? '' : 'library-closed'}`}
-      style={{ '--practice-score-width': `${String(scoreWidth)}%` } as AppStyle}
+      data-visual-viewport={compactVisualViewport ? 'compact' : undefined}
+      style={
+        {
+          '--practice-score-width': `${String(scoreWidth)}%`,
+          height:
+            constrainedViewport === null ? undefined : `${String(constrainedViewport.height)}px`,
+          width:
+            constrainedViewport === null ? undefined : `${String(constrainedViewport.width)}px`,
+        } as AppStyle
+      }
     >
       <AppHeader
+        canRedo={editor.canRedo}
+        canUndo={editor.canUndo}
+        documentStatus={editor.status}
+        documentTitle={documentTitle}
         libraryOpen={libraryOpen}
         mode={mode}
         onModeChange={handleModeChange}
+        onRedo={() => void editor.redo()}
         onToggleLibrary={() => setLibraryOpen((value) => !value)}
+        onUndo={() => void editor.undo()}
       />
-      <SetlistSidebar onClose={() => setLibraryOpen(false)} />
+      <SetlistSidebar
+        documentTitle={documentTitle}
+        hasAuthoredChanges={editor.state?.history.isDirty ?? false}
+        onClose={() => setLibraryOpen(false)}
+        onCreateNew={() => {
+          void editor.createNew();
+          handleModeChange('edit');
+        }}
+        onExport={() => setDocumentTransfer('export')}
+        onImport={() => setDocumentTransfer('import')}
+      />
 
       <section className="practice-workspace" aria-label={`${mode} workspace`}>
         {mode === 'review' ? (
@@ -102,19 +156,23 @@ export function PracticeApp() {
         ) : (
           <div className="practice-workspace-shell">
             <WorkspaceToolbar
-              advancedOpen={advancedOpen}
+              advancedOpen={utilityPanel === 'advanced'}
+              authoredSummary={
+                authoredEventCount === 0
+                  ? 'Blank score'
+                  : `${String(authoredEventCount)} authored ${authoredEventCount === 1 ? 'event' : 'events'}`
+              }
               layout={layout}
               mode={mode}
               onAdvancedToggle={() => {
-                setAdvancedOpen((value) => !value);
-                setInputSettingsOpen(false);
+                setUtilityPanel((value) => (value === 'advanced' ? null : 'advanced'));
               }}
               onLayoutChange={setLayout}
               onScoreViewChange={setScoreView}
               scoreView={scoreView}
             />
             <div className="practice-split-stage" ref={splitStage}>
-              <ScorePanel playing={playing} view={scoreView} />
+              <ScorePanel editor={editor} scoreView={scoreView} />
               {mode === 'practice' && layout === 'split' && (
                 <div
                   aria-label="Resize tab and video panels"
@@ -138,14 +196,9 @@ export function PracticeApp() {
                 />
               )}
               {mode === 'edit' ? (
-                <EditInspector />
+                <EditInspector editor={editor} />
               ) : (
-                <VideoPanel
-                  fit={videoFit}
-                  onFitChange={setVideoFit}
-                  onSourceChange={setVideoSource}
-                  source={videoSource}
-                />
+                <VideoPanel fit={videoFit} onFitChange={setVideoFit} />
               )}
             </div>
           </div>
@@ -154,39 +207,44 @@ export function PracticeApp() {
 
       <InputHud
         audio={audio}
-        detailsOpen={analysisOpen}
-        onDetailsToggle={() => setAnalysisOpen((value) => !value)}
+        detailsOpen={utilityPanel === 'analysis'}
+        onConnect={() => void audio.connect()}
+        onDetailsToggle={() =>
+          setUtilityPanel((value) => (value === 'analysis' ? null : 'analysis'))
+        }
         onSettingsToggle={() => {
-          setInputSettingsOpen((value) => !value);
-          setAdvancedOpen(false);
+          setUtilityPanel((value) => (value === 'input' ? null : 'input'));
         }}
-        settingsOpen={inputSettingsOpen}
+        settingsOpen={utilityPanel === 'input'}
       />
-      <Transport
-        audio={audio}
-        countIn={countIn}
-        looping={looping}
-        metronome={metronome}
-        onCountInToggle={() => setCountIn((value) => !value)}
-        onLoopToggle={() => setLooping((value) => !value)}
-        onMetronomeToggle={() => setMetronome((value) => !value)}
-        onPlayingChange={setPlaying}
-        onTempoChange={setTempo}
-        playing={playing}
-        tempo={tempo}
-      />
+      <Transport audio={audio} />
 
-      <AnalysisDetails audio={audio} open={analysisOpen} />
+      <AnalysisDetails
+        audio={audio}
+        onClose={() => setUtilityPanel(null)}
+        open={utilityPanel === 'analysis'}
+      />
       <InputSettingsDrawer
         audio={audio}
-        onClose={() => setInputSettingsOpen(false)}
-        open={inputSettingsOpen}
+        onClose={() => setUtilityPanel(null)}
+        open={utilityPanel === 'input'}
       />
       <AdvancedAnalysisDrawer
         audio={audio}
-        onClose={() => setAdvancedOpen(false)}
-        open={advancedOpen}
+        onClose={() => setUtilityPanel(null)}
+        open={utilityPanel === 'advanced'}
       />
+      {documentTransfer !== null && (
+        <ImportExportDialog
+          editor={editor}
+          initialSection={documentTransfer}
+          onAccepted={() => {
+            setDocumentTransfer(null);
+            handleModeChange('edit');
+          }}
+          onClose={() => setDocumentTransfer(null)}
+        />
+      )}
     </main>
   );
 }

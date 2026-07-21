@@ -1,15 +1,34 @@
 import type { WorkspaceMode } from '../types';
+import type { PracticeDocumentStatus } from '../usePracticeEditor';
+import { Icon } from './Icon';
 
 type AppHeaderProps = {
+  canRedo: boolean;
+  canUndo: boolean;
+  documentStatus: PracticeDocumentStatus;
+  documentTitle: string;
   libraryOpen: boolean;
   mode: WorkspaceMode;
   onModeChange: (mode: WorkspaceMode) => void;
+  onRedo: () => void;
   onToggleLibrary: () => void;
+  onUndo: () => void;
 };
 
 const modes: readonly WorkspaceMode[] = ['edit', 'practice', 'review'];
 
-export function AppHeader({ libraryOpen, mode, onModeChange, onToggleLibrary }: AppHeaderProps) {
+export function AppHeader({
+  canRedo,
+  canUndo,
+  documentStatus,
+  documentTitle,
+  libraryOpen,
+  mode,
+  onModeChange,
+  onRedo,
+  onToggleLibrary,
+  onUndo,
+}: AppHeaderProps) {
   return (
     <header className="practice-topbar">
       <div className="practice-brand-row">
@@ -18,8 +37,8 @@ export function AppHeader({ libraryOpen, mode, onModeChange, onToggleLibrary }: 
           <span>StringSight</span>
         </div>
         <div className="practice-document-title">
-          <strong>Neon River — lead study</strong>
-          <span>Demo document · unsaved</span>
+          <strong>{documentTitle}</strong>
+          <span aria-live="polite">{documentStatus}</span>
         </div>
       </div>
 
@@ -27,7 +46,7 @@ export function AppHeader({ libraryOpen, mode, onModeChange, onToggleLibrary }: 
         {modes.map((item) => (
           <button
             aria-pressed={mode === item}
-            className={mode === item ? 'is-active' : ''}
+            className={`practice-control is-toggle ${mode === item ? 'is-active' : ''}`.trim()}
             key={item}
             onClick={() => onModeChange(item)}
             type="button"
@@ -44,20 +63,29 @@ export function AppHeader({ libraryOpen, mode, onModeChange, onToggleLibrary }: 
           Private on this device
         </span>
         <button
-          aria-label={libraryOpen ? 'Hide setlist' : 'Show setlist'}
-          className="practice-icon-button"
-          onClick={onToggleLibrary}
+          className="practice-control is-quiet"
+          disabled={!canUndo}
+          onClick={onUndo}
           type="button"
         >
-          ☰
+          Undo
         </button>
         <button
-          className="practice-save-button"
-          disabled
-          title="Document persistence is not connected yet"
+          className="practice-control is-quiet"
+          disabled={!canRedo}
+          onClick={onRedo}
           type="button"
         >
-          Save unavailable
+          Redo
+        </button>
+        <button
+          aria-label={libraryOpen ? 'Hide setlist' : 'Show setlist'}
+          className="practice-control is-icon practice-icon-button"
+          onClick={onToggleLibrary}
+          title={libraryOpen ? 'Hide setlist' : 'Show setlist'}
+          type="button"
+        >
+          <Icon name="menu" />
         </button>
       </div>
     </header>

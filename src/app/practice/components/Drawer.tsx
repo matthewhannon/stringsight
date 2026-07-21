@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { Icon } from './Icon';
 
 type DrawerProps = {
   children: ReactNode;
@@ -59,11 +60,13 @@ export function Drawer({
         </div>
         <button
           aria-label={`Close ${eyebrow.toLowerCase()}`}
+          className="practice-control is-icon"
           onClick={onClose}
           ref={closeButton}
+          title={`Close ${eyebrow.toLowerCase()}`}
           type="button"
         >
-          ×
+          <Icon name="close" />
         </button>
       </header>
       {children}

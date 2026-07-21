@@ -187,27 +187,143 @@
   color: var(--color-text-quiet);
   font-size: var(--type-label);
 }
-.practice-midi-placeholder {
+.practice-import-overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
   display: grid;
-  grid-template-rows: repeat(6, 25px);
-  margin-top: 12px;
+  padding: 28px;
+  overflow: auto;
+  background: rgb(4 8 12 / 78%);
+  place-items: start center;
+}
+.practice-import-dialog {
+  width: min(900px, 100%);
+  max-height: calc(100vh - 56px);
+  padding: 20px;
+  overflow: auto;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-shell);
+  background: var(--color-shell);
+  box-shadow: var(--shadow-paper);
+}
+.practice-import-dialog > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.practice-import-dialog h2,
+.practice-import-dialog h3,
+.practice-import-dialog h4,
+.practice-import-dialog p {
+  margin-top: 0;
+}
+.practice-import-dialog > header p,
+.practice-import-dialog section > p,
+.practice-import-review > p {
+  color: var(--color-text-quiet);
+  font-size: var(--type-caption);
+  line-height: 1.5;
+}
+.practice-import-dialog > header > button {
+  min-width: 34px;
+  min-height: 34px;
+}
+.practice-transfer-switch {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+.practice-import-dialog section {
+  margin-top: 18px;
+  padding: 16px;
   border: 1px solid var(--color-border);
-  background: repeating-linear-gradient(
-    to right,
-    transparent 0 24%,
-    var(--color-surface-hover) 24% 25%
-  );
+  border-radius: 8px;
+  background: var(--color-shell-deep);
 }
-.practice-midi-placeholder div {
-  position: relative;
-  border-bottom: 1px solid var(--color-surface-hover);
+.practice-import-dialog label {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  color: var(--color-text-muted);
+  font-size: var(--type-caption);
 }
-.practice-midi-placeholder i {
-  position: absolute;
-  top: 6px;
-  left: var(--midi-left);
-  width: var(--midi-width);
-  height: 12px;
-  border-radius: 3px;
-  background: var(--color-accent);
+.practice-import-dialog select,
+.practice-import-dialog input[type='file'] {
+  min-height: 38px;
+  padding: 7px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.practice-import-dialog button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  cursor: pointer;
+}
+.practice-import-dialog button:disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+.practice-import-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.practice-import-review,
+.practice-midi-export-summary,
+.practice-import-dialog [role='alertdialog'] {
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+}
+.practice-import-review > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.practice-import-review > header span {
+  color: var(--color-accent-strong);
+  font-family: var(--font-mono);
+  font-size: var(--type-label);
+}
+.practice-import-review dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.practice-import-review dl > div {
+  padding: 8px;
+  background: var(--color-shell-deep);
+}
+.practice-import-review dt,
+.practice-import-review dd {
+  font-size: var(--type-label);
+}
+.practice-import-review dd {
+  margin: 4px 0 0;
+  color: var(--color-text);
+}
+.practice-import-review ul,
+.practice-midi-export-summary ul {
+  padding-left: 20px;
+  color: var(--color-text-muted);
+  font-size: var(--type-caption);
+  line-height: 1.5;
+}
+.practice-import-error {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
 }

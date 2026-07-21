@@ -1,53 +1,59 @@
 import type { PracticeAudioModel } from '../usePracticeAudio';
+import { Drawer } from './Drawer';
 
 type AnalysisDetailsProps = {
   audio: PracticeAudioModel;
+  onClose: () => void;
   open: boolean;
 };
 
-export function AnalysisDetails({ audio, open }: AnalysisDetailsProps) {
+export function AnalysisDetails({ audio, onClose, open }: AnalysisDetailsProps) {
   const noteEvent = audio.noteAnalysis.currentEvent;
   const chordEvent = audio.chordAnalysis.currentChord;
   const notes = noteEvent?.candidates.slice(0, 3) ?? [];
   const chords = chordEvent?.candidates.slice(0, 3) ?? [];
 
   return (
-    <aside
-      className={`practice-analysis-details ${open ? 'is-open' : ''}`}
-      aria-hidden={!open}
-      aria-label="Analysis details"
+    <Drawer
+      eyebrow="Live analysis"
       id="practice-analysis-details"
+      onClose={onClose}
+      open={open}
+      title="What StringSight hears"
     >
+      <p className="practice-drawer-intro">
+        Start here for the clearest interpretation of your live guitar input.
+      </p>
       <section>
-        <span>Detected notes</span>
+        <span>Notes</span>
         <strong>
           {notes.length === 0
-            ? 'No stable note yet'
+            ? 'No clear note yet'
             : notes.map(({ noteName }) => noteName).join(' · ')}
         </strong>
-        <p>Live candidates remain provisional while the microphone is monitoring.</p>
+        <p>Results can change as you sustain or release a note.</p>
       </section>
       <section>
-        <span>Ranked chords</span>
+        <span>Chord matches</span>
         <strong>
           {chords.length === 0
-            ? 'Insufficient evidence'
+            ? 'Not enough sound yet'
             : chords.map(({ symbol }) => symbol).join(' · ')}
         </strong>
         <p>
           {chords.length === 0
             ? 'Play two or more clear notes together.'
-            : 'Alternatives are preserved instead of overwritten.'}
+            : 'The strongest match appears first.'}
         </p>
       </section>
       <section>
-        <span>Lifecycle</span>
+        <span>Current state</span>
         <strong>
           {chordEvent?.lifecycle ??
-            (audio.capture.connectionState === 'monitoring' ? 'Live' : 'Inactive')}
+            (audio.capture.connectionState === 'monitoring' ? 'Listening' : 'Not connected')}
         </strong>
-        <p>Original detector evidence is saved with completed audio sessions.</p>
+        <p>Open Advanced analysis when you need detailed evidence and diagnostics.</p>
       </section>
-    </aside>
+    </Drawer>
   );
 }

@@ -1,5 +1,4 @@
 import type { PracticeAudioModel } from '../usePracticeAudio';
-import { PlaceholderBadge } from './PlaceholderBadge';
 
 type ReviewPanelProps = {
   audio: PracticeAudioModel;
@@ -16,68 +15,26 @@ export function ReviewPanel({ audio, onPractice }: ReviewPanelProps) {
     <section className="practice-review-panel" aria-labelledby="practice-review-title">
       <header>
         <div>
-          <span>{hasTake ? 'Current local session' : 'No completed take selected'}</span>
-          <h1 id="practice-review-title">Session evidence review</h1>
+          <span>{hasTake ? 'Current local recording' : 'Record a take to begin'}</span>
+          <h1 id="practice-review-title">Recording review</h1>
         </div>
-        <PlaceholderBadge>Assessment placeholder</PlaceholderBadge>
       </header>
-      <div className="practice-review-chart">
-        <div className="practice-review-measures">
-          {[12, 13, 14, 15].map((measure) => (
-            <span key={measure}>
-              M{measure}
-              <small>
-                {measure === 12 ? 'Em7' : measure === 13 ? 'Cmaj7' : measure === 14 ? 'G6' : 'D/F♯'}
-              </small>
-            </span>
-          ))}
-        </div>
-        <div>
-          <label>REFERENCE PREVIEW</label>
-          <div className="practice-review-wave is-reference" />
-        </div>
-        <div>
-          <label>{hasTake ? 'CURRENT TAKE' : 'TAKE PLACEHOLDER'}</label>
-          <div className="practice-review-wave is-take" />
-        </div>
-      </div>
       <div className="practice-review-cards">
         <section>
-          <span>Captured evidence</span>
+          <span>{hasTake ? 'Detected while recording' : 'No recording selected'}</span>
           <h2>
-            {noteCount} notes · {chordCount} chords
+            {hasTake
+              ? `${String(noteCount)} notes · ${String(chordCount)} chords`
+              : 'Nothing to review yet'}
           </h2>
           <p>
             {hasTake
-              ? 'This count comes from the current local audio session.'
-              : 'Record a take to populate real evidence.'}
+              ? 'These results come from the current recording on this device.'
+              : 'Connect a microphone and record a take to see detected notes and chords here.'}
           </p>
-          <button onClick={onPractice} type="button">
+          <button className="practice-control is-primary" onClick={onPractice} type="button">
             Return to practice
           </button>
-        </section>
-        <section>
-          <span>Weakest transition</span>
-          <h2>Not assessed yet</h2>
-          <p>
-            Expected-versus-observed timing and weak-range navigation are planned but not
-            implemented.
-          </p>
-          <PlaceholderBadge compact>Future assessment</PlaceholderBadge>
-        </section>
-        <section>
-          <span>A/B comparison concept</span>
-          <h2>Reference ↔ take</h2>
-          <p>
-            The waveforms above are illustrative only. Shared seeking and source blending require
-            reference playback and alignment.
-          </p>
-          <input
-            aria-label="Reference and take blend placeholder"
-            defaultValue="50"
-            disabled
-            type="range"
-          />
         </section>
       </div>
     </section>

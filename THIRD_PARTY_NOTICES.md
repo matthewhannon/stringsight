@@ -7,6 +7,16 @@ with the application. Complete copyright and license text ships in
 
 ## Runtime dependencies
 
+### `@coderline/alphatab`
+
+- Project: alphaTab
+- Version: 1.8.4
+- Source: https://github.com/CoderLine/alphaTab/tree/022a45c8e42370f9e12e68949d11eada370da83d
+- License: MPL-2.0
+- Corresponding source and integrated-library notices:
+  `/open-source/alphatab-1.8.4/ALPHATAB-NOTICE.md`
+- Distribution profile: player disabled, no synthesis bank, exact unmodified Bravura 1.38
+
 ### `react`
 
 - Project: React

@@ -1,4 +1,6 @@
 import { PracticeDocumentSchema, type PracticeDocument } from '../shared/contracts/practice';
+import type { PracticeImportReviewBundle } from '../shared/contracts/practice-import';
+import { verifyPracticeImportReviewBundle } from '../shared/practice-import-integrity';
 import { executeEditorTransaction, type EditorCommand, type EditorIssue } from './commands';
 import {
   EDITOR_HISTORY_LIMITS,
@@ -154,6 +156,17 @@ export async function createPracticeEditorWorkflow(
     false,
     options,
   );
+  assertValidStateInteraction(state);
+  return state;
+}
+
+/** Re-verifies an import at acceptance and keeps only its canonical document in fresh history. */
+export async function acceptPracticeImportReviewBundle(
+  bundleInput: PracticeImportReviewBundle,
+  options: PracticeEditorWorkflowOptions = {},
+): Promise<PracticeEditorWorkflowState> {
+  const bundle = await verifyPracticeImportReviewBundle(bundleInput);
+  const state = workflowFromTrustedDocument(bundle.draft.candidateDocument, false, options);
   assertValidStateInteraction(state);
   return state;
 }

@@ -2,6 +2,7 @@ import type { PracticeLayout, ScoreView, WorkspaceMode } from '../types';
 
 type WorkspaceToolbarProps = {
   advancedOpen: boolean;
+  authoredSummary: string;
   layout: PracticeLayout;
   mode: WorkspaceMode;
   onAdvancedToggle: () => void;
@@ -17,13 +18,14 @@ const layouts: readonly { id: PracticeLayout; label: string }[] = [
 ];
 
 const views: readonly { id: ScoreView; label: string }[] = [
-  { id: 'combined', label: 'Tab + notation' },
-  { id: 'tab', label: 'Tab only' },
-  { id: 'fit-range', label: 'Fit range' },
+  { id: 'combined', label: 'Combined page' },
+  { id: 'tab', label: 'Tab-only page' },
+  { id: 'fit-range', label: 'Expanded notation continuous' },
 ];
 
 export function WorkspaceToolbar({
   advancedOpen,
+  authoredSummary,
   layout,
   mode,
   onAdvancedToggle,
@@ -34,9 +36,9 @@ export function WorkspaceToolbar({
   return (
     <header className="practice-workspace-toolbar">
       <div className="practice-range-meta">
-        <strong>Lead guitar</strong>
-        <span>Measures 12–15 selected</span>
-        <small>Em · 4/4</small>
+        <strong>Guitar</strong>
+        <span>{authoredSummary}</span>
+        <small>Your guitar arrangement</small>
       </div>
       <div className="practice-layout-switch" role="group" aria-label="Practice layout">
         {layouts.map((item) => (
@@ -52,7 +54,7 @@ export function WorkspaceToolbar({
         ))}
       </div>
       <div className="practice-toolbar-actions">
-        <div role="group" aria-label="Score view">
+        <div aria-label="Notation view" role="group">
           {views.map((item) => (
             <button
               aria-pressed={scoreView === item.id}

@@ -49,64 +49,35 @@ const audioModel = (
   toggleRecord: vi.fn(),
 });
 
-const renderTransport = (audio: PracticeAudioModel, playing = false, tempo = 96) => {
-  const callbacks = {
-    onCountInToggle: vi.fn(),
-    onLoopToggle: vi.fn(),
-    onMetronomeToggle: vi.fn(),
-    onPlayingChange: vi.fn(),
-    onTempoChange: vi.fn(),
-  };
-  render(
-    <Transport
-      audio={audio}
-      countIn={false}
-      looping={false}
-      metronome={false}
-      {...callbacks}
-      playing={playing}
-      tempo={tempo}
-    />,
-  );
-  return callbacks;
-};
-
 describe('Transport', () => {
-  it('shows disconnected placeholder state and dispatches playback/options/tempo actions', async () => {
-    const user = userEvent.setup();
-    const callbacks = renderTransport(audioModel(), false, 40);
-    expect(screen.getByRole('button', { name: 'Connect microphone to record' })).toBeDisabled();
-    expect(screen.getByText('00:31.8')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Play placeholder reference' }));
-    await user.click(screen.getByRole('button', { name: 'Loop range' }));
-    await user.click(screen.getByRole('button', { name: 'Metronome' }));
-    await user.click(screen.getByRole('button', { name: /Count-in/ }));
-    await user.click(screen.getByRole('button', { name: 'Decrease tempo' }));
-    expect(callbacks.onPlayingChange).toHaveBeenCalledWith(true);
-    expect(callbacks.onLoopToggle).toHaveBeenCalledOnce();
-    expect(callbacks.onMetronomeToggle).toHaveBeenCalledOnce();
-    expect(callbacks.onCountInToggle).toHaveBeenCalledOnce();
-    expect(callbacks.onTempoChange).toHaveBeenCalledWith(40);
+  it('shows passive readiness without false playback, seeking, or marker controls', () => {
+    render(<Transport audio={audioModel()} />);
+
+    expect(screen.getByText('Recording starts from the microphone controls')).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: /play|previous|next|marker|seek/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /loop|metronome|count-in/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
   });
 
-  it('records from an enabled idle state and caps tempo increases', async () => {
+  it('exposes recording only when the real capture capability is available', async () => {
     const user = userEvent.setup();
-    const audio = audioModel('idle', 1_234, true);
-    const callbacks = renderTransport(audio, true, 180);
-    expect(screen.getByRole('button', { name: 'Record take' })).toBeEnabled();
-    expect(screen.getByText('00:01.2')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Record take' }));
-    await user.click(screen.getByRole('button', { name: 'Pause placeholder playback' }));
-    await user.click(screen.getByRole('button', { name: 'Increase tempo' }));
+    const audio = audioModel('idle', 0, true);
+    render(<Transport audio={audio} />);
+
+    const record = screen.getByRole('button', { name: 'Record take' });
+    expect(record.querySelector('svg')).not.toBeNull();
+    await user.click(record);
     expect(audio.toggleRecord).toHaveBeenCalledOnce();
-    expect(callbacks.onPlayingChange).toHaveBeenCalledWith(false);
-    expect(callbacks.onTempoChange).toHaveBeenCalledWith(180);
   });
 
   it.each(['recording', 'paused'] as const)('shows %s as an active local recording', (state) => {
-    renderTransport(audioModel(state, 61_250, true));
+    render(<Transport audio={audioModel(state, 61_250, true)} />);
     expect(screen.getByRole('button', { name: 'Stop recording' })).toBeEnabled();
     expect(screen.getByText('01:01.2')).toBeVisible();
-    expect(screen.getByText('Recording locally')).toBeVisible();
+    expect(screen.getByText('Recording on this device')).toBeVisible();
   });
 });
