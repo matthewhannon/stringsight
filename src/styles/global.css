@@ -507,12 +507,20 @@ select:disabled {
   grid-template-columns: 1fr;
 }
 
-.chord-analysis-console--expanded {
-  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.7fr);
-}
-
 .current-note.chord-summary-display {
   min-height: 230px;
+}
+
+.chord-analysis-console > .analysis-diagnostics {
+  margin: 0 30px;
+  padding: 22px 0;
+  border-top: 1px solid rgb(168 216 195 / 15%);
+  border-left: 0;
+  background: transparent;
+}
+
+.chord-analysis-console > .chord-timeline {
+  margin: 0 30px 30px;
 }
 
 .chord-analysis-evidence {
@@ -554,10 +562,19 @@ select:disabled {
 
 .chord-analysis-footer {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   margin-top: 22px;
   padding-top: 12px;
   border-top: 1px solid rgb(255 255 255 / 6%);
+}
+
+.chord-analysis-footer > span {
+  color: #6f7974;
+  font-family: var(--rack-font-control, monospace);
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
 .chord-analysis-footer button {

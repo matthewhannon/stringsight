@@ -113,6 +113,8 @@ describe('PolyphonicAnalysisPanel', () => {
     expect(screen.queryByRole('button', { name: 'Responsive' })).not.toBeInTheDocument();
     expect(screen.queryByText('0 events')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Chord analysis diagnostics')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Pitch-class energy')).toBeVisible();
+    expect(screen.getByText('Note spread')).toBeVisible();
 
     const details = screen.getByRole('button', { name: 'Analysis details' });
     expect(details).toHaveAttribute('aria-expanded', 'false');
@@ -125,6 +127,8 @@ describe('PolyphonicAnalysisPanel', () => {
     expect(screen.getByText('0 events')).toBeVisible();
     expect(screen.getByLabelText('Chord analysis diagnostics')).toBeVisible();
     expect(screen.getByText('accurate')).toBeVisible();
+    expect(screen.queryByLabelText('Pitch-class energy')).not.toBeInTheDocument();
+    expect(screen.getByText('Chord details')).toBeVisible();
   });
 
   it('keeps a concise chord summary visible and reveals detailed evidence on demand', () => {
@@ -159,18 +163,22 @@ describe('PolyphonicAnalysisPanel', () => {
 
     expect(screen.getByRole('heading', { name: 'Resolve notes played together.' })).toBeVisible();
     expect(screen.getByText('Tracking chord')).toBeVisible();
-    expect(screen.getByText('C')).toBeVisible();
+    expect(screen.getAllByText('C')).toHaveLength(2);
     expect(screen.getByText('86% match strength')).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent('Model finalization is unavailable.');
     expect(screen.queryByText('Am7')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Pitch-class energy')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Chord analysis diagnostics')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('list', { name: 'Latest chord events, newest first' }),
     ).not.toBeInTheDocument();
+    const chromaBars = screen.getByLabelText('Pitch-class energy').querySelectorAll('i');
+    expect(chromaBars).toHaveLength(12);
+    expect(chromaBars[0]?.style.getPropertyValue('--meter-scale')).toBe('0.3');
+    expect(chromaBars[7]?.style.getPropertyValue('--meter-scale')).toBe('0.45');
 
     fireEvent.click(screen.getByRole('button', { name: 'Analysis details' }));
 
+    expect(screen.queryByLabelText('Pitch-class energy')).not.toBeInTheDocument();
     expect(screen.getAllByText('C').length).toBeGreaterThan(1);
     expect(screen.getByText('Am7')).toBeVisible();
     expect(screen.getByText('Csus4')).toBeVisible();
@@ -195,15 +203,20 @@ describe('PolyphonicAnalysisPanel', () => {
     expect(screen.getByText('125.6 ms / 3 windows')).toBeVisible();
     const confidenceMeter = screen.getByLabelText('Chord match strength').querySelector('span');
     expect(confidenceMeter?.style.getPropertyValue('--meter-scale')).toBe('0.86');
-    const chromaBars = screen.getByLabelText('Pitch-class energy').querySelectorAll('i');
-    expect(chromaBars).toHaveLength(12);
-    expect(chromaBars[0]?.style.getPropertyValue('--meter-scale')).toBe('0.3');
-    expect(chromaBars[7]?.style.getPropertyValue('--meter-scale')).toBe('0.45');
     expect(screen.getAllByText('Template C E G').length).toBeGreaterThan(0);
+
+    const console = screen.getByText('Tracking chord').closest<HTMLElement>('.analysis-console');
+    if (console === null)
+      throw new Error('Expected chord content to render in an analysis console.');
+    expect(within(console).getByLabelText('Chord analysis diagnostics')).toBeVisible();
+    expect(
+      within(console).getByRole('list', { name: 'Latest chord events, newest first' }),
+    ).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Hide analysis details' }));
     expect(screen.queryByText('Am7')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Chord analysis diagnostics')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Pitch-class energy')).toBeVisible();
   });
 
   it('presents monitoring chords as live while preserving provisional data semantics', () => {
@@ -225,7 +238,9 @@ describe('PolyphonicAnalysisPanel', () => {
     );
 
     expect(screen.getByText('Live chord')).toBeVisible();
+    expect(screen.getByLabelText('Pitch-class energy')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Analysis details' }));
+    expect(screen.queryByLabelText('Pitch-class energy')).not.toBeInTheDocument();
     expect(screen.getByText('Latest 6 live · rolling history')).toBeVisible();
     expect(screen.getAllByText('live')).toHaveLength(6);
     expect(screen.queryByText('provisional')).not.toBeInTheDocument();

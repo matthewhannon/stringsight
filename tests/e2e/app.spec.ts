@@ -58,11 +58,11 @@ test('captures and replays audio through a simulated microphone', async ({ page 
   await expect(page.getByRole('region', { name: 'Analysis diagnostics' })).toContainText(
     'microphone-1',
   );
+  await expect(page.getByLabel('Capture duration')).not.toHaveText('00:00.0');
   await page.getByRole('button', { name: 'Stop recording', exact: true }).click();
   await expect(capturePanel.getByText('Ready', { exact: true })).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByLabel('Capture duration')).not.toHaveText('00:00.0');
 
   await page.getByRole('button', { exact: true, name: 'Replay' }).click();
   await expect(page.getByRole('button', { exact: true, name: 'Stop replay' })).toBeVisible();
@@ -115,13 +115,6 @@ test('finalizes a chord WAV with the real model and reveals analysis details on 
 
   const chordResults = page.getByLabel('Chord analysis results');
   await expect(page.getByLabel('Chord analysis diagnostics')).toHaveCount(0);
-  await chordResults.getByRole('button', { name: 'Analysis details' }).click();
-  const chordDiagnostics = page.getByLabel('Chord analysis diagnostics');
-  await expect(chordDiagnostics).toContainText('ready', { timeout: 10_000 });
-  await expect(chordDiagnostics).toContainText(/WASM|CPU/);
-  await expect(chordResults.getByText('Finalized chord', { exact: true })).toBeVisible();
-  await expect(chordResults.locator('.chord-readout > strong')).toHaveText('C');
-  await expect(page.getByLabel('Latest chord events').getByRole('listitem')).toHaveCount(1);
   const chromaBars = chordResults.locator('.chroma-strip i');
   await expect(chromaBars).toHaveCount(12);
   const firstChromaBar = chromaBars.nth(0);
@@ -132,6 +125,15 @@ test('finalizes a chord WAV with the real model and reveals analysis details on 
     })),
   ).toEqual({ height: '86px', transitionProperty: 'transform' });
   expect(await firstChromaBar.getAttribute('style')).toContain('--meter-scale');
+
+  await chordResults.getByRole('button', { name: 'Analysis details' }).click();
+  await expect(chromaBars).toHaveCount(0);
+  const chordDiagnostics = page.getByLabel('Chord analysis diagnostics');
+  await expect(chordDiagnostics).toContainText('ready', { timeout: 10_000 });
+  await expect(chordDiagnostics).toContainText(/WASM|CPU/);
+  await expect(chordResults.getByText('Finalized chord', { exact: true })).toBeVisible();
+  await expect(chordResults.locator('.chord-readout > strong')).toHaveText('C');
+  await expect(page.getByLabel('Latest chord events').getByRole('listitem')).toHaveCount(1);
   expect(
     await chordResults
       .getByLabel('Chord match strength')
