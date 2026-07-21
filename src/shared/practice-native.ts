@@ -12,6 +12,7 @@ import {
   hashPracticeDocumentContent,
   type PracticeQualifiedHash,
 } from './practice-identity';
+import { assertCanonicalJsonDataDomain } from './canonical-json';
 
 export type PracticeNativeIntegrityErrorCode =
   | 'document-content-hash-mismatch'
@@ -80,6 +81,7 @@ export async function createPracticeNativeEnvelope(
   documentInput: unknown,
   exportedAt: string,
 ): Promise<PracticeNativeEnvelope> {
+  assertCanonicalJsonDataDomain(documentInput);
   const { document } = migratePracticeDocument(documentInput);
   const revisionIdentityHash = await hashDocumentRevision(document.revision);
   await verifyDocumentIdentities(document, revisionIdentityHash);
@@ -97,6 +99,7 @@ export async function createPracticeNativeEnvelope(
 export async function verifyPracticeNativeEnvelope(
   input: unknown,
 ): Promise<PracticeNativeEnvelopeMigrationResult> {
+  assertCanonicalJsonDataDomain(input);
   const migrated = migratePracticeNativeEnvelope(input);
   await verifyDocumentIdentities(
     migrated.envelope.document,

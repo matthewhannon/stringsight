@@ -7,12 +7,15 @@ import {
   PracticeDocumentSchema,
   PracticeDocumentContentHashSchema,
   PracticeGuitarConfigurationSchema,
+  PracticeAssessmentSchema,
+  PRACTICE_ASSESSMENT_LIMITS,
   PracticeTakeSchema,
   QualifiedHashSchema,
   ReferenceScoreMediaSyncMapSchema,
   TakeCaptureMediaSyncMapSchema,
   TempoMapSchema,
 } from './practice';
+import { hashPracticeAssessment } from '../practice-identity';
 
 function hash(projectionId: string) {
   const schemaId =
@@ -124,6 +127,270 @@ function firstFixtureLoop(document: ReturnType<typeof validDocument>) {
   const loop = document.loopPresets.at(0);
   if (loop === undefined) throw new Error('The valid-document fixture must contain one loop.');
   return loop;
+}
+
+function completeTake() {
+  return {
+    calibration: {
+      inputLatencyFrames: 96,
+      measuredAt: '2026-07-20T11:59:00Z',
+      methodId: 'loopback-calibration',
+      methodVersion: '1',
+      status: 'measured',
+      uncertaintyFrames: 12,
+      warnings: [],
+    },
+    captureEpochs: [
+      {
+        appliedAudioFrame: 100,
+        captureGeneration: 1,
+        captureStreamId: 'capture-stream-1',
+        endLogicalFrameExclusive: 24_000,
+        id: 'epoch-1',
+        runtimeGeneration: 1,
+        runtimeId: 'runtime-1',
+        sampleRate: 48_000,
+        scheduledAudioFrame: 96,
+        scoreStartTick: 0,
+        segmentIndex: 0,
+        startLogicalFrame: 0,
+        transportGeneration: 1,
+      },
+      {
+        appliedAudioFrame: 25_004,
+        captureGeneration: 1,
+        captureStreamId: 'capture-stream-1',
+        endLogicalFrameExclusive: 48_000,
+        id: 'epoch-2',
+        runtimeGeneration: 1,
+        runtimeId: 'runtime-1',
+        sampleRate: 48_000,
+        scheduledAudioFrame: 25_000,
+        scoreStartTick: 480,
+        segmentIndex: 1,
+        startLogicalFrame: 24_000,
+        transportGeneration: 2,
+      },
+    ],
+    clockAnchors: [
+      {
+        appliedAudioFrame: 100,
+        boundary: 'recording-start',
+        captureGeneration: 1,
+        captureStreamId: 'capture-stream-1',
+        epochId: 'epoch-1',
+        id: 'anchor-start',
+        lateByFrames: 4,
+        logicalFrame: 0,
+        runtimeGeneration: 1,
+        runtimeId: 'runtime-1',
+        scheduledAudioFrame: 96,
+        scorePhase: 'playing',
+        scoreTick: 0,
+        transportGeneration: 1,
+      },
+      {
+        appliedAudioFrame: 24_100,
+        boundary: 'pause',
+        captureGeneration: 1,
+        captureStreamId: 'capture-stream-1',
+        epochId: 'epoch-1',
+        id: 'anchor-pause',
+        lateByFrames: 4,
+        logicalFrame: 24_000,
+        runtimeGeneration: 1,
+        runtimeId: 'runtime-1',
+        scheduledAudioFrame: 24_096,
+        scorePhase: 'paused',
+        scoreTick: 480,
+        transportGeneration: 1,
+      },
+      {
+        appliedAudioFrame: 25_004,
+        boundary: 'resume',
+        captureGeneration: 1,
+        captureStreamId: 'capture-stream-1',
+        epochId: 'epoch-2',
+        id: 'anchor-resume',
+        lateByFrames: 4,
+        logicalFrame: 24_000,
+        runtimeGeneration: 1,
+        runtimeId: 'runtime-1',
+        scheduledAudioFrame: 25_000,
+        scorePhase: 'playing',
+        scoreTick: 480,
+        transportGeneration: 2,
+      },
+      {
+        appliedAudioFrame: 49_004,
+        boundary: 'stop',
+        captureGeneration: 1,
+        captureStreamId: 'capture-stream-1',
+        epochId: 'epoch-2',
+        id: 'anchor-stop',
+        lateByFrames: 4,
+        logicalFrame: 48_000,
+        runtimeGeneration: 1,
+        runtimeId: 'runtime-1',
+        scheduledAudioFrame: 49_000,
+        scorePhase: 'stopped',
+        scoreTick: 960,
+        transportGeneration: 2,
+      },
+    ],
+    contractVersion: 1,
+    countInConfigurationHash: null,
+    createdAt: '2026-07-20T12:00:00Z',
+    discontinuities: [
+      {
+        afterEpochId: 'epoch-2',
+        beforeEpochId: 'epoch-1',
+        detail: 'Paused by the player.',
+        discardedOverlapFrames: 0,
+        id: 'discontinuity-1',
+        kind: 'pause',
+        logicalFrame: 24_000,
+        missingFrames: 0,
+        wallTimeExcluded: true,
+      },
+    ],
+    documentRevision: revision,
+    evidenceSnapshotHash: hash('observed-evidence-snapshot'),
+    evidenceSnapshotId: 'snapshot-1',
+    expectedProjectionHash: hash('practice-expected-events'),
+    id: 'take-1',
+    loopPassPolicy: { kind: 'single-pass' },
+    metronomeEnabled: true,
+    microphoneMediaHash: hash('media-content'),
+    microphoneMediaId: 'media-1',
+    microphoneRecordingProvenance: {
+      channelCount: 1,
+      contentHash: hash('media-content'),
+      finalizedAt: '2026-07-20T12:01:00Z',
+      formatMetadataHash: hash('media-format'),
+      frameCount: 48_000,
+      logicalLocator: 'recordings/take-1.pcm',
+      mediaId: 'media-1',
+      pcmEnvelopeHash: hash('pcm-envelope'),
+      sampleRate: 48_000,
+    },
+    practiceSpeed: { denominator: 1, numerator: 1 },
+    provenanceCompleteness: 'complete',
+    range: { endTickExclusive: 3_840, startTick: 0 },
+    referenceConfigurationHash: null,
+    sampleRate: 48_000,
+    status: 'finalized',
+    takeCoreHash: hash('practice-take-core'),
+    takeVideoCaptureProvenance: {
+      audioTrackCount: 0,
+      captureGeneration: 1,
+      contentHash: hash('take-video-content'),
+      finalizedAt: '2026-07-20T12:01:00Z',
+      firstObservedTimestampMicroseconds: 0,
+      formatMetadataHash: hash('take-video-format'),
+      lastObservedTimestampMicroseconds: 1_000_000,
+      mediaId: 'take-video-1',
+      timestampPrecision: 'estimated',
+      timestampStrategyId: 'media-recorder-container-inspection',
+      uncertaintyMicroseconds: 20_000,
+      videoTrackCount: 1,
+    },
+    warnings: [],
+  };
+}
+
+function completeAssessment() {
+  const timing = {
+    clockMappingId: 'take-clock-map-1',
+    confidence: 0.9,
+    expectedTick: 0,
+    observedLogicalFrame: 240,
+    signedErrorMicroseconds: 5_000,
+    source: 'exact-logical-frame',
+    uncertaintyMicroseconds: 1_000,
+  };
+  return {
+    algorithmId: 'alignment-v1',
+    algorithmVersion: '1.0.0',
+    alignment: {
+      algorithmId: 'alignment-v1',
+      algorithmVersion: '1.0.0',
+      clockMappingId: 'take-clock-map-1',
+      maximumTimingUncertaintyMicroseconds: 2_000,
+      parametersHash: hash('assessment-parameters'),
+      timingToleranceMicroseconds: 50_000,
+    },
+    alignmentProvenanceHash: hash('assessment-alignment-provenance'),
+    ambiguousCount: 1,
+    assessmentHash: hash('practice-assessment'),
+    confidence: 0.85,
+    contractVersion: 1,
+    correctionProvenance: {
+      correctionCount: 1,
+      correctionPrefixHash: hash('correction-prefix'),
+      evidenceSnapshotId: 'snapshot-1',
+    },
+    createdAt: '2026-07-20T12:03:00Z',
+    documentRevision: revision,
+    evidenceSnapshotHash: hash('observed-evidence-snapshot'),
+    evidenceSnapshotId: 'snapshot-1',
+    expectedProjectionHash: hash('practice-expected-events'),
+    id: 'assessment-1',
+    matchedCount: 1,
+    records: {
+      ambiguous: [
+        {
+          candidates: [
+            {
+              confidence: 0.55,
+              expected: { eventId: 'event-ambiguous-a', noteId: 'note-a' },
+              observedEventIds: ['observed-ambiguous'],
+              timing,
+            },
+            {
+              confidence: 0.45,
+              expected: { eventId: 'event-ambiguous-b', noteId: 'note-b' },
+              observedEventIds: ['observed-ambiguous'],
+              timing: { ...timing, expectedTick: 480 },
+            },
+          ],
+          id: 'assessment-ambiguous-1',
+          reason: 'multiple-expected',
+        },
+      ],
+      matches: [
+        {
+          confidence: 0.95,
+          expected: { eventId: 'event-1', noteId: 'note-1' },
+          id: 'assessment-match-1',
+          observedEventIds: ['observed-1'],
+          pitchOutcome: 'correct',
+          timing,
+        },
+      ],
+      mode: 'complete',
+      unmatchedExpected: [
+        {
+          confidence: 0.8,
+          expected: { eventId: 'event-missed', noteId: null },
+          id: 'assessment-missed-1',
+          reason: 'missed',
+        },
+      ],
+      unmatchedObserved: [
+        {
+          confidence: 0.7,
+          id: 'assessment-extra-1',
+          observedEventId: 'observed-extra',
+          reason: 'extra',
+        },
+      ],
+    },
+    takeCoreHash: hash('practice-take-core'),
+    takeId: 'take-1',
+    unmatchedExpectedCount: 1,
+    unmatchedObservedCount: 1,
+  };
 }
 
 type FixtureRelationshipSemantic = 'hammer-on' | 'pull-off' | 'slide' | 'slurs' | 'ties';
@@ -661,6 +928,269 @@ describe('Practice System core contracts', () => {
     ).toBe(true);
   });
 
+  it('accepts complete immutable take clock, discontinuity, calibration, and media provenance', () => {
+    const result = PracticeTakeSchema.safeParse(completeTake());
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.provenanceCompleteness).toBe('complete');
+      expect(result.data.clockAnchors.map(({ boundary }) => boundary)).toEqual([
+        'recording-start',
+        'pause',
+        'resume',
+        'stop',
+      ]);
+      expect(result.data.discontinuities).toHaveLength(1);
+    }
+  });
+
+  it('rejects incomplete or contradictory immutable take clock provenance', () => {
+    const unclosed = completeTake();
+    const finalEpoch = unclosed.captureEpochs.at(-1);
+    if (finalEpoch === undefined) throw new Error('The complete take must contain a final epoch.');
+    (finalEpoch as { endLogicalFrameExclusive: number | null }).endLogicalFrameExclusive = null;
+    expect(PracticeTakeSchema.safeParse(unclosed).success).toBe(false);
+
+    const wrongLateBy = completeTake();
+    const startAnchor = wrongLateBy.clockAnchors.at(0);
+    if (startAnchor === undefined)
+      throw new Error('The complete take must contain a start anchor.');
+    startAnchor.lateByFrames = 5;
+    expect(PracticeTakeSchema.safeParse(wrongLateBy).success).toBe(false);
+
+    const wrongGeneration = completeTake();
+    const stopAnchor = wrongGeneration.clockAnchors.at(-1);
+    if (stopAnchor === undefined) throw new Error('The complete take must contain a stop anchor.');
+    stopAnchor.captureGeneration = 2;
+    expect(PracticeTakeSchema.safeParse(wrongGeneration).success).toBe(false);
+
+    const missingStop = completeTake();
+    missingStop.clockAnchors.pop();
+    expect(PracticeTakeSchema.safeParse(missingStop).success).toBe(false);
+
+    const epochOutsideRange = completeTake();
+    const firstEpoch = epochOutsideRange.captureEpochs.at(0);
+    if (firstEpoch === undefined) throw new Error('The complete take must contain an epoch.');
+    firstEpoch.scoreStartTick = 3_840;
+    expect(PracticeTakeSchema.safeParse(epochOutsideRange).success).toBe(false);
+
+    const anchorOutsideRange = completeTake();
+    const firstAnchor = anchorOutsideRange.clockAnchors.at(0);
+    if (firstAnchor === undefined) throw new Error('The complete take must contain an anchor.');
+    firstAnchor.scoreTick = 3_841;
+    expect(PracticeTakeSchema.safeParse(anchorOutsideRange).success).toBe(false);
+
+    const unknownVideoGeneration = completeTake();
+    unknownVideoGeneration.takeVideoCaptureProvenance.captureGeneration = 99;
+    expect(PracticeTakeSchema.safeParse(unknownVideoGeneration).success).toBe(false);
+  });
+
+  it('rejects dishonest discontinuity and finalized recording provenance', () => {
+    const badReference = completeTake();
+    const discontinuity = badReference.discontinuities.at(0);
+    if (discontinuity === undefined)
+      throw new Error('The complete take must contain a discontinuity.');
+    discontinuity.afterEpochId = 'missing-epoch';
+    expect(PracticeTakeSchema.safeParse(badReference).success).toBe(false);
+
+    const includedPauseWallTime = completeTake();
+    const pause = includedPauseWallTime.discontinuities.at(0);
+    if (pause === undefined) throw new Error('The complete take must contain a pause.');
+    pause.wallTimeExcluded = false;
+    expect(PracticeTakeSchema.safeParse(includedPauseWallTime).success).toBe(false);
+
+    const shiftedBoundary = completeTake();
+    const shiftedDiscontinuity = shiftedBoundary.discontinuities.at(0);
+    if (shiftedDiscontinuity === undefined) {
+      throw new Error('The complete take must contain a discontinuity.');
+    }
+    shiftedDiscontinuity.logicalFrame = 23_999;
+    expect(PracticeTakeSchema.safeParse(shiftedBoundary).success).toBe(false);
+
+    const wrongMedia = completeTake();
+    wrongMedia.microphoneRecordingProvenance.contentHash = {
+      ...wrongMedia.microphoneRecordingProvenance.contentHash,
+      digestHex: 'b'.repeat(64),
+    };
+    expect(PracticeTakeSchema.safeParse(wrongMedia).success).toBe(false);
+
+    const videoWithAudio = completeTake();
+    videoWithAudio.takeVideoCaptureProvenance = {
+      ...videoWithAudio.takeVideoCaptureProvenance,
+      audioTrackCount: 1,
+    };
+    expect(PracticeTakeSchema.safeParse(videoWithAudio).success).toBe(false);
+
+    const reversedVideoTimestamps = completeTake();
+    reversedVideoTimestamps.takeVideoCaptureProvenance.firstObservedTimestampMicroseconds = 1_000_001;
+    expect(PracticeTakeSchema.safeParse(reversedVideoTimestamps).success).toBe(false);
+
+    const prematurelyFinalizedVideo = completeTake();
+    prematurelyFinalizedVideo.takeVideoCaptureProvenance.finalizedAt = '2026-07-20T11:59:59Z';
+    expect(PracticeTakeSchema.safeParse(prematurelyFinalizedVideo).success).toBe(false);
+  });
+
+  it('accepts reproducible complete assessment outcomes and timing provenance', () => {
+    const result = PracticeAssessmentSchema.safeParse(completeAssessment());
+    expect(result.success).toBe(true);
+    if (result.success && result.data.records.mode === 'complete') {
+      expect(result.data.records.matches[0]?.timing?.source).toBe('exact-logical-frame');
+      expect(result.data.records.ambiguous[0]?.candidates).toHaveLength(2);
+    }
+
+    const delimiterSafe = completeAssessment();
+    const candidates = delimiterSafe.records.ambiguous.at(0)?.candidates;
+    if (candidates === undefined) {
+      throw new Error('The complete assessment must contain ambiguous candidates.');
+    }
+    const firstCandidate = candidates.at(0);
+    const secondCandidate = candidates.at(1);
+    if (firstCandidate === undefined || secondCandidate === undefined) {
+      throw new Error('The complete assessment must contain two ambiguous candidates.');
+    }
+    firstCandidate.expected = { eventId: 'a', noteId: 'b:c' };
+    firstCandidate.observedEventIds = ['d'];
+    secondCandidate.expected = { eventId: 'a:b', noteId: 'c' };
+    secondCandidate.observedEventIds = ['d'];
+    expect(PracticeAssessmentSchema.safeParse(delimiterSafe).success).toBe(true);
+  });
+
+  it('rejects assessment count drift, source reuse, and mismatched provenance', () => {
+    const wrongCount = completeAssessment();
+    wrongCount.matchedCount = 2;
+    expect(PracticeAssessmentSchema.safeParse(wrongCount).success).toBe(false);
+
+    const reusedObservation = completeAssessment();
+    const extra = reusedObservation.records.unmatchedObserved.at(0);
+    if (extra === undefined)
+      throw new Error('The complete assessment must contain an extra event.');
+    extra.observedEventId = 'observed-1';
+    expect(PracticeAssessmentSchema.safeParse(reusedObservation).success).toBe(false);
+
+    const wrongAlgorithm = completeAssessment();
+    wrongAlgorithm.alignment.algorithmVersion = '2.0.0';
+    expect(PracticeAssessmentSchema.safeParse(wrongAlgorithm).success).toBe(false);
+
+    const wrongSnapshot = completeAssessment();
+    wrongSnapshot.correctionProvenance.evidenceSnapshotId = 'snapshot-other';
+    expect(PracticeAssessmentSchema.safeParse(wrongSnapshot).success).toBe(false);
+
+    const wrongClock = completeAssessment();
+    const matchedTiming = wrongClock.records.matches.at(0)?.timing;
+    if (matchedTiming === undefined) {
+      throw new Error('The complete assessment must contain match timing.');
+    }
+    matchedTiming.clockMappingId = 'other-clock-map';
+    expect(PracticeAssessmentSchema.safeParse(wrongClock).success).toBe(false);
+
+    const oneCandidate = completeAssessment();
+    const ambiguity = oneCandidate.records.ambiguous.at(0);
+    if (ambiguity === undefined) throw new Error('The complete assessment must be ambiguous.');
+    ambiguity.candidates.pop();
+    expect(PracticeAssessmentSchema.safeParse(oneCandidate).success).toBe(false);
+
+    const ambiguityReusesTerminalOutcome = completeAssessment();
+    const reusedCandidate = ambiguityReusesTerminalOutcome.records.ambiguous[0]?.candidates[0];
+    if (reusedCandidate === undefined) {
+      throw new Error('The complete assessment must contain an ambiguous candidate.');
+    }
+    reusedCandidate.expected = { eventId: 'event-1', noteId: 'note-1' };
+    reusedCandidate.observedEventIds = ['observed-1'];
+    expect(PracticeAssessmentSchema.safeParse(ambiguityReusesTerminalOutcome).success).toBe(false);
+  });
+
+  it('caps complete assessment outcomes below the canonical hash node ceiling', async () => {
+    const maximum = completeAssessment() as unknown as {
+      ambiguousCount: number;
+      matchedCount: number;
+      records: {
+        ambiguous: unknown[];
+        matches: unknown[];
+        mode: 'complete';
+        unmatchedExpected: unknown[];
+        unmatchedObserved: unknown[];
+      };
+      unmatchedExpectedCount: number;
+      unmatchedObservedCount: number;
+    };
+    const timing = {
+      clockMappingId: 'take-clock-map-1',
+      confidence: 0.9,
+      expectedTick: 0,
+      observedLogicalFrame: 240,
+      signedErrorMicroseconds: 5_000,
+      source: 'exact-logical-frame',
+      uncertaintyMicroseconds: 1_000,
+    };
+    maximum.records.matches = [];
+    maximum.records.unmatchedExpected = [];
+    maximum.records.unmatchedObserved = [];
+    maximum.records.ambiguous = Array.from(
+      { length: PRACTICE_ASSESSMENT_LIMITS.maximumOutcomeRecords },
+      (_, recordIndex) => ({
+        candidates: Array.from(
+          { length: PRACTICE_ASSESSMENT_LIMITS.maximumAmbiguousCandidatesPerRecord },
+          (_, candidateIndex) => ({
+            confidence: 0.5,
+            expected: {
+              eventId: `event-${String(recordIndex)}-${String(candidateIndex)}`,
+              noteId: `note-${String(recordIndex)}-${String(candidateIndex)}`,
+            },
+            observedEventIds: Array.from(
+              { length: 16 },
+              (_, observedIndex) =>
+                `observed-${String(recordIndex)}-${String(candidateIndex)}-${String(observedIndex)}`,
+            ),
+            timing,
+          }),
+        ),
+        id: `ambiguity-${String(recordIndex)}`,
+        reason: 'multiple-expected',
+      }),
+    );
+    maximum.ambiguousCount = PRACTICE_ASSESSMENT_LIMITS.maximumOutcomeRecords;
+    maximum.matchedCount = 0;
+    maximum.unmatchedExpectedCount = 0;
+    maximum.unmatchedObservedCount = 0;
+
+    expect(PracticeAssessmentSchema.safeParse(maximum).success).toBe(true);
+    await expect(hashPracticeAssessment(maximum)).resolves.toEqual(
+      expect.objectContaining({ projectionId: 'practice-assessment' }),
+    );
+
+    const overAggregateLimit = completeAssessment() as unknown as typeof maximum;
+    overAggregateLimit.records.ambiguous = [];
+    overAggregateLimit.records.matches = Array.from({ length: 300 }, (_, index) => ({
+      confidence: 0.9,
+      expected: { eventId: `matched-event-${String(index)}`, noteId: null },
+      id: `match-${String(index)}`,
+      observedEventIds: [`matched-observed-${String(index)}`],
+      pitchOutcome: 'correct',
+      timing,
+    }));
+    overAggregateLimit.records.unmatchedExpected = Array.from({ length: 201 }, (_, index) => ({
+      confidence: 0.8,
+      expected: { eventId: `missed-event-${String(index)}`, noteId: null },
+      id: `missed-${String(index)}`,
+      reason: 'missed',
+    }));
+    overAggregateLimit.records.unmatchedObserved = [];
+    overAggregateLimit.ambiguousCount = 0;
+    overAggregateLimit.matchedCount = 300;
+    overAggregateLimit.unmatchedExpectedCount = 201;
+    overAggregateLimit.unmatchedObservedCount = 0;
+    expect(PracticeAssessmentSchema.safeParse(overAggregateLimit).success).toBe(false);
+  });
+
+  it('parses old v1 assessment summaries as explicitly incomplete legacy records', () => {
+    const legacy = structuredClone(completeAssessment()) as Record<string, unknown>;
+    delete legacy.alignment;
+    delete legacy.correctionProvenance;
+    delete legacy.records;
+    const result = PracticeAssessmentSchema.safeParse(legacy);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.records).toEqual({ mode: 'legacy-summary' });
+  });
+
   it('does not allow unavailable media to retain a misleading locator', () => {
     expect(
       MediaAvailabilityStateSchema.safeParse({
@@ -708,12 +1238,18 @@ describe('Practice System core contracts', () => {
         { mediaPtsMicroseconds: 0, scoreTick: 0 },
         { mediaPtsMicroseconds: 1_000_000, scoreTick: 960 },
       ],
+      boundaryPolicy: 'anchors-mapped-gap-interiors-unmapped',
       contractVersion: 1,
       documentRevision: revision,
+      expectedProjectionHash: hash('practice-expected-events'),
+      gapSegmentIndices: [],
+      historySequence: 0,
       id: 'reference-map-1',
       mapHash: hash('reference-score-media-sync-map'),
       mediaContentHash: hash('media-content'),
       mediaId: 'reference-media-1',
+      normalizedTimelineId: 'practice-expected-events-v1',
+      parentMap: null,
       provenance: 'authored',
     };
     expect(ReferenceScoreMediaSyncMapSchema.safeParse(referenceMap).success).toBe(true);
@@ -726,12 +1262,18 @@ describe('Practice System core contracts', () => {
         { mediaPtsMicroseconds: 0, scoreTick: 10 },
         { mediaPtsMicroseconds: 1_000, scoreTick: 10 },
       ],
+      boundaryPolicy: 'anchors-mapped-gap-interiors-unmapped',
       contractVersion: 1,
       documentRevision: revision,
+      expectedProjectionHash: hash('practice-expected-events'),
+      gapSegmentIndices: [],
+      historySequence: 0,
       id: 'map-1',
       mapHash: hash('reference-score-media-sync-map'),
       mediaContentHash: hash('media-content'),
       mediaId: 'media-1',
+      normalizedTimelineId: 'practice-expected-events-v1',
+      parentMap: null,
       provenance: 'authored',
     });
     expect(referenceResult.success).toBe(false);
@@ -742,12 +1284,18 @@ describe('Practice System core contracts', () => {
           { mediaPtsMicroseconds: 1_000, scoreTick: 0 },
           { mediaPtsMicroseconds: 999, scoreTick: 960 },
         ],
+        boundaryPolicy: 'anchors-mapped-gap-interiors-unmapped',
         contractVersion: 1,
         documentRevision: revision,
+        expectedProjectionHash: hash('practice-expected-events'),
+        gapSegmentIndices: [],
+        historySequence: 0,
         id: 'map-backward-pts',
         mapHash: hash('reference-score-media-sync-map'),
         mediaContentHash: hash('media-content'),
         mediaId: 'media-1',
+        normalizedTimelineId: 'practice-expected-events-v1',
+        parentMap: null,
         provenance: 'authored',
       }).success,
     ).toBe(false);
@@ -756,6 +1304,7 @@ describe('Practice System core contracts', () => {
       anchors: [
         {
           captureGeneration: 1,
+          captureEpochId: 'epoch-1',
           logicalAudioFrame: 0,
           mediaPtsMicroseconds: 0,
           runtimeGeneration: 1,
@@ -763,12 +1312,15 @@ describe('Practice System core contracts', () => {
         },
         {
           captureGeneration: 1,
+          captureEpochId: 'epoch-1',
           logicalAudioFrame: 1,
           mediaPtsMicroseconds: 0,
           runtimeGeneration: 1,
           transportGeneration: 1,
         },
       ],
+      boundaryPolicy: 'generation-segments-only',
+      captureEpochIds: ['epoch-1'],
       contractVersion: 1,
       id: 'take-map-1',
       mapHash: hash('take-capture-media-sync-map'),

@@ -1,6 +1,6 @@
 # ADR 0009: Practice contract time and content identity
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-20
 - **Architecture:** `../plans/10-practice-system-architecture.md#4-canonical-domain-model`
 
@@ -15,7 +15,7 @@ The Practice System aggregates remain independent: authored documents/revisions,
 snapshots, immutable takes, media identity and mutable availability, reference/take sync maps, and
 derived assessments cannot mutate or substitute for one another.
 
-## Proposed decision
+## Decision
 
 ### Musical time
 
@@ -54,18 +54,21 @@ digestHex
 
 No bare digest is accepted. A frozen projection registry owns materializers and exclusion rules for
 document content, expected events, revision identity, observed evidence, take core, media identity,
-both sync-map kinds, and assessment. Self-hash fields are excluded from their own projection. The
-take-core projection does not gain an outward mutable attachment/map link.
+both sync-map kinds, assessment/alignment provenance, and import-source identity. Self-hash fields
+are excluded from their own projection. The take-core projection does not gain an outward mutable
+attachment/map link.
 
-Golden canonical bytes and digests cover real Practice Document expected-event and media-identity
-projections. Projection changes require a projection-version change and new goldens.
+Golden canonical bytes and digests cover every durable projection. Projection changes require a
+projection-version change and new goldens. Descriptor-safe guards reject accessors and invalid
+canonical data before schema parsing can invoke or normalize them.
 
 ### Initial migration boundary
 
-Practice Document v1 is the first supported version. The migration registry currently validates and
-deep-detaches v1 with a deterministic trace and rejects missing, malformed, unsupported legacy, and
-future versions. No fictitious v0 is invented. Every newly supported historical version must add a
-fixture-backed route to the then-current version.
+Practice Document and durable aggregate v1 contracts are the first supported versions. The document,
+native-interchange, and 13 aggregate migration routes validate and deep-detach v1 with deterministic
+traces while rejecting missing, malformed, unsupported legacy, and future versions. No fictitious v0
+is invented. Every newly supported historical version must add a fixture-backed route to the
+then-current version.
 
 ## Consequences
 
@@ -74,5 +77,4 @@ fixture-backed route to the then-current version.
 - Import or storage payloads cannot trigger unbounded canonical traversal within the declared
   limits.
 - Independent aggregate schemas may evolve separately while hashes still name their exact domain.
-- This ADR remains Proposed until the remaining Item 11 take, assessment, import-report, and
-  cross-aggregate fixtures pass independent review.
+- Item 11's independent adversarial review passed with no remaining P0/P1 findings.

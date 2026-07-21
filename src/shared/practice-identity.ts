@@ -8,7 +8,8 @@ import {
   ReferenceScoreMediaSyncMapSchema,
   TakeCaptureMediaSyncMapSchema,
 } from './contracts/practice';
-import { hashCanonicalJson } from './canonical-json';
+import { PracticeImportSourceIdentitySchema } from './contracts/practice-import';
+import { assertCanonicalJsonDataDomain, hashCanonicalJson } from './canonical-json';
 
 export const PRACTICE_CANONICALIZATION = Object.freeze({
   canonicalizationId: 'stringsight-canonical-json',
@@ -48,6 +49,12 @@ export const PRACTICE_PROJECTION_REGISTRY = Object.freeze({
     schemaId: 'practice-document',
     schemaVersion: 1,
     projectionId: 'practice-expected-events',
+    projectionVersion: 1,
+  }),
+  importSourceIdentity: projection({
+    schemaId: 'practice-import-source',
+    schemaVersion: 1,
+    projectionId: 'practice-import-source-identity',
     projectionVersion: 1,
   }),
   mediaIdentity: projection({
@@ -117,6 +124,7 @@ async function hashProjection(
 }
 
 export function materializePracticeDocumentContent(input: unknown) {
+  assertCanonicalJsonDataDomain(input);
   const document = PracticeDocumentSchema.parse(input);
   const { expectedProjectionHash, revision, ...content } = document;
   void expectedProjectionHash;
@@ -132,6 +140,7 @@ export async function hashPracticeDocumentContent(input: unknown): Promise<Pract
 }
 
 export function materializeExpectedEvents(input: unknown) {
+  assertCanonicalJsonDataDomain(input);
   const document = PracticeDocumentSchema.parse(input);
   const tuningByString = new Map(
     document.guitar.tuning.map((string) => [string.stringNumber, string.openMidi]),
@@ -183,7 +192,22 @@ export async function hashExpectedEvents(input: unknown): Promise<PracticeQualif
   );
 }
 
+export function materializePracticeImportSourceIdentity(input: unknown) {
+  assertCanonicalJsonDataDomain(input);
+  return PracticeImportSourceIdentitySchema.parse(input);
+}
+
+export async function hashPracticeImportSourceIdentity(
+  input: unknown,
+): Promise<PracticeQualifiedHash> {
+  return hashProjection(
+    materializePracticeImportSourceIdentity(input),
+    PRACTICE_PROJECTION_REGISTRY.importSourceIdentity,
+  );
+}
+
 export function materializeDocumentRevision(input: unknown) {
+  assertCanonicalJsonDataDomain(input);
   return DocumentRevisionIdentitySchema.parse(input);
 }
 
@@ -195,6 +219,7 @@ export async function hashDocumentRevision(input: unknown): Promise<PracticeQual
 }
 
 export function materializeObservedEvidenceSnapshot(input: unknown) {
+  assertCanonicalJsonDataDomain(input);
   return ObservedEvidenceSnapshotSchema.parse(input);
 }
 
@@ -206,6 +231,7 @@ export async function hashObservedEvidenceSnapshot(input: unknown): Promise<Prac
 }
 
 export function materializePracticeTakeCore(input: unknown) {
+  assertCanonicalJsonDataDomain(input);
   const take = PracticeTakeSchema.parse(input);
   const { takeCoreHash, ...core } = take;
   void takeCoreHash;
@@ -220,6 +246,7 @@ export async function hashPracticeTakeCore(input: unknown): Promise<PracticeQual
 }
 
 export function materializeMediaIdentity(input: unknown) {
+  assertCanonicalJsonDataDomain(input);
   return MediaIdentitySchema.parse(input);
 }
 
@@ -231,6 +258,7 @@ export async function hashMediaIdentity(input: unknown): Promise<PracticeQualifi
 }
 
 export function materializeReferenceScoreMediaSyncMap(input: unknown) {
+  assertCanonicalJsonDataDomain(input);
   const syncMap = ReferenceScoreMediaSyncMapSchema.parse(input);
   const { mapHash, ...projectionValue } = syncMap;
   void mapHash;
@@ -247,6 +275,7 @@ export async function hashReferenceScoreMediaSyncMap(
 }
 
 export function materializeTakeCaptureMediaSyncMap(input: unknown) {
+  assertCanonicalJsonDataDomain(input);
   const syncMap = TakeCaptureMediaSyncMapSchema.parse(input);
   const { mapHash, ...projectionValue } = syncMap;
   void mapHash;
@@ -261,6 +290,7 @@ export async function hashTakeCaptureMediaSyncMap(input: unknown): Promise<Pract
 }
 
 export function materializePracticeAssessment(input: unknown) {
+  assertCanonicalJsonDataDomain(input);
   const assessment = PracticeAssessmentSchema.parse(input);
   const { assessmentHash, ...projectionValue } = assessment;
   void assessmentHash;

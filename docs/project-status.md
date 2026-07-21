@@ -73,13 +73,15 @@ macOS remains a portability goal without a current support claim. Single-machine
 observations; implementing items must define smoke thresholds, while formal percentile budgets stay
 pre-commercial.
 
-Checklist Item 10's renderer-independent canonical guitar model is complete. It establishes stable
-treble-to-bass string identities, capo-relative tab coordinates, derived pitch/geometry, explicit
-legacy adapters, complete-or-limit exact-MIDI and pitch-class voicing enumeration, barre-capable
-fingering candidates, and deterministic transition cost. The next production implementation
-milestone is Checklist Item 11, versioned Practice System contracts, hashes, maps, and golden
-fixtures. Score, import, save, transport, video, MIDI, alignment, and assessment surfaces in the
-current workspace remain placeholders.
+Checklist Items 10 and 11 are complete. The renderer-independent guitar model establishes stable
+coordinates, derived pitch/geometry, bounded voicing enumeration, fingering, and transition cost.
+The accepted Practice System contracts add PPQ-960 authored documents, immutable revisions,
+evidence snapshots, takes, media identities and availability, reference/take sync maps, assessments,
+deterministic import review, canonical hashes/goldens, trusted integrity verification, and explicit
+v1 migrations. The next production implementation milestone is Checklist Item 12, the
+renderer-independent editor core and native create/save/open workflow. Current score editing,
+import adapters, save, transport, video, MIDI, alignment, and assessment UI surfaces remain
+placeholders until their implementing items.
 
 The executable dependency order is maintained in `BUILD_CHECKLIST.md`. Live computer vision,
 fusion, and GPT interpretation remain deferred until after the complete score/practice/take product.

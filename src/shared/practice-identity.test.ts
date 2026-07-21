@@ -10,13 +10,17 @@ import {
   hashObservedEvidenceSnapshot,
   hashPracticeAssessment,
   hashPracticeDocumentContent,
+  hashPracticeImportSourceIdentity,
   hashPracticeTakeCore,
   hashReferenceScoreMediaSyncMap,
   hashTakeCaptureMediaSyncMap,
   materializeExpectedEvents,
+  materializeDocumentRevision,
   materializeMediaIdentity,
+  materializeObservedEvidenceSnapshot,
   materializePracticeAssessment,
   materializePracticeDocumentContent,
+  materializePracticeImportSourceIdentity,
   materializePracticeTakeCore,
   materializeReferenceScoreMediaSyncMap,
   materializeTakeCaptureMediaSyncMap,
@@ -54,6 +58,16 @@ const revision = () => ({
   documentId: 'document-1',
   revisionId: 'revision-1',
   revisionNumber: 1,
+});
+
+const importSourceFixture = () => ({
+  byteLength: 4_096,
+  fileName: 'fixture.gp',
+  format: 'guitar-pro' as const,
+  formatVersion: '8.1',
+  mediaType: 'application/octet-stream',
+  sha256Hex: 'b'.repeat(64),
+  sourceId: 'import-source-1',
 });
 
 const documentFixture = () => ({
@@ -274,12 +288,18 @@ const referenceMapFixture = () => ({
     { mediaPtsMicroseconds: 0, scoreTick: 0 },
     { mediaPtsMicroseconds: 1_000_000, scoreTick: 960 },
   ],
+  boundaryPolicy: 'anchors-mapped-gap-interiors-unmapped' as const,
   contractVersion: 1,
   documentRevision: revision(),
+  expectedProjectionHash: fixtureHash('practice-expected-events'),
+  gapSegmentIndices: [],
+  historySequence: 0,
   id: 'reference-map-1',
   mapHash: fixtureHash('reference-score-media-sync-map'),
   mediaContentHash: fixtureHash('media-content'),
   mediaId: 'reference-media-1',
+  normalizedTimelineId: 'practice-expected-events-v1',
+  parentMap: null,
   provenance: 'authored',
 });
 
@@ -287,6 +307,7 @@ const takeMapFixture = () => ({
   anchors: [
     {
       captureGeneration: 1,
+      captureEpochId: 'epoch-1',
       logicalAudioFrame: 0,
       mediaPtsMicroseconds: 0,
       runtimeGeneration: 1,
@@ -294,12 +315,15 @@ const takeMapFixture = () => ({
     },
     {
       captureGeneration: 1,
+      captureEpochId: 'epoch-1',
       logicalAudioFrame: 48_000,
       mediaPtsMicroseconds: 1_000_000,
       runtimeGeneration: 1,
       transportGeneration: 1,
     },
   ],
+  boundaryPolicy: 'generation-segments-only' as const,
+  captureEpochIds: ['epoch-1'],
   contractVersion: 1,
   id: 'take-map-1',
   mapHash: fixtureHash('take-capture-media-sync-map'),
@@ -459,6 +483,29 @@ describe('PracticeDocument identity projections', () => {
 });
 
 describe('independent immutable aggregate projections', () => {
+  it('rejects raw accessors before projection schemas can invoke them', async () => {
+    let getterCalls = 0;
+    const source = {
+      byteLength: 1,
+      format: 'guitar-pro',
+      formatVersion: '8',
+      mediaType: 'application/octet-stream',
+      sha256Hex: 'a'.repeat(64),
+      sourceId: 'source-1',
+    };
+    Object.defineProperty(source, 'fileName', {
+      enumerable: true,
+      get: () => {
+        getterCalls += 1;
+        return 'fixture.gp';
+      },
+    });
+    await expect(hashPracticeImportSourceIdentity(source)).rejects.toMatchObject({
+      code: 'ACCESSOR_PROPERTY',
+    });
+    expect(getterCalls).toBe(0);
+  });
+
   it('hashes each independently versioned source against its registered projection', async () => {
     const results = await Promise.all([
       hashDocumentRevision(revision()),
@@ -500,6 +547,92 @@ describe('independent immutable aggregate projections', () => {
       expect(Object.keys(result).sort()).toEqual(expectedProducerKeys);
       expect(result.digestHex).toMatch(/^[0-9a-f]{64}$/);
     }
+  });
+
+  it('pins canonical projection bytes and qualified digests for every durable identity', async () => {
+    const byteGolden = async (
+      projectionValue: unknown,
+      qualifiedHash: Promise<{ digestHex: string }>,
+    ) => {
+      const bytes = canonicalJsonBytes(projectionValue);
+      const rawDigest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+      return {
+        byteLength: bytes.byteLength,
+        byteSha256Hex: Array.from(new Uint8Array(rawDigest), (byte) =>
+          byte.toString(16).padStart(2, '0'),
+        ).join(''),
+        qualifiedDigestHex: (await qualifiedHash).digestHex,
+      };
+    };
+
+    const actual = {
+      assessment: await byteGolden(
+        materializePracticeAssessment(assessmentFixture()),
+        hashPracticeAssessment(assessmentFixture()),
+      ),
+      documentRevision: await byteGolden(
+        materializeDocumentRevision(revision()),
+        hashDocumentRevision(revision()),
+      ),
+      evidenceSnapshot: await byteGolden(
+        materializeObservedEvidenceSnapshot(evidenceFixture()),
+        hashObservedEvidenceSnapshot(evidenceFixture()),
+      ),
+      importSource: await byteGolden(
+        materializePracticeImportSourceIdentity(importSourceFixture()),
+        hashPracticeImportSourceIdentity(importSourceFixture()),
+      ),
+      practiceTakeCore: await byteGolden(
+        materializePracticeTakeCore(takeFixture()),
+        hashPracticeTakeCore(takeFixture()),
+      ),
+      referenceMap: await byteGolden(
+        materializeReferenceScoreMediaSyncMap(referenceMapFixture()),
+        hashReferenceScoreMediaSyncMap(referenceMapFixture()),
+      ),
+      takeMap: await byteGolden(
+        materializeTakeCaptureMediaSyncMap(takeMapFixture()),
+        hashTakeCaptureMediaSyncMap(takeMapFixture()),
+      ),
+    };
+
+    expect(actual).toEqual({
+      assessment: {
+        byteLength: 2_029,
+        byteSha256Hex: '32799b4ad3a5f8273dbf74b5bcc556c8977f660fa19da109e154b2d87fa592d5',
+        qualifiedDigestHex: 'aa8fcb16ff7f436287af92079323c0b66c5a2913ed95103d8f1869ac59ca5c3d',
+      },
+      documentRevision: {
+        byteLength: 380,
+        byteSha256Hex: 'f66fcf82c5bf80411e6d7a2d909af577d6405ffe04eff6b75b7dc675180905bf',
+        qualifiedDigestHex: 'bdc2debd2588918848baae5a1ace295be8e48bd0b7c007bfce75bbacae06b9c4',
+      },
+      evidenceSnapshot: {
+        byteLength: 1_430,
+        byteSha256Hex: '1eec01da96f331c5a43ff4b0b1224554eece2ac348d7bd468a1ae9ac329aa9f4',
+        qualifiedDigestHex: 'bd113289f7c4ecb07d28ed80cd7df847d0e5585a1345e11bedf9bcf1197a942b',
+      },
+      importSource: {
+        byteLength: 234,
+        byteSha256Hex: '5522f0c87fa5d07d6b05fca5497020ec2aa67e5483e0273dc28a7e1252d27891',
+        qualifiedDigestHex: '5ab59242e1a897b800891227248109c754187fb90bfdb9a37038712f4aed8440',
+      },
+      practiceTakeCore: {
+        byteLength: 2_385,
+        byteSha256Hex: '0753f2bccb1b8b625c4439d4fb9b41d6cb3b96214883376482b06c67b2fdfe0f',
+        qualifiedDigestHex: '707a0aeedd80a9255851d7c48c31530ae8c1e84334a9550fca4da720f273231f',
+      },
+      referenceMap: {
+        byteLength: 1_388,
+        byteSha256Hex: 'ccaa74e04d93bd8a16e08044e9b28d50e4f08e21dd41d736d0f4b8c64dda3f6c',
+        qualifiedDigestHex: 'f39762fd5f38937c21951456f86bdd5406f8d1b8e15df84ed2e256373f10da77',
+      },
+      takeMap: {
+        byteLength: 1_157,
+        byteSha256Hex: 'f708a82a4e69c383717ac7ebe0a9fa9655a36496590566f59a0f4f682a714a4b',
+        qualifiedDigestHex: '04c333f160416b6c9d540494a3ae8a1aeb9c19568d340c7f6a3a0f7c6e94b293',
+      },
+    });
   });
 
   it('pins immutable media-identity projection bytes and digest', async () => {

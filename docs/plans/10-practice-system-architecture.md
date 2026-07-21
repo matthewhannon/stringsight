@@ -130,7 +130,7 @@ The canonical document contains:
 
 - stable document identity and monotonic revision identity;
 - human metadata and import provenance/report;
-- fixed schema PPQ after final acceptance (960 remains the proposed candidate);
+- fixed schema PPQ 960, accepted by ADR 0009;
 - duration and ordered tempo, meter, and key maps;
 - guitar instrument configuration;
 - tracks, voices, events/rests, string/fret positions, written pitch, rational tuplets, notated and

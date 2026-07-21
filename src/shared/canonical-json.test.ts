@@ -5,6 +5,7 @@ import {
   CANONICAL_JSON_LIMITS,
   CANONICAL_JSON_VERSION,
   CanonicalJsonError,
+  assertCanonicalJsonDataDomain,
   canonicalJsonBytes,
   canonicalJsonStringify,
   hashCanonicalJson,
@@ -109,6 +110,20 @@ describe('canonical JSON serialization', () => {
 
     const hidden = Object.defineProperty({}, 'secret', { value: 1 });
     expect(() => canonicalJsonStringify(hidden)).toThrow(/non-enumerable properties/);
+  });
+
+  it('exports the descriptor-safe guard used before schema trust boundaries', () => {
+    let getterCalls = 0;
+    const accessor = Object.defineProperty({}, 'danger', {
+      enumerable: true,
+      get: () => {
+        getterCalls += 1;
+        return 'unexpected';
+      },
+    });
+    expect(() => assertCanonicalJsonDataDomain(accessor)).toThrow(/accessor properties/);
+    expect(getterCalls).toBe(0);
+    assertCanonicalJsonDataDomain({ safe: ['json', 1, true, null] });
   });
 });
 

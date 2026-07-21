@@ -3,6 +3,8 @@ export * from './common';
 export * from './error';
 export * from './fusion';
 export * from './practice';
+export * from './practice-aggregate-migration';
+export * from './practice-import';
 export * from './practice-migration';
 export * from './practice-semantics';
 export * from './practice-support';

@@ -120,4 +120,20 @@ describe('verified native Practice Document interchange', () => {
       createPracticeNativeEnvelope(document, '2026-07-20T13:00:00Z'),
     ).rejects.toMatchObject({ code: 'expected-events-hash-mismatch' });
   });
+
+  it('rejects native accessors before schema parsing can invoke them', async () => {
+    const document = await validHashedDocument();
+    let getterCalls = 0;
+    Object.defineProperty(document.metadata, 'title', {
+      enumerable: true,
+      get: () => {
+        getterCalls += 1;
+        return 'Accessor title';
+      },
+    });
+    await expect(
+      createPracticeNativeEnvelope(document, '2026-07-20T13:00:00Z'),
+    ).rejects.toMatchObject({ code: 'ACCESSOR_PROPERTY' });
+    expect(getterCalls).toBe(0);
+  });
 });

@@ -26,11 +26,13 @@ duration.
 
 `canonical-json.ts` and `practice-identity.ts` provide bounded deterministic canonical JSON,
 domain-separated SHA-256 projections, qualified identities, and golden bytes/digests.
-`contracts/practice-migration.ts` is the explicit native interchange/migration boundary; v1 is the
-first supported Practice Document version, so no fictitious older schema is silently accepted.
+`contracts/practice-migration.ts` and `contracts/practice-aggregate-migration.ts` are the explicit
+native interchange and durable aggregate migration boundaries; v1 is the first supported version,
+so no fictitious older schema is silently accepted.
 
-These files are the Item 11 foundation, not its completion. Rich take discontinuity/media
-provenance, assessment match records, import draft/report aggregates, cross-aggregate golden
-fixtures, and final acceptance review remain open.
+`contracts/practice-import.ts`, `practice-sync.ts`, `practice-import-integrity.ts`, and
+`practice-integrity.ts` complete the bounded import, piecewise synchronization, trusted import, and
+cross-aggregate integrity seams. Item 11 is accepted; editor commands and native editing workflows
+begin in Item 12.
 
 See `docs/plans/03-architecture-and-contracts.md` for the complete data flow and thread ownership model.

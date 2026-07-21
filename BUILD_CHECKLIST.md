@@ -347,20 +347,24 @@ and validated-boundary findings in
 **Planning:** Follow the accepted Practice System plan and ADR; do not overload the observed
 `Session` aggregate.
 
-- [ ] Implement the accepted canonical `PracticeDocument` with integer musical time,
+- [x] Implement the accepted canonical `PracticeDocument` with integer musical time,
       tempo/meter/key maps, tracks, voices, guitar events, validated ranges, revisions, and
       qualified content identity.
-- [ ] Keep authored intent, observed `Session` evidence, immutable `PracticeTake`, reference/take
+- [x] Keep authored intent, observed `Session` evidence, immutable `PracticeTake`, reference/take
       video and mutable media availability, revision-bound sync maps, and derived
       `PracticeAssessment` independently versioned.
-- [ ] Implement expected-event projections, immutable observed-evidence/correction snapshots, exact
+- [x] Implement expected-event projections, immutable observed-evidence/correction snapshots, exact
       media identities, and capture/score clock anchors.
-- [ ] Add deterministic schema validation, canonical serialization, golden hashes, migrations, and
+- [x] Add deterministic schema validation, canonical serialization, golden hashes, migrations, and
       adversarial boundary tests.
-- [ ] Encode the owner-approved notation/technique support profile and stable import-loss codes.
+- [x] Encode the owner-approved notation/technique support profile and stable import-loss codes.
 
 **Done when:** Authored scores, observed evidence, media, takes, and assessments can be validated,
 hashed, migrated, and referenced without converting one aggregate into another.
+
+**Independent review:** PASS after resolving canonical resource/accessor, import-claim, sync-history,
+capture-epoch, assessment-partition, media-binding, migration-fixture, and aggregate-integrity
+findings in `docs/verification/11-versioned-practice-contracts-independent-review.md`.
 
 ### 12. Build the renderer-independent editor core
 

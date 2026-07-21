@@ -608,10 +608,10 @@ export function createPracticeImportFinding(
     action: definition.action,
     affectedCount: input.affectedCount,
     code,
-    detail: input.detail,
+    ...(input.detail === undefined ? {} : { detail: input.detail }),
     disposition: definition.disposition,
     schemaVersion: PRACTICE_SUPPORT_SCHEMA_VERSION,
     severity: definition.severity,
-    sourceEventIds: input.sourceEventIds,
+    ...(input.sourceEventIds === undefined ? {} : { sourceEventIds: input.sourceEventIds }),
   });
 }

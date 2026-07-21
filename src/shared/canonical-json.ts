@@ -290,6 +290,15 @@ export function canonicalJsonStringify(value: unknown): string {
   return serialize(value, '#', { ancestors: new Set(), nodes: 0 }, 0);
 }
 
+/**
+ * Descriptor-safely validates unknown input before any schema parser may read its properties.
+ * This intentionally performs the same bounded traversal as canonical serialization so accessors,
+ * hidden state, unsupported values, and over-budget structures fail without coercion.
+ */
+export function assertCanonicalJsonDataDomain(value: unknown): void {
+  void canonicalJsonStringify(value);
+}
+
 /** Encodes canonical JSON as UTF-8 bytes. */
 export function canonicalJsonBytes(value: unknown): Uint8Array<ArrayBuffer> {
   return new TextEncoder().encode(canonicalJsonStringify(value));

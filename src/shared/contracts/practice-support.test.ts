@@ -379,6 +379,8 @@ describe('stable practice import report codes', () => {
     const valid = createPracticeImportFinding('import.smf.type1.fixture-explicit-loss', {
       affectedCount: 1,
     });
+    expect(Object.hasOwn(valid, 'detail')).toBe(false);
+    expect(Object.hasOwn(valid, 'sourceEventIds')).toBe(false);
 
     for (const invalid of [
       { ...valid, affectedCount: 0 },
