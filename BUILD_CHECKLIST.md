@@ -325,16 +325,20 @@ then begin in dependency order at Item 10.
 
 **Planning:** Direct implementation with an ADR for the canonical coordinate system.
 
-- [ ] Represent strings, frets, scale length, handedness, capo, and tuning.
-- [ ] Map every string/fret location to absolute pitch and pitch class.
-- [ ] Enumerate physical locations capable of producing an audio candidate.
-- [ ] Generate chord voicings and candidate fingerboard states.
-- [ ] Model physical transition cost between sequential states.
-- [ ] Support future alternate tunings without rewriting the inference engine.
-- [ ] Add exhaustive mapping and invariance tests.
+- [x] Represent strings, frets, scale length, handedness, capo, and tuning.
+- [x] Map every string/fret location to absolute pitch and pitch class.
+- [x] Enumerate physical locations capable of producing an audio candidate.
+- [x] Generate chord voicings and candidate fingerboard states.
+- [x] Model physical transition cost between sequential states.
+- [x] Support future alternate tunings without rewriting the inference engine.
+- [x] Add exhaustive mapping and invariance tests.
 
 **Done when:** Given any supported pitch set, the model returns all physically possible guitar
 locations and voicings within configured constraints without renderer or UI assumptions.
+
+**Independent review:** PASS after resolving bounded-search, barre-legality, transition-distance,
+and validated-boundary findings in
+`docs/verification/10-canonical-guitar-model-independent-review.md`.
 
 ## Phase 4: Practice document, editor, and interchange
 

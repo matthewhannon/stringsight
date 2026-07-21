@@ -33,5 +33,13 @@ timed theory evidence. Finalized and corrected events are included by default, p
 are opt-in, and open events require an explicit window end. Candidate uncertainty is retained and
 source objects are never modified.
 
+`guitar.ts` owns the canonical renderer-independent guitar model. String numbers are explicit and
+treble-to-bass; tab frets are capo-relative; physical fret, MIDI, and pitch class are derived. It
+provides complete-or-explicit-limit exact-MIDI and explicitly specified pitch-class voicing
+enumeration, legal four-finger/barre suggestions, ideal 12-TET scale geometry, legacy
+tuning/position adapters, and an inspectable minimum-contact transition-cost policy. Enumeration
+uses an exported default node budget and never returns partial candidates after a limit error.
+Handedness never changes pitch or effort.
+
 Import public music-domain APIs through `src/music/index.ts`. Future interpretation results must
 reference their source detector events and remain separate from raw audio candidates.

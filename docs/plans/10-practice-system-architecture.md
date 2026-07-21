@@ -478,8 +478,8 @@ fully enumerated.
 ## 14. Implementation sequence after bounded acceptance
 
 1. Accepted architecture and bounded hackathon technology/license profile (complete).
-2. Canonical guitar model (next).
-3. Versioned practice contracts, hashes, maps, and golden fixtures.
+2. Canonical guitar model (complete).
+3. Versioned practice contracts, hashes, maps, and golden fixtures (next).
 4. Renderer-independent editor and native round trip.
 5. Accepted notation/import and authored-MIDI adapters.
 6. Shared `AudioRuntime` with protected capture regression/hardware verification.
@@ -523,5 +523,5 @@ coherence of the invariant model plus the bounded implementation/fallback decisi
 that one application-wide runtime, broad imports, exact physical A/V sync, Edge lifecycle recovery,
 full accessibility, representative hardware, repeated soaks, or percentile budgets passed.
 
-The next production item is the canonical guitar model. The disposable spike worktrees remain
-evidence sources and are never merged wholesale.
+The next production item is the versioned Practice System contracts, hashes, maps, and golden
+fixtures. The disposable spike worktrees remain evidence sources and are never merged wholesale.
