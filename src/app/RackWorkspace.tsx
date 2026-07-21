@@ -133,9 +133,14 @@ export function RackWorkspace() {
   useEffect(() => saveWorkspaceLayout(storage, layout), [layout, storage]);
 
   const installedModules = layout.optionalModuleIds.map((id) => WorkspaceModuleRegistry[id]);
+  const rackIsFull = installedModules.length >= AvailableWorkspaceModuleIds.length;
 
   const addModule = (definition: WorkspaceModuleDefinition) => {
     setLayout((current) => addWorkspaceModule(current, definition.id, AvailableWorkspaceModuleIds));
+    const fillsRack = AvailableWorkspaceModuleIds.every(
+      (id) => id === definition.id || layout.optionalModuleIds.includes(id),
+    );
+    if (fillsRack) setLibraryOpen(false);
     setAnnouncement(`${definition.title} added to the rack.`);
   };
 
@@ -220,16 +225,18 @@ export function RackWorkspace() {
               <strong>{String(installedModules.length).padStart(2, '0')} installed</strong>
             </div>
             <div>
-              <RackButton
-                aria-controls="rack-module-library"
-                aria-expanded={libraryOpen}
-                onClick={() => {
-                  setLibraryOpen((open) => !open);
-                  setEditing(false);
-                }}
-              >
-                {libraryOpen ? 'Close library' : '+ Add module'}
-              </RackButton>
+              {!rackIsFull && (
+                <RackButton
+                  aria-controls="rack-module-library"
+                  aria-expanded={libraryOpen}
+                  onClick={() => {
+                    setLibraryOpen((open) => !open);
+                    setEditing(false);
+                  }}
+                >
+                  {libraryOpen ? 'Close library' : '+ Add module'}
+                </RackButton>
+              )}
               <RackButton
                 aria-pressed={editing}
                 disabled={!editing && installedModules.length === 0}

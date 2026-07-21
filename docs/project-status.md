@@ -1,187 +1,89 @@
 # StringSight project status
 
-**Updated:** July 19, 2026
+**Updated:** July 21, 2026
+
 **Project:** OpenAI Build Week
 
 ## Current product
 
-StringSight opens directly into a realistic rack workspace. The rack is the product shell during
-core development; a marketing site and onboarding experience are intentionally deferred.
+StringSight is a browser-based, local-first guitar pitch and chord monitor. The supported product
+experience is a realistic audio rack that opens directly into a usable Audio Input module.
 
-The implemented vertical slice includes:
+The default rack is intentionally minimal. It contains:
 
-- Device-neutral browser audio-input selection
-- Local PCM capture, input diagnostics, calibrated metering, recording, and replay
-- Validated WAV import through the same replay/analyzer path used by live captures
-- Streaming monophonic onset and pitch detection
-- Ranked note candidates with confidence, timing, lifecycle, and provenance
-- A dedicated polyphonic worker with tuned harmonic-suppressed chroma, NNLS-style note evidence,
-  multiscale change detection, and ranked provisional chord candidates
-- A pinned Basic Pitch model with WASM-first inference, CPU fallback, overlap trimming, finalized
-  note sets, upstream-style post-processing, and authoritative provisional-event reconciliation
-- Accurate and Responsive chord modes with distinct evidence windows, live hysteresis,
-  weak-extension and extension-register reliability gating, and acoustic/model evidence fusion for
-  finalized chord segments
-- Exact per-hop acoustic timing across ordinary 48 kHz callbacks, robust attack evidence, and an
-  explicit online chord state machine that separates ring-out, re-strum, attacked change, and
-  longer-confirmed attack-free change behavior
-- A promoted post-Stop boundary-region decoder that makes one pooled label decision per supported
-  acoustic region, can recover a sustained missed live boundary, and prevents model note edges,
-  partial attacks, or decay tails from becoming chord fragments
-- A rack chord module with pitch-class meters, alternatives, diagnostics, and lifecycle timeline
-- Bounded, non-scrolling six-card note and chord timelines with newest results first, plus private
-  evaluation-fixture export with prefilled note or chord labels
-- Procedural development and held-out fixtures with deterministic evaluation
-- A typed, reusable rack component library for future product modules
-- An ignored private-corpus manifest and batch evaluator for reusable real-guitar recordings
+- A system-default or named microphone/audio-interface selector
+- An Input switch that requests microphone access and starts local monitoring
+- A live waveform, calibrated level meter, signal status, and peak warning
+- Compact single-note and chord readouts for immediate feedback
+- Local mode, active sample rate, analyzer version, and an explicit local-audio privacy indicator
 
-The real-guitar verification process has produced 18 correct top-ranked pitches across 18 reviewed
-events with no duplicate or false events in the tested recordings. Those private recordings remain
-outside this repository; only summarized verification results are public.
+No account, server upload, or camera is required. Raw microphone audio remains in the browser.
 
-Those three reviewed takes now form an ignored local regression corpus. Its batch report reproduces
-18/18 top-1 and top-3 notes, 18/18 onsets, no false onsets, and 32 ms median/p95 onset error. The
-public verification suite remains independent of these private files.
+## Optional analysis modules
 
-## Next implementation milestone
+The user can add two focused modules independently or together.
 
-Item 7's isolated-chord recognition matrix and finalization slice are accepted. A reviewed
-continuous G-to-D take exposed premature finalized lifecycle labels, transition fragments retained
-after Stop, and match scores presented as probabilities. The official Basic Pitch model runs only
-inside the dedicated worker, while a purpose-built deterministic frontend provides fast provisional
-chord evidence and stable acoustic segmentation. The public real-browser matrix reaches 100% note
-F1, onset F1, pitch-class-set recall, and finalized chord accuracy on its development and held-out
-fixtures. Model/runtime sizes, load and inference timing, real-time factors, and the browser-exposed
-JavaScript heap sample are recorded with the memory sample's scope stated explicitly.
+### Pitch analysis
 
-The original reviewed private 19-chord regression remains at 89.5% top-1 and 94.7% top-3 in both
-profiles. A second reviewed ten-chord take now supplies the missing C/E and G/B inversion, four
-power-chord, and independent Dm/Dm7 coverage. Both profiles identify both inversions and their bass
-notes correctly, distinguish Dm from Dm7 at top-1, and place all four power chords in the top three.
-Accurate and Responsive process that 50.3-second take at 0.619x and 0.206x real time. Bare fifths
-remain intentionally uncertain among power, suspended, and major interpretations rather than being
-forced to a fixture-specific label.
+- Detected note and cents offset
+- Detected and target frequencies
+- Flat/sharp tuning meter
+- On-demand analyzer diagnostics and recent-note history
 
-Item 8, the deterministic music-theory interpretation engine, is complete. Its pure
-domain layer represents chromatic pitch identity separately from contextual note spelling, simple
-intervals, every currently supported chord quality and inversion, the five first-release scale
-families, and conventional major and minor key signatures. Table-driven tests cover transposition,
-enharmonic equivalence, interval quality, chord and scale construction, inversions, and contextual
-key spelling.
+### Chord analysis
 
-The chord interpretation layer now generates ranked results from detected pitch-class evidence with
-explicit matched, missing, extra, root, and bass contributions. It preserves exact harmonic
-ambiguities, supports omitted tones and inversions, applies key-aware enharmonic spelling, and
-copies source event IDs into separately owned results without mutating detector input.
+- Leading live chord candidate and match strength
+- Default 12-note pitch-class energy spread
+- Accurate analysis profile without a user-facing mode switch
+- On-demand quality, bass, ranked alternatives, worker diagnostics, and bounded chord timeline
 
-Scale and key interpreters aggregate confidence- and duration-weighted evidence over event windows.
-They retain relative-major/minor and relative-pentatonic ambiguity when tonic evidence is absent,
-and apply only bounded, explicit continuity contributions from prior results. A side-effect-free
-adapter converts the existing shared note, note-set, and chord event contracts into theory evidence,
-keeps ranked detector uncertainty, excludes provisional events by default, and leaves every source
-event unchanged.
+When both modules are installed, the rack is full and the add control disappears. Edit mode can
+reorder or remove either module, and the selected layout is stored locally.
 
-Item 9, the complete audio-only session product slice, is complete under
-`docs/plans/09-audio-only-product-slice.md`. Microphone connection is now independent from recording:
-Connect opens the local audio graph and enters bounded monitoring without creating a session,
-transport worker, or retained PCM history. Continuous transient monophonic and polyphonic runs
-provide live pitch/chord feedback with bounded rolling event history while connected; monitoring
-does not accumulate polyphonic model input or finalization evidence. Record starts a separate logical
-frame clock and analyzer/session run; Pause flushes partial PCM and excludes paused wall-clock time
-while transient analysis continues independently; Stop finalizes and returns to live monitoring;
-Disconnect explicitly releases the media tracks and audio context while preserving a completed take.
+## Analysis implementation
 
-Live chord presentation now interpolates pitch-class and confidence meters with compositor-only
-transforms rather than layout-changing heights and widths. New chord labels use a short isolated
-transition, and empty analyzer updates preserve the bounded timeline arrays so continuous chroma
-updates do not repeatedly reconcile unchanged history.
+The working audio stack includes:
 
-In-memory recording is conservatively limited to five minutes for short guitar takes. Reaching the
-limit finalizes the accepted audio successfully with an honest maximum-duration warning. Terminal
-transport failures reset worker-held chunks and cause the controller to terminate and release the
-failed worker rather than retaining partial PCM indefinitely.
+- Streaming monophonic onset and pitch analysis in a dedicated worker
+- Streaming harmonic-suppressed chroma evidence and ranked provisional chord candidates
+- Typed timing, lifecycle, confidence, provenance, and worker-transport contracts
+- A pinned Basic Pitch model path with WASM-first execution and CPU fallback for finalized analysis
+- Procedural development and held-out fixtures plus private-corpus evaluation tooling
+- Reusable rack UI components and design tokens
 
-The audio session controller now aggregates capture, monophonic, and polyphonic snapshots without
-coupling detector logic to React. Analyzer workers emit explicit run-completion messages, allowing
-the controller to keep the last completed event set visible while replay analysis is staged and
-replace it atomically only after both analyzers settle. Live recording events remain visible, and
-validated session status follows recording, pause, processing, completion, and recoverable failure.
+The current hackathon interface is monitoring-focused. Recording/replay, session review, evaluation,
+and export implementations remain available for development and automated testing but are not
+exposed as product modules.
 
-The current corrective slice makes closed live chord spans remain provisional, runs post-Stop
-duration-aware sequence decoding before final ID reconciliation, and presents uncalibrated chord
-values as match strength. Final fusion no longer uses a fixed acoustic/model split: acoustic
-change-supported spans are reranked by finalized pitch-class completeness and defining-tone
-compatibility, doubled octaves collapse to one pitch-class contribution, and weak dyads remain
-ambiguous. Capture drops now propagate discontinuities, model gaps preserve elapsed time, and Basic
-Pitch output is offset onto the source timebase.
+## Not in the current MVP
 
-The full browser production path now produces 18 clean events and 18/19 (94.7%) top-1/top-3 on the
-reviewed 19-chord recording. It removes three decay/startup fragments that appeared in the live
-acoustic sequence while preserving every supported label. The remaining Am7 attack is detected,
-but acoustic evidence remains Em7/Gsus/Cmaj-like and Basic Pitch reports no A, so a forced split is
-not justified. The promoted decoder partitions retained hops by confirmed acoustic boundaries,
-performs conservative missed-boundary inference only within those partitions, and uses pooled hop
-evidence only when a live span actually needs splitting. Its preserved-sequence output matches the
-former production labels exactly with no extra event.
+- Fretboard or hand-position vision
+- Audio/vision fusion
+- Remote analysis or cloud media storage
+- Tablature generation or likely string/fret interpretation
+- A user-facing session editor or evaluation bench
 
-A fresh 18.69-second G-D-E-G-D-E take with continuous strumming and a final E ring-out supplied the
-remaining product confirmation. Before correction, production fusion emitted seven events: G,
-Dsus4, Esus4, E, G, Asus4, E. Fusion now considers the complete retained acoustic hypothesis
-catalog instead of only the five live display candidates, limits model labeling to settled acoustic
-support windows, scores essential candidate-tone completeness uniformly across roots and qualities,
-and discourages extra transitions through low-definition regions. The same take now emits exactly
-G, D, E, G, D, E. The independent 19-chord sequence remains unchanged at 18 supported/18 correct
-events, while the power/inversion take emits exactly its ten intended events with all four power
-chords at top-1. No chord name, transition pair, recording timestamp, or guitar-specific rule is
-encoded in the correction.
+## Supported workflow
 
-The rack now includes a session review module for finalized notes and chords. It shows immutable raw
-predictions beside the corrected projection, timing, match strength, ranked alternatives, and
-algorithm provenance. Replacements and reverts append correction records rather than mutating
-detector output; invalid or orphaned history is reported explicitly.
-
-Complete sessions can be saved, listed, loaded, replayed, and deleted through an injectable local
-repository. The browser implementation validates structured sessions and stores them atomically in
-IndexedDB separately from optional PCM media. Versioned JSON export/import preserves raw events,
-settings, provenance, confidence, timing, recording metadata, and correction history. Standard MIDI
-export is available only when finalized note evidence supplies a defensible MIDI pitch, onset, and
-duration; chord-only sessions never invent voicings.
-
-A real page refresh retained and restored the reviewed six-chord session, its two correction
-records, and replayable PCM. The reusable private browser replay now optionally validates a sidecar
-label file generically by bounded onset alignment and interval overlap. It enforces unique emitted
-events, exact supported chord labels, and labeled inversion basses without encoding any recording
-or chord sequence in the test.
-
-The older Node acoustic-only diagnostic was also rerun rather than conflated with production fusion.
-On the 19-chord take, Accurate is 89.5% top-1/94.7% top-3 and Responsive is 84.2%/94.7%. On the
-power/inversion take, Accurate is 60.0%/90.0% and Responsive is 90.0%/100%. These profiles omit the
-promoted per-hop Basic Pitch fusion used by the application; the label-driven production checks
-above are the product acceptance baseline.
-
-Later milestones add optional fretboard vision, guitar geometry, audio/vision fusion, and musical
-interpretation. Audio must remain useful without a camera.
+1. Run the application and open the rack.
+2. Select an audio source and press **Input**.
+3. Confirm the input level and compact note/chord readouts respond while playing.
+4. Add Pitch analysis, Chord analysis, or both for deeper monitoring.
+5. Open Analysis details only when diagnostics, histories, or alternatives are useful.
 
 ## Product and engineering constraints
 
 - Raw media remains local by default.
-- Private evaluation recordings are not part of the open-source distribution.
-- Predictions preserve uncertainty and provenance instead of presenting guesses as facts.
-- Audio processing remains isolated from interface rendering through worker and typed-contract
-  boundaries.
-- New dependencies, datasets, models, and assets require recorded provenance and acceptable
-  redistribution terms.
+- Private evaluation recordings are excluded from the public repository.
+- Predictions preserve uncertainty and provenance rather than presenting guesses as facts.
+- Worker and typed-contract boundaries keep audio processing independent from React rendering.
+- Dependencies, datasets, models, and assets require recorded provenance and redistribution terms.
 
 ## Verification baseline
 
-The current verification passes formatting, linting, type checking, dependency-license checks,
-corpus validation, evaluation self-tests, coverage, and the production build. The suite contains
-285 unit/integration tests across 34 files with 91.09% statement and 80.37% branch coverage. The
-public production browser matrix remains 100% chord top-1/top-3 on its two fixtures, and the private
-browser replay now asserts the supported labels and inversions on the real model/fusion path. Item
-7's reopened finalization checkbox and Item 9 are closed, including the fresh
-continuous-transition product confirmation. Local
-personal-guitar media remains ignored and outside public acceptance data.
+The release is checked with formatting, linting, TypeScript, dependency-license validation, corpus
+validation, deterministic evaluation self-tests, unit/integration coverage, a production build, and
+Playwright tests for the supported browser workflows.
 
-See [BUILD_CHECKLIST.md](../BUILD_CHECKLIST.md) for the complete implementation sequence and
+See [BUILD_CHECKLIST.md](../BUILD_CHECKLIST.md) for the implementation history and
 [ADR 0005](decisions/0005-mit-open-source-and-license-policy.md) for the open-source policy.

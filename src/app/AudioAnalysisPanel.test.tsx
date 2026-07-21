@@ -63,7 +63,6 @@ describe('AudioAnalysisPanel', () => {
     render(<AudioAnalysisPanel analysis={analysis} />);
 
     expect(screen.getByRole('heading', { name: 'Pitch analysis' })).toBeVisible();
-    expect(screen.getByText('Listening')).toBeVisible();
     expect(screen.getByText('Listening for a clear note')).toBeVisible();
     expect(screen.getByRole('status', { name: 'Tuning offset unavailable' })).toBeVisible();
     expect(screen.queryByRole('region', { name: 'Recent note history' })).not.toBeInTheDocument();
@@ -73,7 +72,7 @@ describe('AudioAnalysisPanel', () => {
     analysis.dispose();
   });
 
-  it('groups the detected note, tuning facts, instruction, and qualitative signal state', async () => {
+  it('groups the detected note and tuning facts without redundant coaching or signal labels', async () => {
     const user = userEvent.setup();
     const analysis = analysisWithSnapshot({
       ...InitialAudioAnalysisSnapshot,
@@ -88,14 +87,13 @@ describe('AudioAnalysisPanel', () => {
 
     render(<AudioAnalysisPanel analysis={analysis} />);
 
-    expect(screen.getByText('B3 detected')).toBeVisible();
     expect(screen.getByText('B3')).toBeVisible();
     expect(screen.getByText(/\+18\.3¢/)).toHaveTextContent('sharp');
     expect(screen.getByText('249.56 Hz')).toBeVisible();
     expect(screen.getByText('246.94 Hz')).toBeVisible();
-    expect(screen.getByText('Lower pitch slightly')).toBeVisible();
-    expect(screen.getByText('· Stable signal')).toBeVisible();
-    expect(screen.getByText('· High confidence')).toBeVisible();
+    expect(screen.queryByText('Lower pitch slightly')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Stable signal/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/High confidence/)).not.toBeInTheDocument();
     expect(screen.queryByText(/69%/)).not.toBeInTheDocument();
     expect(screen.queryByText('B2')).not.toBeInTheDocument();
     expect(screen.getByRole('meter', { name: 'Tuning offset' })).toHaveAttribute(
@@ -117,7 +115,7 @@ describe('AudioAnalysisPanel', () => {
     analysis.dispose();
   });
 
-  it('keeps an analysis failure visible and reports signal loss', () => {
+  it('keeps an analysis failure visible without a redundant signal-loss label', () => {
     const analysis = analysisWithSnapshot({
       ...InitialAudioAnalysisSnapshot,
       error: 'Pitch analysis stopped. Reconnect the input to try again.',
@@ -126,7 +124,7 @@ describe('AudioAnalysisPanel', () => {
 
     render(<AudioAnalysisPanel analysis={analysis} embedded />);
 
-    expect(screen.getByText('Signal lost')).toBeVisible();
+    expect(screen.queryByText('Signal lost')).not.toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Reconnect the input');
     expect(screen.queryByLabelText('Note analysis diagnostics')).not.toBeInTheDocument();
     analysis.dispose();
@@ -146,7 +144,8 @@ describe('AudioAnalysisPanel', () => {
     analysis.dispose();
   });
 
-  it('shows only a thin bounded history after multiple complete notes have useful evidence', () => {
+  it('shows only a thin bounded history with analysis details', async () => {
+    const user = userEvent.setup();
     const events = Array.from({ length: 8 }, (_, index) => ({
       ...noteEvent,
       id: `run-1-note-${String(index + 1)}`,
@@ -165,6 +164,9 @@ describe('AudioAnalysisPanel', () => {
 
     render(<AudioAnalysisPanel analysis={analysis} />);
 
+    expect(screen.queryByRole('region', { name: 'Recent note history' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Analysis details' }));
+
     const history = screen.getByRole('region', { name: 'Recent note history' });
     const timeline = within(history).getByRole('list', {
       name: 'Recent note history, oldest first',
@@ -177,10 +179,13 @@ describe('AudioAnalysisPanel', () => {
     expect(within(firstItem).getByText('+18.3¢ median')).toBeVisible();
     expect(within(firstItem).getByText('4.0¢ variation')).toBeVisible();
     expect(within(history).queryByText(/confidence/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Hide analysis details' }));
+    expect(screen.queryByRole('region', { name: 'Recent note history' })).not.toBeInTheDocument();
     analysis.dispose();
   });
 
-  it('does not show history for multiple provisional notes without duration data', () => {
+  it('does not show history for multiple provisional notes without duration data', async () => {
+    const user = userEvent.setup();
     const events = Array.from({ length: 8 }, (_, index) => ({
       ...noteEvent,
       id: `monitoring-1-note-${String(index + 1)}`,
@@ -198,6 +203,7 @@ describe('AudioAnalysisPanel', () => {
 
     render(<AudioAnalysisPanel analysis={analysis} />);
 
+    await user.click(screen.getByRole('button', { name: 'Analysis details' }));
     expect(screen.queryByRole('region', { name: 'Recent note history' })).not.toBeInTheDocument();
     analysis.dispose();
   });

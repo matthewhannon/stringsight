@@ -24,6 +24,7 @@ describe('App', () => {
     expect(screen.getByText('ANALYZER')).toBeVisible();
     expect(screen.getByText('MONO v0.2.1')).toBeVisible();
     expect(screen.queryByRole('heading', { name: /pitch analysis/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /chord analysis/i })).not.toBeInTheDocument();
     expect(screen.getByText('00 installed')).toBeVisible();
     expect(screen.getByRole('button', { name: '+ Add module' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Edit rack' })).toBeDisabled();
@@ -40,7 +41,10 @@ describe('App', () => {
     expect(screen.getByRole('region', { name: 'Module library' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Add Pitch analysis' }));
     await user.click(screen.getByRole('button', { name: 'Add Chord analysis' }));
-    await user.click(screen.getByRole('button', { name: 'Close library' }));
+
+    expect(screen.queryByRole('region', { name: 'Module library' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '+ Add module' })).not.toBeInTheDocument();
+    expect(screen.getByText('02 installed')).toBeVisible();
 
     let pitch = screen.getByRole('heading', { name: 'Pitch analysis' });
     let chord = screen.getByRole('heading', { name: 'Chord analysis' });
@@ -55,11 +59,11 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Remove Pitch analysis from rack' }));
     expect(screen.queryByRole('heading', { name: 'Pitch analysis' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '+ Add module' })).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Done' }));
     await user.click(screen.getByRole('button', { name: '+ Add module' }));
     await user.click(screen.getByRole('button', { name: 'Add Pitch analysis' }));
-    await user.click(screen.getByRole('button', { name: 'Close library' }));
     expect(screen.getByRole('heading', { name: 'Pitch analysis' })).toBeVisible();
     expect(screen.queryByRole('button', { name: /Move .* up/ })).not.toBeInTheDocument();
 
@@ -77,7 +81,6 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: '+ Add module' }));
     await user.click(screen.getByRole('button', { name: 'Add Pitch analysis' }));
     await user.click(screen.getByRole('button', { name: 'Add Chord analysis' }));
-    await user.click(screen.getByRole('button', { name: 'Close library' }));
     await user.click(screen.getByRole('button', { name: 'Edit rack' }));
 
     const pitchHandle = screen.getByRole('button', { name: 'Drag Pitch analysis to reorder' });

@@ -19,7 +19,12 @@ test('opens directly into the functional realistic rack', async ({ page }) => {
 
   await expect(page).toHaveTitle('StringSight');
   await expect(page.getByRole('heading', { name: 'StringSight rack workspace' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Session control' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Audio input' })).toBeVisible();
+  const audioInputModule = page.getByRole('region', { name: 'Audio input' });
+  await expect(audioInputModule.getByText('LOCAL', { exact: true })).toBeVisible();
+  await expect(audioInputModule.getByText('NOT ACTIVE', { exact: true })).toBeVisible();
+  await expect(audioInputModule.getByText('MONO v0.2.1', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Pitch analysis' })).toHaveCount(0);
   await expect(page.getByText('00 installed', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { exact: true, name: 'Input' })).toBeVisible();
@@ -27,18 +32,24 @@ test('opens directly into the functional realistic rack', async ({ page }) => {
 
   await page.getByRole('button', { exact: true, name: '+ Add module' }).click();
   await expect(page.getByRole('button', { name: 'Add Evaluation bench' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add Session review' })).toHaveCount(0);
   await page.getByRole('button', { exact: true, name: 'Add Pitch analysis' }).click();
   await page.getByRole('button', { exact: true, name: 'Close library' }).click();
   await expect(page.getByRole('heading', { name: 'Pitch analysis' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Evaluation bench' })).toHaveCount(0);
 });
 
-test('captures and replays audio through a simulated microphone', async ({ page }) => {
+test('monitors audio through a simulated microphone', async ({ page }) => {
   await page.goto('/#capture');
   await addRackModules(page, ['Pitch analysis']);
   await page.getByRole('button', { exact: true, name: 'Input' }).click();
   const capturePanel = page.getByLabel('Audio capture controls');
   await expect(capturePanel.getByText('Active', { exact: true })).toBeVisible();
+  const audioHeaderValue = page
+    .getByRole('region', { name: 'Audio input' })
+    .locator('.ss-rack-value')
+    .filter({ hasText: 'AUDIO' });
+  await expect(audioHeaderValue).toContainText(/\d{2,3}(?:,\d{3})? Hz/);
   await showPitchDiagnostics(page);
   await expect(page.getByRole('region', { name: 'Analysis diagnostics' })).toContainText(
     'monitoring-1',
@@ -49,33 +60,19 @@ test('captures and replays audio through a simulated microphone', async ({ page 
   await expect(capturePanel.getByText(/Hz$/).filter({ hasNotText: '—' })).toBeVisible();
   await page.getByRole('button', { exact: true, name: 'Device details' }).click();
   await expect(page.getByLabel('Capture duration')).toBeVisible();
-
-  await page.getByRole('button', { exact: true, name: 'Record' }).click();
-  await expect(capturePanel.getByText('Recording', { exact: true })).toBeVisible();
   await expect
-    .poll(async () => Number(await page.getByRole('meter').getAttribute('aria-valuenow')))
+    .poll(async () =>
+      Number(
+        await page
+          .getByRole('meter', { name: 'Microphone input level' })
+          .getAttribute('aria-valuenow'),
+      ),
+    )
     .toBeGreaterThan(0);
-  await expect(page.getByRole('region', { name: 'Analysis diagnostics' })).toContainText(
-    'microphone-1',
-  );
-  await expect(page.getByLabel('Capture duration')).not.toHaveText('00:00.0');
-  await page.getByRole('button', { name: 'Stop recording', exact: true }).click();
-  await expect(capturePanel.getByText('Ready', { exact: true })).toBeVisible({
-    timeout: 15_000,
-  });
-
-  await page.getByRole('button', { exact: true, name: 'Replay' }).click();
-  await expect(page.getByRole('button', { exact: true, name: 'Stop replay' })).toBeVisible();
-  await expect(page.getByRole('button', { exact: true, name: 'Replay' })).toBeEnabled({
-    timeout: 15_000,
-  });
-
-  await page.getByRole('button', { exact: true, name: 'Record' }).click();
-  await expect(page.getByRole('region', { name: 'Analysis diagnostics' })).toContainText(
-    'microphone-3',
-  );
-  await page.getByRole('button', { name: 'Stop recording', exact: true }).click();
-  await expect(capturePanel.getByText('Ready', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Capture duration')).toHaveText('00:00.0');
+  await expect(page.getByText('Media', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { exact: true, name: 'Record' })).toHaveCount(0);
+  await expect(page.getByRole('button', { exact: true, name: 'Save' })).toHaveCount(0);
 });
 
 test('loads a WAV through the normal replay analysis path', async ({ page }) => {
@@ -94,13 +91,13 @@ test('loads a WAV through the normal replay analysis path', async ({ page }) => 
     'replay-1',
   );
   const pitchResults = page.getByRole('region', { name: 'Pitch analysis results' });
-  await expect(pitchResults.getByText('E2 detected', { exact: true })).toBeVisible();
+  await expect(pitchResults.getByText('E2', { exact: true })).toBeVisible();
   await expect(
     pitchResults.getByText('Target frequency', { exact: true }).locator('..'),
   ).toContainText('82.41 Hz');
-  await expect(pitchResults.getByText('Lower pitch slightly', { exact: true })).toBeVisible();
+  await expect(pitchResults.getByText('Lower pitch slightly', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Recent note history' })).toHaveCount(0);
-  await expect(page.getByRole('button', { exact: true, name: 'Replay' })).toBeEnabled();
+  await expect(page.getByRole('button', { exact: true, name: 'Save' })).toHaveCount(0);
 });
 
 test('finalizes a chord WAV with the real model and reveals analysis details on demand', async ({

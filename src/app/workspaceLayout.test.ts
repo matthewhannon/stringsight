@@ -96,7 +96,12 @@ describe('workspace layout', () => {
     const storage = window.localStorage;
     storage.clear();
     const layout = { optionalModuleIds: ['analysis'] as const, schemaVersion: 1 as const };
+    storage.setItem('stringsight.workspace-layout.v1', JSON.stringify(layout));
+
+    expect(loadWorkspaceLayout(storage, available)).toBe(EmptyWorkspaceLayout);
+
     saveWorkspaceLayout(storage, layout);
+    expect(WORKSPACE_LAYOUT_STORAGE_KEY).toBe('stringsight.workspace-layout.v2');
     expect(storage.getItem(WORKSPACE_LAYOUT_STORAGE_KEY)).not.toBeNull();
     expect(loadWorkspaceLayout(storage, available)).toEqual(layout);
   });

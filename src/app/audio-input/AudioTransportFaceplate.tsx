@@ -1,46 +1,36 @@
 import { RackRecordPunch, RackRockerSwitch, RackStatusLamp, RackUtilityKey } from '../../ui/rack';
 
-type ContextTransport = {
-  disabled: boolean;
-  label: string;
-  onClick: () => void;
-};
-
 type AudioTransportFaceplateProps = {
-  contextTransport: ContextTransport;
   inputDisabled: boolean;
   inputOn: boolean;
   inputStateLabel: string;
-  loadDisabled: boolean;
-  loadLabel: string;
   onInputChange: (on: boolean) => void;
-  onLoad: () => void;
   onRecord: () => void;
+  onSave: () => void;
   peakActive: boolean;
   recordActionLabel: string;
   recordDisabled: boolean;
   recordPressed: boolean;
   recording: boolean;
   recordStateLabel: string;
+  saveReady: boolean;
   signalActive: boolean;
 };
 
 export function AudioTransportFaceplate({
-  contextTransport,
   inputDisabled,
   inputOn,
   inputStateLabel,
-  loadDisabled,
-  loadLabel,
   onInputChange,
-  onLoad,
   onRecord,
+  onSave,
   peakActive,
   recordActionLabel,
   recordDisabled,
   recordPressed,
   recording,
   recordStateLabel,
+  saveReady,
   signalActive,
 }: AudioTransportFaceplateProps) {
   return (
@@ -67,23 +57,7 @@ export function AudioTransportFaceplate({
         />
       </div>
 
-      <div className="audio-input-media-bank">
-        <span className="ss-rack-control-label">Media</span>
-        <div>
-          <RackUtilityKey disabled={loadDisabled} engraving="Audio file" onClick={onLoad}>
-            {loadLabel}
-          </RackUtilityKey>
-          <RackUtilityKey
-            disabled={contextTransport.disabled}
-            engraving="Transport"
-            onClick={contextTransport.onClick}
-          >
-            {contextTransport.label}
-          </RackUtilityKey>
-        </div>
-      </div>
-
-      <div className="audio-input-record-bank">
+      <div className="audio-input-record-bank" hidden>
         <RackRecordPunch
           actionLabel={recordActionLabel}
           disabled={recordDisabled}
@@ -92,6 +66,14 @@ export function AudioTransportFaceplate({
           recording={recording}
           stateLabel={recordStateLabel}
         />
+        <RackUtilityKey
+          className={`audio-input-save-key ${saveReady ? 'is-ready' : ''}`.trim()}
+          disabled={!saveReady}
+          engraving={saveReady ? 'Take ready' : 'No take'}
+          onClick={onSave}
+        >
+          Save
+        </RackUtilityKey>
       </div>
     </div>
   );

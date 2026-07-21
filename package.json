@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Local-first guitar transcription using audio and optional fretboard vision.",
+  "description": "Local-first guitar pitch and chord monitoring in the browser.",
   "license": "MIT",
   "engines": {
     "node": ">=24.18.0 <25",

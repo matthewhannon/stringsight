@@ -52,6 +52,7 @@ export const WorkspaceModuleRegistry: Readonly<
   'session-review': {
     Component: SessionReviewPanel,
     description: 'Review completed events, add corrections, save sessions, and export evidence.',
+    hidden: true,
     id: 'session-review',
     libraryDescription: 'Review events, add corrections, save sessions, and export evidence',
     title: 'Session review',

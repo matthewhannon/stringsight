@@ -80,7 +80,8 @@ describe('AudioCapturePanel', () => {
 
     render(<AudioCapturePanel capture={capture} />);
     expect(screen.getByRole('img', { name: 'Input waveform, input off' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Record' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Record' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
     const source = screen.getByRole('combobox', { name: 'Source' });
     await waitFor(() => expect(source).toBeEnabled());
     await user.click(source);
@@ -115,11 +116,10 @@ describe('AudioCapturePanel', () => {
     vi.spyOn(capture, 'listInputDevices').mockResolvedValue([]);
 
     render(<AudioCapturePanel capture={capture} />);
-    expect(screen.getByText('Recording', { exact: true })).toBeVisible();
     expect(screen.getByText(/input is clipping/i)).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent('The microphone is busy');
     expect(screen.getByRole('status', { name: 'Peak: clipping detected' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Stop recording' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Stop recording' })).not.toBeInTheDocument();
   });
 
   it('keeps monitoring separate from recording and explicit input release', async () => {
@@ -131,57 +131,35 @@ describe('AudioCapturePanel', () => {
       rms: 0.1,
     });
     vi.spyOn(capture, 'listInputDevices').mockResolvedValue([]);
-    const startRecording = vi.spyOn(capture, 'startRecording').mockResolvedValue();
     const disconnect = vi.spyOn(capture, 'disconnect').mockResolvedValue();
 
     render(<AudioCapturePanel capture={capture} />);
     expect(screen.getByRole('button', { name: 'Input' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Active')).toBeVisible();
     expect(screen.getByRole('status', { name: 'Signal: present' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Record' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Record' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Privacy details' }));
     expect(screen.getByText(/Listening is not saved/)).toBeVisible();
 
-    await user.click(screen.getByRole('button', { name: 'Record' }));
-    expect(startRecording).toHaveBeenCalledOnce();
     await user.click(screen.getByRole('button', { name: 'Input' }));
     expect(disconnect).toHaveBeenCalledOnce();
   });
 
-  it('uses the record punch to stop while keeping pause and resume contextual', async () => {
-    const user = userEvent.setup();
-    const recordingCapture = captureWithSnapshot({
-      ...InitialCaptureSnapshot,
-      connectionState: 'monitoring',
-      operationState: 'recording',
-    });
-    vi.spyOn(recordingCapture, 'listInputDevices').mockResolvedValue([]);
-    const pause = vi.spyOn(recordingCapture, 'pause').mockResolvedValue();
-    const recordingView = render(<AudioCapturePanel capture={recordingCapture} />);
-
-    await user.click(screen.getByRole('button', { name: 'Pause' }));
-    expect(pause).toHaveBeenCalledOnce();
-    expect(screen.getByRole('button', { name: 'Stop recording' })).toBeEnabled();
-    recordingView.unmount();
-
-    const pausedCapture = captureWithSnapshot({
-      ...InitialCaptureSnapshot,
-      connectionState: 'monitoring',
-      operationState: 'paused',
-    });
-    vi.spyOn(pausedCapture, 'listInputDevices').mockResolvedValue([]);
-    const resume = vi.spyOn(pausedCapture, 'resume').mockResolvedValue();
-    const stop = vi.spyOn(pausedCapture, 'stop').mockResolvedValue(completedRecording);
-    render(<AudioCapturePanel capture={pausedCapture} />);
-
-    expect(screen.getByRole('button', { name: 'Stop recording' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
+  it('keeps record and save controls hidden for the monitoring-only presentation', () => {
+    const completedCapture = captureWithSnapshot(
+      { ...InitialCaptureSnapshot, connectionState: 'monitoring' },
+      completedRecording,
     );
-    await user.click(screen.getByRole('button', { name: 'Resume' }));
-    await user.click(screen.getByRole('button', { name: 'Stop recording' }));
-    expect(resume).toHaveBeenCalledOnce();
-    expect(stop).toHaveBeenCalledOnce();
+    vi.spyOn(completedCapture, 'listInputDevices').mockResolvedValue([]);
+    const view = render(<AudioCapturePanel capture={completedCapture} />);
+
+    expect(screen.queryByText('Media')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Load' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Replay' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Record' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(view.container.querySelector('.audio-input-record-bank')).toHaveAttribute('hidden');
   });
 
   it('keeps source selection active while monitoring and delegates switching to the controller', async () => {
@@ -256,7 +234,7 @@ describe('AudioCapturePanel', () => {
     expect(screen.queryByText(/no clear input is reaching/i)).not.toBeInTheDocument();
   });
 
-  it('loads a WAV and analyzes it through replay without opening a microphone', async () => {
+  it('keeps WAV import available internally without showing media controls', async () => {
     const user = userEvent.setup();
     const capture = captureWithSnapshot({ ...InitialCaptureSnapshot });
     vi.spyOn(capture, 'listInputDevices').mockResolvedValue([]);
@@ -285,7 +263,8 @@ describe('AudioCapturePanel', () => {
     });
 
     const view = render(<AudioCapturePanel capture={capture} />);
-    expect(screen.getByRole('button', { name: 'Load' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Load' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Replay' })).not.toBeInTheDocument();
     const fileInput = view.container.querySelector<HTMLInputElement>('input[type="file"]');
     expect(fileInput).not.toBeNull();
     if (fileInput === null) throw new Error('Recording file input was not rendered.');
@@ -302,7 +281,7 @@ describe('AudioCapturePanel', () => {
     expect(await screen.findByText(/Loaded and analyzed open-strings.wav/)).toBeVisible();
   });
 
-  it('represents connecting, finalizing, replaying, failed, unsupported, and duration-limit states', () => {
+  it('represents connecting, finalizing, failed, unsupported, and duration-limit states', () => {
     const cases: readonly {
       expectedText: string;
       snapshot: CaptureSnapshot;
@@ -312,21 +291,6 @@ describe('AudioCapturePanel', () => {
         expectedText: 'Starting',
         snapshot: { ...InitialCaptureSnapshot, connectionState: 'connecting' },
         verify: () => expect(screen.getByRole('button', { name: 'Input' })).toBeDisabled(),
-      },
-      {
-        expectedText: 'Finishing',
-        snapshot: {
-          ...InitialCaptureSnapshot,
-          connectionState: 'monitoring',
-          operationState: 'finalizing',
-        },
-        verify: () =>
-          expect(screen.getByRole('button', { name: 'Finishing recording' })).toBeDisabled(),
-      },
-      {
-        expectedText: 'Stop replay',
-        snapshot: { ...InitialCaptureSnapshot, operationState: 'replaying' },
-        verify: () => expect(screen.getByRole('button', { name: 'Stop replay' })).toBeEnabled(),
       },
       {
         expectedText: 'Attention',

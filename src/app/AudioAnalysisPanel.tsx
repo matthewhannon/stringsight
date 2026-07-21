@@ -7,11 +7,6 @@ import {
 } from '../audio/analysis';
 import { rackEmbeddedClassNames } from '../ui/rack';
 import { defaultDisplayedAudioAnalysis } from './audioCaptureController';
-import {
-  pitchConfidenceLevel,
-  pitchCorrectionInstruction,
-  pitchSignalLabel,
-} from './pitchAnalysisPresentation';
 import './audioAnalysisPanel.css';
 
 type AudioAnalysisPanelProps = {
@@ -37,13 +32,6 @@ type MeterStyle = CSSProperties & { '--meter-position': string };
 const tuningMeterStyle = (cents: number): MeterStyle => ({
   '--meter-position': `${String(((Math.max(-50, Math.min(50, cents)) + 50) / 100) * 100)}%`,
 });
-
-const detectionState = (snapshot: AudioAnalysisSnapshot): string => {
-  const noteName = snapshot.currentEvent?.candidates[0]?.noteName;
-  if (noteName !== undefined) return `${noteName} detected`;
-  if (snapshot.error !== null || snapshot.state === 'uncertain') return 'Signal lost';
-  return 'Listening';
-};
 
 function PitchTuningMeter({ cents }: { cents: number | null }) {
   const meter = (
@@ -157,7 +145,7 @@ const NoteHistory = memo(function NoteHistory({
 
   const visibleEvents = completeEvents.slice(-HISTORY_EVENT_LIMIT);
   return (
-    <section aria-label="Recent note history" className="pitch-history">
+    <section aria-label="Recent note history" className="pitch-history" id="pitch-history">
       <span>Recent notes</span>
       <ol aria-label="Recent note history, oldest first">
         {visibleEvents.map((event) => {
@@ -215,48 +203,32 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
               <span>Listening for a clear note</span>
             </div>
           ) : (
-            <>
-              <div className="pitch-live-readout">
-                <div className="pitch-note-value">
-                  <span>Note</span>
-                  <strong>{currentCandidate.noteName}</strong>
-                </div>
-                <dl className="pitch-live-facts">
-                  <div>
-                    <dt>Offset</dt>
-                    <dd>
-                      {formatCents(currentCandidate.centsOffset)}{' '}
-                      <span>{tuningDirection(currentCandidate.centsOffset)}</span>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Detected frequency</dt>
-                    <dd>{currentCandidate.frequencyHz.toFixed(2)} Hz</dd>
-                  </div>
-                  <div>
-                    <dt>Target frequency</dt>
-                    <dd>{targetFrequencyHz?.toFixed(2)} Hz</dd>
-                  </div>
-                </dl>
+            <div className="pitch-live-readout">
+              <div className="pitch-note-value">
+                <span>Note</span>
+                <strong>{currentCandidate.noteName}</strong>
               </div>
-              <p className="pitch-correction">
-                {pitchCorrectionInstruction(currentCandidate.centsOffset)}
-              </p>
-            </>
+              <dl className="pitch-live-facts">
+                <div>
+                  <dt>Offset</dt>
+                  <dd>
+                    {formatCents(currentCandidate.centsOffset)}{' '}
+                    <span>{tuningDirection(currentCandidate.centsOffset)}</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Detected frequency</dt>
+                  <dd>{currentCandidate.frequencyHz.toFixed(2)} Hz</dd>
+                </div>
+                <div>
+                  <dt>Target frequency</dt>
+                  <dd>{targetFrequencyHz?.toFixed(2)} Hz</dd>
+                </div>
+              </dl>
+            </div>
           )}
 
           <PitchTuningMeter cents={currentCandidate?.centsOffset ?? null} />
-
-          <div className="pitch-signal-summary">
-            <i aria-hidden="true" />
-            <strong>{detectionState(snapshot)}</strong>
-            {currentCandidate !== null && (
-              <>
-                <span>· {pitchSignalLabel(snapshot.state, true)}</span>
-                <span>· {pitchConfidenceLevel(currentCandidate.confidence)} confidence</span>
-              </>
-            )}
-          </div>
 
           {snapshot.error !== null && (
             <p className="pitch-analysis-error" role="alert">
@@ -266,7 +238,7 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
 
           <footer className="pitch-analysis-footer">
             <button
-              aria-controls="pitch-diagnostics"
+              aria-controls="pitch-diagnostics pitch-history"
               aria-expanded={showDiagnostics}
               onClick={() => setShowDiagnostics((visible) => !visible)}
               type="button"
@@ -275,11 +247,14 @@ export function AudioAnalysisPanel({ analysis, embedded = false }: AudioAnalysis
             </button>
           </footer>
 
-          {showDiagnostics && <PitchDiagnostics snapshot={snapshot} />}
+          {showDiagnostics && (
+            <>
+              <PitchDiagnostics snapshot={snapshot} />
+              <NoteHistory events={snapshot.events} />
+            </>
+          )}
         </section>
       </div>
-
-      <NoteHistory events={snapshot.events} />
     </section>
   );
 }

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { OptionalWorkspaceModuleIds, type OptionalWorkspaceModuleId } from './rackWorkspaceModules';
 
-export const WORKSPACE_LAYOUT_STORAGE_KEY = 'stringsight.workspace-layout.v1';
+export const WORKSPACE_LAYOUT_STORAGE_KEY = 'stringsight.workspace-layout.v2';
 
 export type WorkspaceLayout = {
   readonly optionalModuleIds: readonly OptionalWorkspaceModuleId[];

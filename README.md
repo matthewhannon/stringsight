@@ -1,39 +1,50 @@
 # StringSight
 
-StringSight is a local-first guitar-analysis web application. The current working product captures
-guitar audio, detects monophonic notes, produces live ranked chord candidates from independent
-chroma evidence, finalizes polyphonic note sets locally with Spotify Basic Pitch, and derives ranked
-chord, scale, and key interpretations without changing detector output. Planned modules will add
-fretboard vision, likely playing positions, and multimodal fusion.
+StringSight is a local-first guitar pitch and chord monitor presented as a compact audio rack. Select
+a microphone or audio-interface input, switch the input on, and get immediate signal, note, tuning,
+and chord feedback without sending raw audio to a server.
 
 The project is being built for OpenAI Build Week. See the
 [current project status](docs/project-status.md), [build checklist](BUILD_CHECKLIST.md), and
 [product requirements](docs/plans/01-product-requirements.md) for the implementation state and
 first-release contract.
 
-## Current status
+## What the MVP can do
 
-Working now:
+The default workspace opens with only the **Audio Input** rack module. It provides:
 
-- Device-neutral microphone and audio-interface selection
-- Local PCM capture, calibrated input metering, pause/resume, recording, and replay
-- Local WAV import through the same replay and analysis interfaces
-- Monophonic onset and pitch detection with confidence and ranked alternatives
-- Dedicated-worker chroma analysis with ranked provisional chord candidates
-- Worker-isolated Basic Pitch transcription with WASM-first execution and CPU fallback
-- Run-level duration-aware chord finalization that can revise and merge provisional transitions
-- Finalized ranked note sets plus reconciled chord timelines
-- Completed-session key and scale alternatives with explicit ambiguity
-- Event timelines and reviewed private note/chord evaluation-fixture export
-- A reusable realistic rack interface for product modules
+- System-default and named microphone/audio-interface selection
+- Live input waveform, calibrated level meter, signal indicator, and clipping indicator
+- At-a-glance single-note monitoring with tuning offset
+- At-a-glance live chord monitoring
+- Local mode, active device sample rate, and analyzer version in the module header
+- Browser-local audio processing and an explicit privacy status
 
-Planned next:
+Use **+ Add module** to open either focused analysis view:
 
-- Continuous-transition guitar verification and held-out expansion
-- Append-only event correction, local persistence, and validated export
-- Optional fretboard and hand-position vision
-- Guitar-aware audio and vision fusion
-- Chord-voicing and likely string/fret interpretation
+- **Pitch analysis** shows the detected note, cents offset, detected and target frequencies, and a
+  tuning meter. Analysis details reveal diagnostics and recent-note history only when needed.
+- **Chord analysis** shows the leading chord candidate, match strength, and a 12-note pitch-class
+  spread by default. Analysis details swap in chord quality, bass, ranked alternatives, processing
+  diagnostics, and a bounded chord timeline.
+
+Pitch and chord analysis can be shown independently or together. Once both are installed, the add
+control is hidden because the MVP has no additional user-facing modules. **Edit rack** can reorder or
+remove them, and the chosen layout is retained locally.
+
+The chord analyzer uses the accurate profile by default. Development-only evaluation and session
+review implementations remain in the source tree but are intentionally hidden from the product UI.
+
+## Try it locally
+
+```sh
+npm install
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`, choose a source, and press **Input**. Some browsers reveal full device
+names only after microphone permission has been granted. Add Pitch analysis, Chord analysis, or both
+for the amount of detail you want while playing.
 
 ## Requirements
 
@@ -45,14 +56,8 @@ The repository includes `.nvmrc` and `.node-version`. `package.json` also enforc
 
 ## Development
 
-```sh
-npm install
-npm run dev
-```
-
-The application is available at `http://127.0.0.1:5173`.
-
-The current audio-capture slice is available at `http://127.0.0.1:5173/#capture`. Microphone access is requested only after pressing **Start microphone**; raw PCM remains local to the browser.
+The rack is also available directly at `http://127.0.0.1:5173/#capture`. Microphone access is
+requested only after pressing **Input**; raw PCM remains local to the browser.
 
 ## Verification
 
@@ -122,9 +127,8 @@ directory layout, validation rules, and privacy boundary.
 
 ## Privacy baseline
 
-Raw microphone data stays on the device during normal operation. Webcam processing and remote
-analysis are planned, not currently active. Any future remote feature will be optional and will use
-minimized structured musical events rather than continuous raw media by default.
+Raw microphone data stays on the device during normal operation. Webcam processing, fretboard
+vision, and remote analysis are not part of the current MVP.
 
 ## License
 

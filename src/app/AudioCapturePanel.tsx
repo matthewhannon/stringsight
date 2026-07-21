@@ -7,6 +7,7 @@ import {
   amplitudeToDbfs,
   dbfsToMeterPercent,
   decodePcmWavRecording,
+  encodeMonoPcm16Wav,
   type CaptureSnapshot,
 } from '../audio/capture';
 import { rackEmbeddedClassNames, type RackSourceOption } from '../ui/rack';
@@ -109,6 +110,9 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
   const peakActive = snapshot.warning === 'clipping' || snapshot.peak >= CLIPPING_THRESHOLD;
   const recordPressed = ['recording', 'paused', 'finalizing'].includes(snapshot.operationState);
   const canStopRecording = ['recording', 'paused'].includes(snapshot.operationState);
+  const saveReady =
+    controller.currentRecording !== null &&
+    !['recording', 'paused', 'finalizing'].includes(snapshot.operationState);
 
   const sourceOptions = useMemo<readonly RackSourceOption[]>(
     () => [
@@ -166,25 +170,19 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
     }
   };
 
-  const contextTransport = (() => {
-    if (snapshot.operationState === 'recording') {
-      return { disabled: false, label: 'Pause', onClick: () => void controller.pause() };
-    }
-    if (snapshot.operationState === 'paused') {
-      return { disabled: false, label: 'Resume', onClick: () => void controller.resume() };
-    }
-    if (snapshot.operationState === 'replaying') {
-      return { disabled: false, label: 'Stop replay', onClick: () => controller.stopReplay() };
-    }
-    if (snapshot.operationState === 'finalizing') {
-      return { disabled: true, label: 'Replay', onClick: () => undefined };
-    }
-    return {
-      disabled: isImporting || controller.currentRecording === null,
-      label: 'Replay',
-      onClick: () => void controller.replay(),
-    };
-  })();
+  const saveRecording = () => {
+    const recording = controller.currentRecording;
+    if (recording === null) return;
+    const url = URL.createObjectURL(
+      new Blob([encodeMonoPcm16Wav(recording)], { type: 'audio/wav' }),
+    );
+    const anchor = document.createElement('a');
+    const timestamp = recording.recordedAt.slice(0, 19).replaceAll(':', '-');
+    anchor.href = url;
+    anchor.download = `stringsight-recording-${timestamp}.wav`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <section
@@ -235,7 +233,6 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
           </div>
 
           <AudioTransportFaceplate
-            contextTransport={contextTransport}
             inputDisabled={
               isImporting ||
               snapshot.connectionState === 'connecting' ||
@@ -244,17 +241,15 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
             }
             inputOn={inputOn}
             inputStateLabel={inputStateLabel(snapshot)}
-            loadDisabled={loadDisabled}
-            loadLabel={isImporting ? 'Loading' : 'Load'}
             onInputChange={(on) => {
               setImportError(null);
               if (on) void controller.connect(selectedDeviceId || undefined).then(refreshDevices);
               else void controller.disconnect();
             }}
-            onLoad={() => recordingFileInput.current?.click()}
             onRecord={() =>
               void (canStopRecording ? controller.stop() : controller.startRecording())
             }
+            onSave={saveRecording}
             peakActive={peakActive}
             recordActionLabel={
               canStopRecording
@@ -267,6 +262,7 @@ export function AudioCapturePanel({ capture, embedded = false }: AudioCapturePan
             recordPressed={recordPressed}
             recording={snapshot.operationState === 'recording'}
             recordStateLabel={recordStateLabel(snapshot, canRecord)}
+            saveReady={saveReady}
             signalActive={signalActive}
           />
 

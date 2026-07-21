@@ -294,12 +294,10 @@
 
 .audio-input-faceplate {
   display: grid;
-  gap: 16px;
+  gap: 32px;
   align-items: center;
-  grid-template-columns: minmax(158px, 1.2fr) minmax(112px, 0.7fr) minmax(174px, 1fr) minmax(
-      120px,
-      0.65fr
-    );
+  grid-template-columns: auto auto;
+  justify-content: space-between;
   margin-top: 16px;
   padding: 15px 18px 16px;
   border: 1px solid #050607;
@@ -316,24 +314,32 @@
 
 .audio-input-status-bank {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  gap: 28px;
+  grid-template-columns: repeat(2, minmax(52px, auto));
 }
 
-.audio-input-media-bank,
 .audio-input-record-bank {
   min-width: 0;
-}
-
-.audio-input-media-bank > div,
-.audio-input-record-bank {
   display: flex;
   gap: 10px;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
 }
 
-.audio-input-media-bank .ss-rack-utility-key {
-  min-width: 72px;
+.audio-input-record-bank[hidden] {
+  display: none;
+}
+
+.audio-input-save-key.is-ready {
+  border-color: #69d6a5;
+  outline-color: rgb(130 242 189 / 62%);
+  background: linear-gradient(180deg, #276149, #173d2d 58%, #0a2118);
+  box-shadow:
+    inset 0 1px rgb(221 255 239 / 22%),
+    0 0 8px rgb(94 226 161 / 62%),
+    0 3px 0 #06100b;
+  color: #c8ffe3;
+  text-shadow: 0 0 6px rgb(119 255 191 / 68%);
 }
 
 .audio-input-source-rail {
@@ -399,12 +405,7 @@
   border-radius: 5px;
   background:
     repeating-linear-gradient(0deg, rgb(222 242 230 / 2.2%) 0 1px, transparent 1px 3px),
-    linear-gradient(
-      to bottom right,
-      rgb(9 40 34 / 96%) 0 49.6%,
-      rgb(129 166 146 / 42%) 49.85% 50.15%,
-      rgb(48 34 18 / 96%) 50.4% 100%
-    );
+    rgb(9 40 34 / 96%);
   box-shadow:
     inset 0 4px 16px rgb(0 0 0 / 92%),
     inset 0 0 22px rgb(0 0 0 / 44%),
@@ -484,14 +485,9 @@
 
 @media (max-width: 1120px) {
   .audio-input-faceplate {
-    gap: 11px;
-    grid-template-columns: minmax(145px, 1.1fr) minmax(105px, 0.7fr) minmax(164px, 1fr) minmax(
-        108px,
-        0.7fr
-      );
+    gap: 24px;
   }
 
-  .audio-input-media-bank > div,
   .audio-input-record-bank {
     flex-wrap: wrap;
   }
@@ -515,7 +511,8 @@
 
 @media (max-width: 700px) {
   .audio-input-faceplate {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: auto auto;
+    justify-content: space-between;
   }
 
   .audio-input-level-row {

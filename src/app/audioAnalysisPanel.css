@@ -1,7 +1,7 @@
 .pitch-analysis {
   --pitch-screen-border: rgb(139 160 151 / 28%);
   --pitch-screen-fill: #080d0e;
-  width: min(100%, 860px);
+  width: 100%;
   min-width: 0;
   margin-inline: auto;
 }
@@ -92,14 +92,6 @@
 .pitch-live-facts dd > span {
   color: var(--rack-color-warning);
   text-transform: uppercase;
-}
-
-.pitch-correction {
-  margin: 6px 0 20px;
-  color: var(--rack-color-accent-strong);
-  font-family: var(--rack-font-control);
-  font-size: clamp(1rem, 2.2vw, 1.3rem);
-  font-weight: 650;
 }
 
 .pitch-empty-readout {
@@ -204,29 +196,6 @@
   font-size: 0.6rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.pitch-signal-summary {
-  display: flex;
-  gap: 7px;
-  align-items: center;
-  margin-top: 13px;
-  color: #89938e;
-  font-family: var(--rack-font-control);
-  font-size: 0.7rem;
-}
-
-.pitch-signal-summary > i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--rack-color-accent-strong);
-  box-shadow: 0 0 5px rgb(143 240 198 / 45%);
-}
-
-.pitch-signal-summary > strong {
-  color: #cbd7d1;
-  font-weight: 650;
 }
 
 .pitch-analysis-error {
@@ -410,10 +379,6 @@
 
   .pitch-live-facts dd {
     text-align: left;
-  }
-
-  .pitch-signal-summary {
-    flex-wrap: wrap;
   }
 
   .pitch-diagnostics dl,
