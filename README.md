@@ -9,6 +9,27 @@ The project is being built for OpenAI Build Week. See the
 [product requirements](docs/plans/01-product-requirements.md) for the implementation state and
 first-release contract.
 
+## Built with Codex and GPT-5.6
+
+StringSight was developed end to end with **OpenAI Codex and GPT-5.6** as the primary AI engineering
+collaborator. The project owner supplied the product direction, guitar and music context, priorities,
+design feedback, and final acceptance decisions; Codex worked directly in the repository and running
+application to turn that direction into a tested release.
+
+Codex and GPT-5.6 were used throughout the project to:
+
+- Explore the codebase and translate product ideas into implementation plans and typed architecture
+- Build and refine the React rack interface, Web Audio pipeline, analysis workers, and music logic
+- Debug live microphone, device-selection, pitch, chord, layout, and browser behavior
+- Delegate independent audits and focused implementation tasks to parallel agents
+- Create and maintain unit, integration, evaluation, and Playwright browser tests
+- Run formatting, linting, type checking, coverage, evaluation, and production-build verification
+- Manage experimental branches, commits, release cleanup, GitHub publishing, and documentation
+
+Codex and GPT-5.6 were development tools for the entire project, not runtime dependencies of the
+shipped application. StringSight does not call an OpenAI API while monitoring; pitch and chord audio
+processing runs locally in the browser.
+
 ## What the MVP can do
 
 The default workspace opens with only the **Audio Input** rack module. It provides:
@@ -35,10 +56,20 @@ remove them, and the chosen layout is retained locally.
 The chord analyzer uses the accurate profile by default. Development-only evaluation and session
 review implementations remain in the source tree but are intentionally hidden from the product UI.
 
-## Try it locally
+## Setup
+
+Requirements:
+
+- Node.js 24.18.0
+- npm 11.16.0
+- Current desktop Chrome or Edge for the supported application experience
+
+Clone, install, and start the development server:
 
 ```sh
-npm install
+git clone https://github.com/matthewhannon/stringsight.git
+cd stringsight
+npm ci
 npm run dev
 ```
 
@@ -46,13 +77,8 @@ Open `http://127.0.0.1:5173`, choose a source, and press **Input**. Some browser
 names only after microphone permission has been granted. Add Pitch analysis, Chord analysis, or both
 for the amount of detail you want while playing.
 
-## Requirements
-
-- Node.js 24.18.0
-- npm 11.16.0
-- Current desktop Chrome or Edge for the supported application experience
-
-The repository includes `.nvmrc` and `.node-version`. `package.json` also enforces the supported Node.js and npm major versions.
+The repository includes `.nvmrc` and `.node-version`. `package.json` also enforces the supported
+Node.js and npm major versions.
 
 ## Development
 
