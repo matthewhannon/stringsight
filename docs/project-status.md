@@ -73,15 +73,20 @@ macOS remains a portability goal without a current support claim. Single-machine
 observations; implementing items must define smoke thresholds, while formal percentile budgets stay
 pre-commercial.
 
-Checklist Items 10 and 11 are complete. The renderer-independent guitar model establishes stable
+Checklist Items 10 through 12 are complete. The renderer-independent guitar model establishes stable
 coordinates, derived pitch/geometry, bounded voicing enumeration, fingering, and transition cost.
 The accepted Practice System contracts add PPQ-960 authored documents, immutable revisions,
 evidence snapshots, takes, media identities and availability, reference/take sync maps, assessments,
 deterministic import review, canonical hashes/goldens, trusted integrity verification, and explicit
-v1 migrations. The next production implementation milestone is Checklist Item 12, the
-renderer-independent editor core and native create/save/open workflow. Current score editing,
-import adapters, save, transport, video, MIDI, alignment, and assessment UI surfaces remain
-placeholders until their implementing items.
+v1 migrations. The accepted editor core adds atomic authored commands, stable semantic selection,
+bounded history, monotonic canonical undo/redo revisions, native create/save/open, storage-failure
+safety, and accessible structured score inspection with renderer-independent keyboard navigation.
+
+This editor functionality is currently headless: it is tested and ready for UI consumption but is
+not yet connected to the visible score workspace. The next production implementation milestone is
+Checklist Item 13, which integrates the score UI through replaceable notation, approved import, and
+authored-MIDI adapters. Visible score editing/import, authoritative transport, video, alignment,
+and assessment surfaces remain placeholders until their implementing items.
 
 The executable dependency order is maintained in `BUILD_CHECKLIST.md`. Live computer vision,
 fusion, and GPT interpretation remain deferred until after the complete score/practice/take product.

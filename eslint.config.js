@@ -73,6 +73,10 @@ export default defineConfig(
     rules: restrictLayers('app', 'audio', 'fusion', 'vision', 'workers'),
   },
   {
+    files: ['src/editor/**/*.{ts,tsx}'],
+    rules: restrictLayers('app', 'audio', 'fusion', 'music', 'persistence', 'vision', 'workers'),
+  },
+  {
     files: ['src/audio/**/*.{ts,tsx}'],
     rules: restrictLayers('app', 'fusion', 'vision'),
   },

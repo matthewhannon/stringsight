@@ -368,20 +368,25 @@ findings in `docs/verification/11-versioned-practice-contracts-independent-revie
 
 ### 12. Build the renderer-independent editor core
 
-- [ ] Implement pure validated edit commands and atomic transactions.
-- [ ] Implement stable semantic selection, bounded undo/redo, monotonic revisions, and predictable
+- [x] Implement pure validated edit commands and atomic transactions.
+- [x] Implement stable semantic selection, bounded undo/redo, monotonic revisions, and predictable
       focus restoration.
-- [ ] Implement native StringSight create/save/open round trips independently of a notation
+- [x] Implement native StringSight create/save/open round trips independently of a notation
       renderer.
-- [ ] Keep layout, zoom, active practice range, panel state, and playback position out of authored
+- [x] Keep layout, zoom, active practice range, panel state, and playback position out of authored
       document content.
-- [ ] Implement accessible structured score inspection and keyboard editing independent of rendered
+- [x] Implement accessible structured score inspection and keyboard editing independent of rendered
       SVG/canvas glyph focus.
-- [ ] Test every command, invalid-command atomicity, history bounds, save failure, and revision
+- [x] Test every command, invalid-command atomicity, history bounds, save failure, and revision
       behavior.
 
 **Done when:** A valid native score can be created, edited, undone/redone, saved, reopened, and
 inspected accessibly before notation/import adapters become authoritative dependencies.
+
+**Independent review:** PASS after resolving source-identity verification, aggregate transaction
+limits, accessor rejection, canonical undo/redo identity, false saved state, semantic workspace
+validation, collision-free UTF-16 row identities, and value-aware accessible labels in
+`docs/verification/12-renderer-independent-editor-core-independent-review.md`.
 
 ### 13. Implement notation, score-import, and authored-MIDI adapters
 
